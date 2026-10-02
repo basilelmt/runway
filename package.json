@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "import:statements": "tsx server/scripts/import-statements.ts"
   },
   "license": "UNLICENSED",
   "type": "module",
