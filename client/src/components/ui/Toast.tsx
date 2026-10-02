@@ -1,14 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ToastContext, type ToastApi } from './toast-context';
 import styles from './Toast.module.css';
 
 type Toast = { id: number; message: string; tone: 'neutral' | 'positive' | 'negative' };
-type ToastApi = {
-  toast: (message: string, tone?: Toast['tone']) => void;
-  success: (message: string) => void;
-  error: (message: string) => void;
-};
-
-const ToastContext = createContext<ToastApi | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -37,10 +31,4 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-export function useToast(): ToastApi {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast doit être utilisé sous ToastProvider');
-  return ctx;
 }

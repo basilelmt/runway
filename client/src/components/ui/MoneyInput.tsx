@@ -1,4 +1,4 @@
-import { useEffect, useState, type InputHTMLAttributes } from 'react';
+import { useState, type InputHTMLAttributes } from 'react';
 import { parseEuros } from '@shared/money';
 import styles from './Input.module.css';
 
@@ -17,11 +17,13 @@ function toText(cents: number | null): string {
 /** Saisie d'un montant en euros, valeur exposée en centimes entiers. */
 export function MoneyInput({ value, onChange, allowNegative = false, className, onBlur, ...rest }: MoneyInputProps) {
   const [text, setText] = useState(() => toText(value));
+  const [lastValue, setLastValue] = useState(value);
 
-  // Resynchronise le texte quand la valeur change de l'extérieur (reset de formulaire).
-  useEffect(() => {
-    setText((current) => (parseEuros(current) === value ? current : toText(value)));
-  }, [value]);
+  // Resynchronise le texte quand la valeur change de l'extérieur (reset de formulaire), pendant le rendu.
+  if (value !== lastValue) {
+    setLastValue(value);
+    if (parseEuros(text) !== value) setText(toText(value));
+  }
 
   return (
     <span className={styles.moneyWrap}>

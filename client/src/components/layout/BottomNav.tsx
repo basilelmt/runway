@@ -1,5 +1,5 @@
 import { Menu, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useOverview } from '@/api/hooks';
 import { MOBILE_PRIMARY, NAV } from './nav';
@@ -11,8 +11,6 @@ export function BottomNav() {
   const overview = useOverview();
   const unsorted = overview.data?.unsortedCount ?? 0;
 
-  useEffect(() => setOpen(false), [location.pathname]);
-
   const primary = NAV.filter((n) => MOBILE_PRIMARY.includes(n.to));
   const secondary = NAV.filter((n) => !MOBILE_PRIMARY.includes(n.to));
   const moreActive = secondary.some((n) => location.pathname.startsWith(n.to));
@@ -23,7 +21,7 @@ export function BottomNav() {
         <div className={styles.sheetBackdrop} onClick={() => setOpen(false)}>
           <div className={styles.sheet} role="dialog" aria-label="Plus de pages" onClick={(e) => e.stopPropagation()}>
             {secondary.map((item) => (
-              <NavLink key={item.to} to={item.to} className={({ isActive }) => [styles.sheetLink, isActive ? styles.active : ''].join(' ')}>
+              <NavLink key={item.to} to={item.to} onClick={() => setOpen(false)} className={({ isActive }) => [styles.sheetLink, isActive ? styles.active : ''].join(' ')}>
                 <item.icon aria-hidden />
                 <span>{item.label}</span>
                 {item.badge === 'unsorted' && unsorted > 0 ? <span className={styles.count}>{unsorted}</span> : null}

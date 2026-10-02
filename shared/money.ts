@@ -1,8 +1,8 @@
 /** Montant en centimes entiers. */
 export type Cents = number;
 
-const NBSP = ' ';
-const NNBSP = ' ';
+const NBSP = '\u00a0';
+const NNBSP = '\u202f';
 
 const formatter = new Intl.NumberFormat('fr-FR', {
   minimumFractionDigits: 2,
@@ -11,7 +11,7 @@ const formatter = new Intl.NumberFormat('fr-FR', {
 
 export function formatEuros(cents: Cents, options: { signed?: boolean } = {}): string {
   const abs = Math.abs(cents);
-  const body = formatter.format(abs / 100).replace(/[  ]/g, ' ');
+  const body = formatter.format(abs / 100).replace(/[\u00a0\u202f]/g, ' ');
   const sign = cents < 0 ? '-' : options.signed && cents > 0 ? '+' : '';
   return `${sign}${body} €`;
 }

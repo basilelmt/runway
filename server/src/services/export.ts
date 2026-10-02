@@ -50,5 +50,5 @@ export function exportCsv(db: Db): string {
         .join(';'),
     );
   }
-  return `﻿${lines.join('\r\n')}\r\n`;
+  return `\ufeff${lines.join('\r\n')}\r\n`;
 }

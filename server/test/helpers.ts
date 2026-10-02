@@ -27,6 +27,7 @@ export type TestApp = TestContext & {
   today: string;
   setToday: (date: string) => void;
   /** Requête JSON pratique : renvoie le statut et le corps décodé. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
 };
 

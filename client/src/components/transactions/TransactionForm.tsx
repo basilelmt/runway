@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { today } from '@shared/dates';
 import { transactionInputSchema, transactionKinds, type Transaction, type TransactionInput, type TransactionKind } from '@shared/schemas';
 import { useAccounts, useEnvelopes } from '@/api/hooks';
@@ -45,7 +45,7 @@ function initialValues(initial: TransactionFormProps['initial'], kinds: Transact
   };
 }
 
-export function toInput(v: TransactionFormValues): TransactionInput {
+function toInput(v: TransactionFormValues): TransactionInput {
   return {
     kind: v.kind,
     date: v.date,
@@ -66,23 +66,19 @@ export function TransactionForm({ initial, kinds = [...transactionKinds], submit
   const [values, setValues] = useState(() => initialValues(initial, kinds));
   const [errors, setErrors] = useState<Partial<Record<keyof TransactionFormValues, string>>>({});
 
-  // Pré-sélectionne le premier compte quand la liste arrive, pour éviter un select vide.
-  useEffect(() => {
-    const first = accounts.data?.[0];
-    if (first && values.accountId === null && values.kind !== 'allocation') set('accountId', first.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts.data]);
-
   const set = <K extends keyof TransactionFormValues>(key: K, value: TransactionFormValues[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
+  // Sans choix explicite, le premier compte est pris par défaut : le select n'est jamais vide.
+  const effective: TransactionFormValues = { ...values, accountId: values.accountId ?? accounts.data?.[0]?.id ?? null };
+
   const kindOptions = useMemo(() => kinds.map((k) => ({ value: k, label: KIND_LABELS[k] })), [kinds]);
 
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
-    const parsed = transactionInputSchema.safeParse(toInput(values));
+    const parsed = transactionInputSchema.safeParse(toInput(effective));
     if (!parsed.success) {
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
@@ -140,7 +136,7 @@ export function TransactionForm({ initial, kinds = [...transactionKinds], submit
         <div className={styles.grid}>
           <Field label={values.kind === 'transfer' ? 'Depuis le compte' : 'Compte'} error={errors.accountId}>
             {(id, describedBy) => (
-              <Select id={id} aria-describedby={describedBy} value={values.accountId ?? ''} onChange={(e) => set('accountId', e.target.value ? Number(e.target.value) : null)}>
+              <Select id={id} aria-describedby={describedBy} value={effective.accountId ?? ''} onChange={(e) => set('accountId', e.target.value ? Number(e.target.value) : null)}>
                 <option value="">Choisir</option>
                 {accountOptions}
               </Select>

@@ -10,4 +10,5 @@ export { MoneyInput } from './MoneyInput';
 export { ProgressBar } from './ProgressBar';
 export { Segmented } from './Segmented';
 export { Skeleton, SkeletonRows } from './Skeleton';
-export { ToastProvider, useToast } from './Toast';
+export { ToastProvider } from './Toast';
+export { useToast } from './toast-context';
