@@ -1,7 +1,8 @@
+import type { Account, Envelope } from '@shared/schemas';
+import { createApp } from '../src/app';
 import { openDb, type Db } from '../src/db/client';
 import { createAccount } from '../src/repos/accounts';
 import { createEnvelope } from '../src/repos/envelopes';
-import type { Account, Envelope } from '@shared/schemas';
 
 export type TestContext = {
   db: Db;
@@ -19,4 +20,37 @@ export function createTestDb(): TestContext {
   const courses = createEnvelope(db, { name: 'Courses', color: '#4f8a5b' });
   const loisirs = createEnvelope(db, { name: 'Loisirs', color: '#c2703d' });
   return { db, courant, livret, courses, loisirs };
+}
+
+export type TestApp = TestContext & {
+  app: ReturnType<typeof createApp>;
+  today: string;
+  setToday: (date: string) => void;
+  /** Requête JSON pratique : renvoie le statut et le corps décodé. */
+  call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
+};
+
+export function createTestApp(initialToday = '2026-03-10'): TestApp {
+  const ctx = createTestDb();
+  let today = initialToday;
+  const app = createApp({ db: ctx.db, now: () => today });
+  return {
+    ...ctx,
+    app,
+    get today() {
+      return today;
+    },
+    setToday: (d) => {
+      today = d;
+    },
+    call: async (method, path, body) => {
+      const res = await app.request(path, {
+        method,
+        headers: body === undefined ? {} : { 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const text = await res.text();
+      return { status: res.status, body: text ? JSON.parse(text) : null };
+    },
+  };
 }
