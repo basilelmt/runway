@@ -25,7 +25,7 @@
   border-radius: 6px;
   background:
     linear-gradient(to right, transparent 36%, var(--marking) 36%, var(--marking) 46%, transparent 46%, transparent 54%, var(--marking) 54%, var(--marking) 64%, transparent 64%),
-    var(--ink);
+    var(--tarmac);
 }
 
 .brandName {

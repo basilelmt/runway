@@ -23,6 +23,11 @@
   --warning-soft: #f6e3c6;
   --info-soft: #d9e4ee;
 
+  /* La piste est toujours sombre, quel que soit le mode */
+  --tarmac: #14201c;
+  --tarmac-ink: #eef2ef;
+  --tarmac-danger: #b8382a;
+
   --focus: var(--marking);
 
   /* Typographie */

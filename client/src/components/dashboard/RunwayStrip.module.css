@@ -38,7 +38,7 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   isolation: isolate;
-  background: var(--ink);
+  background: var(--tarmac);
 }
 
 .tarmac {
@@ -76,8 +76,8 @@
   top: 0;
   bottom: 0;
   right: 0;
-  background: linear-gradient(90deg, color-mix(in oklab, var(--negative) 55%, transparent), color-mix(in oklab, var(--negative) 80%, transparent));
-  border-left: 2px solid var(--negative);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--tarmac-danger) 60%, transparent), color-mix(in oklab, var(--tarmac-danger) 85%, transparent));
+  border-left: 2px solid var(--tarmac-danger);
   z-index: 1;
 }
 
@@ -134,7 +134,7 @@
 }
 
 .out {
-  background: var(--paper);
+  background: var(--tarmac-ink);
 }
 
 .neutral {
