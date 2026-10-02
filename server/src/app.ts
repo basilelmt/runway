@@ -4,6 +4,7 @@ import type { Db } from './db/client';
 import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
 import { envelopeRoutes } from './routes/envelopes';
+import { importRoutes } from './routes/imports';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
 import { recurringRuleRoutes } from './routes/recurring-rules';
 import { settingsRoutes } from './routes/settings';
@@ -61,6 +62,7 @@ export function createApp({ db, now = today }: AppOptions) {
   app.route('/api/overview', overviewRoutes);
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
+  app.route('/api/imports', importRoutes);
   app.route('/api', exportRoutes);
 
   return app;
