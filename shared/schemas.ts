@@ -54,8 +54,19 @@ export const envelopeInputSchema = z.object({
 });
 export type EnvelopeInput = z.infer<typeof envelopeInputSchema>;
 
-/** Champs communs à une opération et au modèle d'une règle récurrente. */
+/** Champs communs à une opération et au modèle d'une règle récurrente (entités stockées). */
 const operationFields = {
+  kind: z.enum(transactionKinds),
+  amount: positiveCentsSchema,
+  label: z.string(),
+  accountId: idSchema.nullable(),
+  toAccountId: idSchema.nullable(),
+  envelopeId: idSchema.nullable(),
+  fromEnvelopeId: idSchema.nullable(),
+};
+
+/** Même chose en entrée : les références sont facultatives et validées selon le type. */
+const operationInputFields = {
   kind: z.enum(transactionKinds),
   amount: positiveCentsSchema,
   label: z.string().trim().min(1, 'Libellé requis').max(200),
@@ -109,7 +120,7 @@ export type Transaction = z.infer<typeof transactionSchema>;
 
 export const transactionInputSchema = z
   .object({
-    ...operationFields,
+    ...operationInputFields,
     date: isoDateSchema,
     note: z.string().trim().max(500).nullable().optional(),
   })
@@ -146,7 +157,7 @@ export type RecurringRule = z.infer<typeof recurringRuleSchema>;
 export const recurringRuleInputSchema = z
   .object({
     name: z.string().trim().min(1, 'Nom requis').max(80),
-    ...operationFields,
+    ...operationInputFields,
     frequency: z.enum(frequencies),
     interval: z.number().int().positive().max(365).default(1),
     dayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
