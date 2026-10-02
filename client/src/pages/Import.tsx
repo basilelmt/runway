@@ -33,15 +33,25 @@ export function ImportPage() {
 
   function handleCommit() {
     if (!draft || draft.preview.accountId === null) return;
-    const duplicates = draft.rows.filter((r) => r.status === 'duplicate').length;
+    const duplicates = draft.rows.filter((r) => r.status === 'duplicate' || r.status === 'internal').length;
     commit.mutate({
       fileName: draft.preview.fileName,
       accountId: draft.preview.accountId,
       bankAccountNumber: draft.preview.bankAccountNumber,
       duplicateCount: duplicates,
       rows: draft.rows
-        .filter((r) => r.status !== 'duplicate')
-        .map(({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId }) => ({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId })),
+        .filter((r) => r.status === 'new' || r.status === 'matched' || r.status === 'transfer')
+        .map(({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId }) => ({
+          index,
+          date,
+          label,
+          signedAmount,
+          fingerprint,
+          plannedId,
+          envelopeId,
+          note,
+          transferToAccountId,
+        })),
     });
   }
 
@@ -49,7 +59,7 @@ export function ImportPage() {
 
   return (
     <div className="page">
-      <PageHeader title="Import" subtitle="Relevés CSV de La Banque Postale. Les doublons sont ignorés, les opérations prévues sont rapprochées." />
+      <PageHeader title="Import" subtitle="Relevés CSV ou PDF de La Banque Postale. Les doublons sont ignorés, les opérations prévues sont rapprochées, les virements entre tes comptes sont reconnus." />
 
       {draft === null ? (
         <DropZone busy={preview.isPending} onFile={(file) => preview.mutate({ file })} />
@@ -65,6 +75,29 @@ export function ImportPage() {
             ) : null}
           </div>
 
+          {draft.preview.sections.length > 1 ? (
+            <div className={styles.accountPick}>
+              <Field label="Compte du relevé à importer" hint="Un relevé PDF couvre plusieurs comptes : importe-les un par un.">
+                {(id, describedBy) => (
+                  <Select
+                    id={id}
+                    aria-describedby={describedBy}
+                    value={draft.preview.sectionIndex}
+                    disabled={preview.isPending}
+                    onChange={(e) => preview.mutate({ file: draft.file, section: Number(e.target.value) })}
+                  >
+                    {draft.preview.sections.map((s) => (
+                      <option key={s.index} value={s.index}>
+                        {s.accountName} · {s.bankAccountNumber} · {plural(s.rowCount, 'opération')}
+                        {s.accountId === null ? ' · compte inconnu' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+            </div>
+          ) : null}
+
           {draft.preview.accountId === null ? (
             <div className={styles.accountPick}>
               <Field
@@ -79,7 +112,7 @@ export function ImportPage() {
                     disabled={preview.isPending}
                     onChange={(e) => {
                       const accountId = Number(e.target.value);
-                      if (accountId) preview.mutate({ file: draft.file, accountId });
+                      if (accountId) preview.mutate({ file: draft.file, accountId, section: draft.preview.sections.length > 1 ? draft.preview.sectionIndex : null });
                     }}
                   >
                     <option value="">Choisir un compte</option>
@@ -96,6 +129,7 @@ export function ImportPage() {
             <ImportPreview
               rows={draft.rows}
               envelopes={envelopes.data ?? []}
+              accounts={accounts.data ?? []}
               onChange={(rows) => setDraft({ ...draft, rows })}
               onCommit={handleCommit}
               onCancel={() => setDraft(null)}

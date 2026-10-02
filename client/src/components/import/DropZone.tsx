@@ -8,7 +8,7 @@ type DropZoneProps = {
   busy?: boolean;
 };
 
-/** Zone de dépôt du relevé CSV : glisser-déposer ou sélection classique. */
+/** Zone de dépôt du relevé (CSV ou PDF) : glisser-déposer ou sélection classique. */
 export function DropZone({ onFile, busy = false }: DropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -34,13 +34,13 @@ export function DropZone({ onFile, busy = false }: DropZoneProps) {
       <div className={styles.icon} aria-hidden>
         {busy ? <span className={styles.spinner} /> : <FileUp />}
       </div>
-      <p className={styles.title}>{busy ? 'Lecture du relevé' : "Dépose ici l'export CSV de La Banque Postale"}</p>
-      <p className={styles.hint}>Depuis ton espace client : Comptes, Télécharger les opérations, format CSV.</p>
+      <p className={styles.title}>{busy ? 'Lecture du relevé' : 'Dépose ici un relevé La Banque Postale'}</p>
+      <p className={styles.hint}>Export CSV des opérations, ou relevé mensuel PDF (tous les comptes du relevé sont lus).</p>
       <input
         ref={inputRef}
         id={inputId}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,text/csv,.pdf,application/pdf"
         className="visually-hidden"
         disabled={busy}
         onChange={(e) => {

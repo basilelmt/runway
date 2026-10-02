@@ -37,7 +37,7 @@ describe('import', () => {
     expect(status).toBe(200);
     expect(body.accountId).toBeNull();
     expect(body.bankAccountNumber).toBe('1234567A123');
-    expect(body.counts).toEqual({ total: 8, new: 8, duplicate: 0, matched: 0 });
+    expect(body.counts).toEqual({ total: 8, new: 8, duplicate: 0, matched: 0, transfer: 0, internal: 0 });
   });
 
   it('applique les règles de tri et distingue deux lignes identiques', async () => {
@@ -62,7 +62,7 @@ describe('import', () => {
 
     const again = await preview();
     expect(again.body.accountId).toBe(t.courant.id);
-    expect(again.body.counts).toEqual({ total: 8, new: 0, duplicate: 8, matched: 0 });
+    expect(again.body.counts).toEqual({ total: 8, new: 0, duplicate: 8, matched: 0, transfer: 0, internal: 0 });
 
     const txs = await t.call('GET', '/api/transactions');
     expect(txs.body).toHaveLength(8);

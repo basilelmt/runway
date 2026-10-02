@@ -15,7 +15,7 @@ describe('parseLbpStatementText', () => {
     ]);
     expect(sections[0]?.iban).toBe('FR0720041010091234567K89063');
     expect(sections[1]?.iban).toBe('FR5110011000209998888777V73');
-    expect(sections[0]).toMatchObject({ openingDate: '2024-12-06', openingBalance: 607_17, closingDate: '2025-01-07', closingBalance: 617_14 });
+    expect(sections[0]).toMatchObject({ openingDate: '2024-12-06', openingBalance: 607_17, closingDate: '2025-01-07', closingBalance: 817_14 });
     expect(sections[1]).toMatchObject({ openingBalance: 3520_80, closingBalance: 3528_81 });
   });
 
@@ -29,6 +29,7 @@ describe('parseLbpStatementText', () => {
       ['2025-01-02', -96_30],
       ['2025-01-06', -10_80],
       ['2025-01-06', 112_60],
+      ['2024-12-23', 200_00],
     ]);
   });
 

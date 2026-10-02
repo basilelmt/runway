@@ -98,6 +98,16 @@ export function findByFingerprints(db: Db, fingerprints: string[]): Set<string> 
   return new Set(rows.map((r) => r.fingerprint).filter((f): f is string => f !== null));
 }
 
+/** Transferts reçus par un compte, d'un montant donné, dans une fenêtre de dates. */
+export function findTransfersTo(db: Db, accountId: number, amount: number, from: string, to: string): Transaction[] {
+  return db
+    .select()
+    .from(transactions)
+    .where(and(eq(transactions.kind, 'transfer'), eq(transactions.toAccountId, accountId), eq(transactions.amount, amount), gte(transactions.date, from), lte(transactions.date, to)))
+    .orderBy(asc(transactions.date))
+    .all();
+}
+
 export function countUnsorted(db: Db): number {
   const row = db
     .select({ n: sql<number>`count(*)` })

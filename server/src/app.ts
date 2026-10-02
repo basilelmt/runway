@@ -12,6 +12,7 @@ import { sortingRoutes } from './routes/sorting';
 import { sortingRuleRoutes } from './routes/sorting-rules';
 import { transactionRoutes } from './routes/transactions';
 import type { Exec } from './services/claude';
+import type { ImportDeps } from './services/import';
 import { materializeDue } from './services/materialize';
 
 export type AppEnv = { Variables: { db: Db; today: string } };
@@ -22,9 +23,11 @@ export type AppOptions = {
   now?: () => string;
   /** Exécuteur du binaire `claude`, injectable pour les tests. */
   exec?: Exec;
+  /** Extraction du texte des PDF, injectable pour les tests. */
+  importDeps?: ImportDeps;
 };
 
-export function createApp({ db, now = today, exec }: AppOptions) {
+export function createApp({ db, now = today, exec, importDeps }: AppOptions) {
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
@@ -67,7 +70,7 @@ export function createApp({ db, now = today, exec }: AppOptions) {
   app.route('/api/overview', overviewRoutes);
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
-  app.route('/api/imports', importRoutes);
+  app.route('/api/imports', importRoutes(importDeps));
   app.route('/api', exportRoutes);
 
   return app;

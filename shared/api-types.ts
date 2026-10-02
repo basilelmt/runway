@@ -85,7 +85,8 @@ export type NetWorthReport = {
   projection: { date: ISODate; value: Cents }[];
 };
 
-export type ImportRowStatus = 'new' | 'duplicate' | 'matched';
+/** `transfer` : virement vers un autre compte de l'app ; `internal` : contrepartie d'un virement déjà saisi, ignorée. */
+export type ImportRowStatus = 'new' | 'duplicate' | 'matched' | 'transfer' | 'internal';
 
 export type ImportPreviewRow = {
   index: number;
@@ -97,6 +98,17 @@ export type ImportPreviewRow = {
   plannedId: number | null;
   plannedLabel: string | null;
   envelopeId: number | null;
+  /** Texte brut complet (relevés PDF), conservé en note. */
+  note: string | null;
+  transferToAccountId: number | null;
+};
+
+export type ImportSection = {
+  index: number;
+  accountName: string;
+  bankAccountNumber: string;
+  accountId: number | null;
+  rowCount: number;
 };
 
 export type ImportPreview = {
@@ -104,7 +116,10 @@ export type ImportPreview = {
   bankAccountNumber: string | null;
   accountId: number | null;
   rows: ImportPreviewRow[];
-  counts: { total: number; new: number; duplicate: number; matched: number };
+  counts: { total: number; new: number; duplicate: number; matched: number; transfer: number; internal: number };
+  /** Un relevé PDF couvre plusieurs comptes : une section par compte, `sectionIndex` est celle affichée. */
+  sections: ImportSection[];
+  sectionIndex: number;
 };
 
 export type ImportCommitRow = {
@@ -115,6 +130,8 @@ export type ImportCommitRow = {
   fingerprint: string;
   plannedId: number | null;
   envelopeId: number | null;
+  note?: string | null;
+  transferToAccountId?: number | null;
 };
 
 export type ImportCommitInput = {

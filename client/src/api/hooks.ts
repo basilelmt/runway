@@ -214,13 +214,14 @@ export const useImports = () => useQuery({ queryKey: keys.imports, queryFn: () =
 
 export type ImportPreviewWithFile = ImportPreview & { fileName: string };
 
-export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: File; accountId?: number | null }>) {
+export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: File; accountId?: number | null; section?: number | null }>) {
   return useMutation({
     ...opts,
-    mutationFn: ({ file, accountId }) => {
+    mutationFn: ({ file, accountId, section }) => {
       const form = new FormData();
       form.append('file', file);
       if (accountId) form.append('accountId', String(accountId));
+      if (section != null) form.append('section', String(section));
       return api.upload<ImportPreviewWithFile>('/api/imports/preview', form);
     },
   });

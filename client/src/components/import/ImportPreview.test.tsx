@@ -11,10 +11,10 @@ const envelopes = [
 ];
 
 const rows: ImportPreviewRow[] = [
-  { index: 0, date: '2026-03-12', label: 'CARREFOUR', signedAmount: -6230, status: 'new', fingerprint: 'a', plannedId: null, plannedLabel: null, envelopeId: 1 },
-  { index: 1, date: '2026-03-06', label: 'VIREMENT DUPONT', signedAmount: 12000, status: 'new', fingerprint: 'b', plannedId: null, plannedLabel: null, envelopeId: null },
-  { index: 2, date: '2026-03-05', label: 'PRLV LOYER', signedAmount: -80000, status: 'matched', fingerprint: 'c', plannedId: 42, plannedLabel: 'Loyer', envelopeId: 2 },
-  { index: 3, date: '2026-03-01', label: 'CAFE', signedAmount: -250, status: 'duplicate', fingerprint: 'd', plannedId: null, plannedLabel: null, envelopeId: null },
+  { index: 0, date: '2026-03-12', label: 'CARREFOUR', signedAmount: -6230, status: 'new', fingerprint: 'a', plannedId: null, plannedLabel: null, envelopeId: 1, note: null, transferToAccountId: null },
+  { index: 1, date: '2026-03-06', label: 'VIREMENT DUPONT', signedAmount: 12000, status: 'new', fingerprint: 'b', plannedId: null, plannedLabel: null, envelopeId: null, note: null, transferToAccountId: null },
+  { index: 2, date: '2026-03-05', label: 'PRLV LOYER', signedAmount: -80000, status: 'matched', fingerprint: 'c', plannedId: 42, plannedLabel: 'Loyer', envelopeId: 2, note: null, transferToAccountId: null },
+  { index: 3, date: '2026-03-01', label: 'CAFE', signedAmount: -250, status: 'duplicate', fingerprint: 'd', plannedId: null, plannedLabel: null, envelopeId: null, note: null, transferToAccountId: null },
 ];
 
 function Harness({ onChange = vi.fn() }: { onChange?: (rows: ImportPreviewRow[]) => void }) {

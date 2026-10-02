@@ -51,9 +51,11 @@ Date    Opérations                                                             
         DE VOTRE FORMULE DE COMPTE APRES REDUCTION JEUNES 18-25 ANS DE 14,55 ¤
 06/01   VIREMENT DE SportEasy                                                                               112,60
         SPO.20241227.M120.6B2.3FA346 12/2024 REFERENCE : 0190365400010001
-                                                                Total des opérations      147,63              157,60
+23/12   VIREMENT DE MR DUPONT JEAN                                                                          200,00
+        DEFAULT REFERENCE : 0181356450053576
+                                                                Total des opérations      147,63              357,60
 
-                                                     Nouveau solde au 07/01/2025                             617,14
+                                                     Nouveau solde au 07/01/2025                             817,14
 
 
 
