@@ -1,8 +1,8 @@
-import { ChevronDown, ChevronUp, GripVertical, ListFilter, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, ListFilter, Plus, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import type { SortingRule } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useCreateSortingRule, useDeleteSortingRule, useEnvelopes, useReorderSortingRules, useSortingRules, useUpdateSortingRule } from '@/api/hooks';
+import { useApplySortingRules, useCreateSortingRule, useDeleteSortingRule, useEnvelopes, useReorderSortingRules, useSortingRules, useUpdateSortingRule } from '@/api/hooks';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { RuleTester } from '@/components/sorting/RuleTester';
 import { SortingRuleDialog } from '@/components/sorting/SortingRuleDialog';
@@ -42,6 +42,10 @@ export function SortingRulesPage() {
   }
 
   const activeMutation = dialog.open && dialog.rule ? update : create;
+  const applyAll = useApplySortingRules({
+    onSuccess: ({ assigned }) => toast.success(assigned === 0 ? 'Rien à ranger : aucune opération à trier ne correspond' : `${assigned} opération${assigned > 1 ? 's' : ''} rangée${assigned > 1 ? 's' : ''}`),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
 
   return (
     <div className="page">
@@ -49,9 +53,14 @@ export function SortingRulesPage() {
         title="Règles de tri"
         subtitle="La première règle qui correspond l'emporte."
         actions={
-          <Button variant="primary" icon={<Plus />} onClick={() => setDialog({ open: true, rule: null })}>
-            Nouvelle règle
-          </Button>
+          <>
+            <Button icon={<Wand2 />} onClick={() => applyAll.mutate()} loading={applyAll.isPending} disabled={(rules.data?.length ?? 0) === 0}>
+              Appliquer aux opérations à trier
+            </Button>
+            <Button variant="primary" icon={<Plus />} onClick={() => setDialog({ open: true, rule: null })}>
+              Nouvelle règle
+            </Button>
+          </>
         }
       />
 

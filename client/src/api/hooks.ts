@@ -197,6 +197,11 @@ export function useReorderSortingRules(opts?: MutOpts<SortingRule[], number[]>) 
   return useMutation({ ...opts, mutationFn: (ids) => api.put<SortingRule[]>('/api/sorting-rules/reorder', { ids }), onSuccess: (...a) => { invalidate(keys.sortingRules); opts?.onSuccess?.(...a); } });
 }
 
+export function useApplySortingRules(opts?: MutOpts<{ assigned: number }, void>) {
+  const invalidate = useInvalidate();
+  return useMutation({ ...opts, mutationFn: () => api.post<{ assigned: number }>('/api/sorting-rules/apply'), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
+}
+
 export const testSortingRule = (label: string) => api.post<{ envelopeId: number | null }>('/api/sorting-rules/test', { label });
 
 export function useSuggestSorting(opts?: MutOpts<SuggestResponse, void>) {

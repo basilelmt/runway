@@ -114,6 +114,17 @@ describe('sorting rules', () => {
   });
 });
 
+describe('sorting rules apply', () => {
+  it('range les opérations à trier qui correspondent', async () => {
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-03-02', amount: 30_00, label: 'CB CARREFOUR', accountId: t.courant.id });
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-03-02', amount: 5_00, label: 'INCONNU', accountId: t.courant.id });
+    await t.call('POST', '/api/sorting-rules', { pattern: 'carrefour', envelopeId: t.courses.id });
+    expect((await t.call('POST', '/api/sorting-rules/apply')).body).toEqual({ assigned: 1 });
+    expect((await t.call('GET', '/api/transactions?unsorted=true')).body.map((x: any) => x.label)).toEqual(['INCONNU']);
+    expect((await t.call('POST', '/api/sorting-rules/apply')).body).toEqual({ assigned: 0 });
+  });
+});
+
 describe('settings', () => {
   it('lit et écrit', async () => {
     expect((await t.call('GET', '/api/settings')).body).toEqual({ forecastHorizonDays: 90, claudeModel: '' });
