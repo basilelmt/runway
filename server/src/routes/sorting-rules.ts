@@ -23,7 +23,7 @@ export const sortingRuleRoutes = new Hono<AppEnv>()
   .post('/apply', (c) => {
     const db = c.get('db');
     const rules = listSortingRules(db);
-    const unsorted = listTransactions(db, { unsorted: true, limit: 1000 });
+    const unsorted = listTransactions(db, { unsorted: true, limit: 1_000_000 });
     const assigned = db.transaction((tx) => {
       const t = tx as unknown as Db;
       let n = 0;

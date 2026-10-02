@@ -68,6 +68,16 @@ describe('runClaudeSort', () => {
     expect(exec).toHaveBeenCalledTimes(2);
   });
 
+  it('garde les lots réussis si un lot suivant échoue', async () => {
+    let calls = 0;
+    const exec = vi.fn<Exec>(async () => (calls++ === 0 ? ok({ suggestions: [{ transactionId: 1, envelopeId: 10, reason: 'ok' }], rules: [] }) : { stdout: JSON.stringify({ is_error: true, result: 'session limit' }), stderr: '', exitCode: 1 }));
+    const many = Array.from({ length: BATCH_SIZE + 5 }, (_, i) => ({ id: i + 1, date: '2026-03-01', label: `op ${i}`, amount: 100 }));
+    const result = await runClaudeSort({ ...input, transactions: many }, { exec });
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.warning).toContain('session limit');
+    expect(exec).toHaveBeenCalledTimes(2);
+  });
+
   it('ne lance rien sans opération', async () => {
     const exec = vi.fn<Exec>();
     expect(await runClaudeSort({ ...input, transactions: [] }, { exec })).toEqual({ suggestions: [], rules: [] });

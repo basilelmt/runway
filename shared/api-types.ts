@@ -151,6 +151,8 @@ export type Suggestion = {
 export type SuggestResponse = {
   suggestions: Suggestion[];
   rules: { pattern: string; envelopeId: number }[];
+  /** Présent si un lot a échoué après des lots réussis : les suggestions sont partielles. */
+  warning?: string;
 };
 
 export type ApiErrorBody = { error: string; code?: string; issues?: unknown };

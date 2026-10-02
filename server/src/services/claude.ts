@@ -138,10 +138,16 @@ async function runBatch(batch: ClaudeSortInput, exec: Exec): Promise<SuggestionR
   return validated.data;
 }
 
-/** Lance Claude par lots et concatène les suggestions. Ne modifie rien en base. */
-export async function runClaudeSort(input: ClaudeSortInput, deps: { exec?: Exec } = {}): Promise<SuggestionResult> {
+export type ClaudeSortResult = SuggestionResult & { warning?: string };
+
+/**
+ * Lance Claude par lots et concatène les suggestions. Ne modifie rien en base.
+ * Si un lot échoue alors que d'autres ont réussi, renvoie ce qui a été obtenu avec un avertissement
+ * plutôt que de tout perdre (utile quand la limite de session Claude tombe au milieu).
+ */
+export async function runClaudeSort(input: ClaudeSortInput, deps: { exec?: Exec } = {}): Promise<ClaudeSortResult> {
   const exec = deps.exec ?? execClaude;
-  const out: SuggestionResult = { suggestions: [], rules: [] };
+  const out: ClaudeSortResult = { suggestions: [], rules: [] };
   if (input.transactions.length === 0) return out;
 
   const validEnvelopes = new Set(input.envelopes.map((e) => e.id));
@@ -150,7 +156,14 @@ export async function runClaudeSort(input: ClaudeSortInput, deps: { exec?: Exec 
 
   for (let i = 0; i < input.transactions.length; i += BATCH_SIZE) {
     const batch = { ...input, transactions: input.transactions.slice(i, i + BATCH_SIZE) };
-    const result = await runBatch(batch, exec);
+    let result: SuggestionResult;
+    try {
+      result = await runBatch(batch, exec);
+    } catch (err) {
+      if (i === 0 || !(err instanceof ClaudeError)) throw err;
+      out.warning = `${err.message}. ${out.suggestions.length} suggestions obtenues sur ${input.transactions.length} opérations.`;
+      break;
+    }
     for (const s of result.suggestions) {
       if (!validTransactions.has(s.transactionId)) continue;
       out.suggestions.push({ ...s, envelopeId: s.envelopeId !== null && validEnvelopes.has(s.envelopeId) ? s.envelopeId : null });

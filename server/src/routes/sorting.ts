@@ -15,7 +15,7 @@ export function sortingRoutes(deps: { exec?: Exec } = {}) {
     .post('/suggest', async (c) => {
       const db = c.get('db');
       const envelopes = listEnvelopes(db);
-      const unsorted = listTransactions(db, { unsorted: true, limit: 1000 });
+      const unsorted = listTransactions(db, { unsorted: true, limit: 1_000_000 });
       const examples = listTransactions(db, { kind: 'expense', limit: 300 })
         .filter((t) => t.envelopeId != null)
         .slice(0, 40)
@@ -37,6 +37,7 @@ export function sortingRoutes(deps: { exec?: Exec } = {}) {
       const response: SuggestResponse = {
         suggestions: result.suggestions.map((s) => ({ ...s, envelopeName: s.envelopeId === null ? null : nameOf.get(s.envelopeId) ?? null })),
         rules: result.rules,
+        warning: result.warning,
       };
       return c.json(response);
     })

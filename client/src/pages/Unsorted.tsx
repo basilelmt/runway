@@ -42,7 +42,8 @@ export function UnsortedPage() {
       setSuggestions(res);
       setCheckedRules(new Set(res.rules.map((r) => r.pattern)));
       const count = res.suggestions.filter((s) => s.envelopeId !== null).length;
-      toast.success(count > 0 ? `Claude propose ${plural(count, 'enveloppe')}` : 'Claude n’a rien pu proposer');
+      if (res.warning) toast.error(`Tri interrompu : ${res.warning}`);
+      else toast.success(count > 0 ? `Claude propose ${plural(count, 'enveloppe')}` : 'Claude n’a rien pu proposer');
     },
   });
   const apply = useApplySorting({
