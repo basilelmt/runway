@@ -1,0 +1,17 @@
+.track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--paper-sunken);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--positive);
+  transition: width 240ms var(--ease-out);
+}
+
+.over {
+  background: var(--negative);
+}

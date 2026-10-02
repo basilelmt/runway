@@ -1,0 +1,25 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidenav-width) 1fr;
+  min-height: 100dvh;
+}
+
+.main {
+  min-width: 0;
+  padding: var(--s-8) var(--s-8) var(--s-16);
+}
+
+.content {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: var(--s-4) var(--s-4) calc(var(--bottomnav-height) + var(--s-16) + env(safe-area-inset-bottom));
+  }
+}

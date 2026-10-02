@@ -1,0 +1,35 @@
+.fab {
+  position: fixed;
+  right: var(--s-6);
+  bottom: var(--s-6);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-pop);
+  z-index: 20;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.fab:hover {
+  transform: scale(1.05);
+}
+
+.fab :global(svg) {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 767px) {
+  .fab {
+    right: var(--s-4);
+    bottom: calc(var(--bottomnav-height) + var(--s-4) + env(safe-area-inset-bottom));
+    width: 48px;
+    height: 48px;
+  }
+}

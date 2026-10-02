@@ -1,0 +1,41 @@
+.group {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-md);
+  background: var(--paper-sunken);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.option {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease-out);
+}
+
+.md .option {
+  height: 32px;
+  padding: 0 var(--s-3);
+  font-size: var(--text-sm);
+}
+
+.sm .option {
+  height: 26px;
+  padding: 0 var(--s-2);
+  font-size: var(--text-xs);
+}
+
+.option:hover {
+  color: var(--ink);
+}
+
+.active {
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(20 32 28 / 0.12);
+}

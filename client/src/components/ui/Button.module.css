@@ -1,0 +1,109 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.md {
+  height: 38px;
+  padding: 0 var(--s-4);
+  font-size: var(--text-md);
+}
+
+.sm {
+  height: 30px;
+  padding: 0 var(--s-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+.primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ink) 85%, var(--paper));
+}
+
+.secondary {
+  background: var(--paper-raised);
+  border-color: var(--rule-strong);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--paper-sunken);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.danger {
+  background: transparent;
+  color: var(--negative);
+  border-color: color-mix(in oklab, var(--negative) 45%, transparent);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--negative-soft);
+}
+
+.marking {
+  background: var(--marking);
+  color: #2b2000;
+}
+
+.marking:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--marking) 88%, white);
+}
+
+.icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+
+.icon > :global(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,98 @@
+:root {
+  color-scheme: light dark;
+
+  /* Papier de registre et encre */
+  --paper: #eef2ef;
+  --paper-raised: #f7f9f7;
+  --paper-sunken: #e3e9e5;
+  --ink: #14201c;
+  --ink-soft: #3f4c47;
+  --ink-mute: #76827d;
+  --rule: #cfd8d2;
+  --rule-strong: #a9b6ae;
+
+  /* Marquages */
+  --marking: #e8b931;
+  --marking-ink: #5a4300;
+  --marking-soft: #f6e6a8;
+  --positive: #2f7d5b;
+  --positive-soft: #d6ebdf;
+  --negative: #c8412b;
+  --negative-soft: #f5d9d3;
+  --warning: #b8731a;
+  --warning-soft: #f6e3c6;
+  --info-soft: #d9e4ee;
+
+  --focus: var(--marking);
+
+  /* Typographie */
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 3.25rem;
+
+  /* Espacement 4px */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-pop: 0 12px 32px rgb(20 32 28 / 0.18), 0 2px 6px rgb(20 32 28 / 0.08);
+
+  --sidenav-width: 232px;
+  --bottomnav-height: 60px;
+  --content-max: 1120px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121715;
+    --paper-raised: #1a211e;
+    --paper-sunken: #0d110f;
+    --ink: #e9efeb;
+    --ink-soft: #b7c2bc;
+    --ink-mute: #7f8c86;
+    --rule: #2a3430;
+    --rule-strong: #3e4b45;
+
+    --marking: #f0c445;
+    --marking-ink: #f6dd8a;
+    --marking-soft: #3d3310;
+    --positive: #5fc08f;
+    --positive-soft: #163526;
+    --negative: #ef6f58;
+    --negative-soft: #43201a;
+    --warning: #e0a04a;
+    --warning-soft: #3f2d12;
+    --info-soft: #1f2d3a;
+
+    --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+}

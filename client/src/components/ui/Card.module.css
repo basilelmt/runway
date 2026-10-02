@@ -1,0 +1,35 @@
+.card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+
+.raised {
+  background: var(--paper-raised);
+}
+
+.flat {
+  background: transparent;
+}
+
+.negative {
+  background: var(--negative-soft);
+  border-color: color-mix(in oklab, var(--negative) 35%, transparent);
+}
+
+.marking {
+  background: var(--marking-soft);
+  border-color: color-mix(in oklab, var(--marking) 55%, transparent);
+}
+
+.p-none {
+  padding: 0;
+}
+
+.p-sm {
+  padding: var(--s-3) var(--s-4);
+}
+
+.p-md {
+  padding: var(--s-5);
+}
