@@ -8,8 +8,10 @@ import { importRoutes } from './routes/imports';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
 import { recurringRuleRoutes } from './routes/recurring-rules';
 import { settingsRoutes } from './routes/settings';
+import { sortingRoutes } from './routes/sorting';
 import { sortingRuleRoutes } from './routes/sorting-rules';
 import { transactionRoutes } from './routes/transactions';
+import type { Exec } from './services/claude';
 import { materializeDue } from './services/materialize';
 
 export type AppEnv = { Variables: { db: Db; today: string } };
@@ -18,9 +20,11 @@ export type AppOptions = {
   db: Db;
   /** Date du jour injectable pour les tests. */
   now?: () => string;
+  /** Exécuteur du binaire `claude`, injectable pour les tests. */
+  exec?: Exec;
 };
 
-export function createApp({ db, now = today }: AppOptions) {
+export function createApp({ db, now = today, exec }: AppOptions) {
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
@@ -58,6 +62,7 @@ export function createApp({ db, now = today }: AppOptions) {
   app.route('/api/transactions', transactionRoutes);
   app.route('/api/recurring-rules', recurringRuleRoutes);
   app.route('/api/sorting-rules', sortingRuleRoutes);
+  app.route('/api/sorting', sortingRoutes(exec ? { exec } : {}));
   app.route('/api/settings', settingsRoutes);
   app.route('/api/overview', overviewRoutes);
   app.route('/api/forecast', forecastRoutes);
