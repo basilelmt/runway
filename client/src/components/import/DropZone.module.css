@@ -1,0 +1,62 @@
+.zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s-2);
+  padding: var(--s-12) var(--s-6);
+  border: 2px dashed var(--rule-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  transition:
+    border-color var(--dur) var(--ease-out),
+    background var(--dur) var(--ease-out);
+}
+
+.over {
+  border-color: var(--marking);
+  background: var(--marking-soft);
+}
+
+.busy {
+  opacity: 0.8;
+}
+
+.icon {
+  color: var(--ink-mute);
+  margin-bottom: var(--s-2);
+}
+
+.icon :global(svg) {
+  width: 32px;
+  height: 32px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+
+.hint {
+  color: var(--ink-mute);
+  font-size: var(--text-sm);
+  max-width: 44ch;
+  margin-bottom: var(--s-3);
+}
+
+.spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--rule-strong);
+  border-right-color: var(--ink);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

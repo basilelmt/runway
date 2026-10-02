@@ -1,0 +1,166 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.statusText {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+
+.clear {
+  color: var(--positive);
+}
+
+.alert {
+  color: var(--negative);
+}
+
+.link {
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
+}
+
+/* La piste : fond encre, ligne centrale en marquages jaunes, graduations hebdomadaires. */
+.strip {
+  position: relative;
+  height: 56px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--ink);
+}
+
+.tarmac {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.03) 0 1px, transparent 1px 12px);
+}
+
+.centerline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: repeating-linear-gradient(90deg, var(--marking) 0 22px, transparent 22px 36px);
+  opacity: 0.9;
+  animation: taxi 1.6s linear infinite;
+}
+
+@keyframes taxi {
+  to {
+    background-position: 36px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .centerline {
+    animation: none;
+  }
+}
+
+.danger {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--negative) 55%, transparent), color-mix(in oklab, var(--negative) 80%, transparent));
+  border-left: 2px solid var(--negative);
+  z-index: 1;
+}
+
+.threshold {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 6px;
+  z-index: 3;
+  background: repeating-linear-gradient(180deg, var(--marking) 0 5px, transparent 5px 8px);
+}
+
+.today {
+  left: 4px;
+}
+
+.end {
+  right: 4px;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgb(255 255 255 / 0.18);
+  z-index: 2;
+}
+
+.tickLabel {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgb(255 255 255 / 0.55);
+  white-space: nowrap;
+}
+
+.marker {
+  position: absolute;
+  bottom: 7px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 2px;
+  z-index: 4;
+  transform: rotate(45deg);
+  cursor: help;
+}
+
+.in {
+  background: var(--positive);
+}
+
+.out {
+  background: var(--paper);
+}
+
+.neutral {
+  background: var(--ink-mute);
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+}
+
+@media (max-width: 767px) {
+  .tickLabel {
+    display: none;
+  }
+
+  .tick:nth-child(odd) {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .statusText {
+    font-size: var(--text-md);
+  }
+}

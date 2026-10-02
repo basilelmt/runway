@@ -1,0 +1,24 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.periodBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+}
+
+.customRange {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.customRange input {
+  width: auto;
+}

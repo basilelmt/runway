@@ -1,9 +1,141 @@
+import { useState } from 'react';
+import type { ImportPreviewRow } from '@shared/api-types';
+import { errorMessage } from '@/api/client';
+import { useAccounts, useCommitImport, useEnvelopes, useImports, usePreviewImport, type ImportPreviewWithFile } from '@/api/hooks';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { DropZone } from '@/components/import/DropZone';
+import { ImportPreview } from '@/components/import/ImportPreview';
+import { Card, EmptyState, Field, Select, SkeletonRows, useToast } from '@/components/ui';
+import { formatDateLong, plural } from '@/lib/format';
+import styles from './Import.module.css';
+
+type Draft = { file: File; preview: ImportPreviewWithFile; rows: ImportPreviewRow[] };
 
 export function ImportPage() {
+  const toast = useToast();
+  const accounts = useAccounts();
+  const envelopes = useEnvelopes();
+  const imports = useImports();
+  const [draft, setDraft] = useState<Draft | null>(null);
+
+  const preview = usePreviewImport({
+    onSuccess: (p, { file }) => setDraft({ file, preview: p, rows: p.rows }),
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+
+  const commit = useCommitImport({
+    onSuccess: (record) => {
+      toast.success(`${plural(record.newCount, 'opération importée', 'opérations importées')}, ${record.matchedCount} rapprochée${record.matchedCount > 1 ? 's' : ''}`);
+      setDraft(null);
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+
+  function handleCommit() {
+    if (!draft || draft.preview.accountId === null) return;
+    const duplicates = draft.rows.filter((r) => r.status === 'duplicate').length;
+    commit.mutate({
+      fileName: draft.preview.fileName,
+      accountId: draft.preview.accountId,
+      bankAccountNumber: draft.preview.bankAccountNumber,
+      duplicateCount: duplicates,
+      rows: draft.rows
+        .filter((r) => r.status !== 'duplicate')
+        .map(({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId }) => ({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId })),
+    });
+  }
+
+  const accountName = (id: number) => accounts.data?.find((a) => a.id === id)?.name ?? `Compte ${id}`;
+
   return (
     <div className="page">
-      <PageHeader title="Import" />
+      <PageHeader title="Import" subtitle="Relevés CSV de La Banque Postale. Les doublons sont ignorés, les opérations prévues sont rapprochées." />
+
+      {draft === null ? (
+        <DropZone busy={preview.isPending} onFile={(file) => preview.mutate({ file })} />
+      ) : (
+        <Card className={styles.previewCard}>
+          <div className={styles.fileLine}>
+            <span className={styles.fileName}>{draft.preview.fileName}</span>
+            {draft.preview.accountId !== null ? (
+              <span className="muted">
+                {accountName(draft.preview.accountId)}
+                {draft.preview.bankAccountNumber ? <span className="mono"> · {draft.preview.bankAccountNumber}</span> : null}
+              </span>
+            ) : null}
+          </div>
+
+          {draft.preview.accountId === null ? (
+            <div className={styles.accountPick}>
+              <Field
+                label="Ce relevé correspond à quel compte ?"
+                hint={draft.preview.bankAccountNumber ? `Numéro détecté : ${draft.preview.bankAccountNumber}. Il sera mémorisé pour les prochains imports.` : 'Aucun numéro de compte dans le fichier.'}
+              >
+                {(id, describedBy) => (
+                  <Select
+                    id={id}
+                    aria-describedby={describedBy}
+                    value=""
+                    disabled={preview.isPending}
+                    onChange={(e) => {
+                      const accountId = Number(e.target.value);
+                      if (accountId) preview.mutate({ file: draft.file, accountId });
+                    }}
+                  >
+                    <option value="">Choisir un compte</option>
+                    {(accounts.data ?? []).map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+            </div>
+          ) : (
+            <ImportPreview
+              rows={draft.rows}
+              envelopes={envelopes.data ?? []}
+              onChange={(rows) => setDraft({ ...draft, rows })}
+              onCommit={handleCommit}
+              onCancel={() => setDraft(null)}
+              committing={commit.isPending}
+            />
+          )}
+        </Card>
+      )}
+
+      <section>
+        <div className="section-title">
+          <h2>Historique</h2>
+        </div>
+        {imports.isPending ? (
+          <SkeletonRows rows={3} />
+        ) : imports.data && imports.data.length > 0 ? (
+          <div className={['ledger', styles.history].join(' ')}>
+            <div className={[styles.historyRow, styles.historyHead].join(' ')} aria-hidden>
+              <span>Date</span>
+              <span>Fichier</span>
+              <span>Compte</span>
+              <span className={styles.num}>Nouvelles</span>
+              <span className={styles.num}>Rapprochées</span>
+              <span className={styles.num}>Doublons</span>
+            </div>
+            {imports.data.map((imp) => (
+              <div key={imp.id} className={styles.historyRow}>
+                <span className="mono">{formatDateLong(imp.importedAt.slice(0, 10))}</span>
+                <span className={styles.file}>{imp.fileName}</span>
+                <span>{accountName(imp.accountId)}</span>
+                <span className={['mono', styles.num].join(' ')}>{imp.newCount}</span>
+                <span className={['mono', styles.num].join(' ')}>{imp.matchedCount}</span>
+                <span className={['mono', styles.num, 'muted'].join(' ')}>{imp.duplicateCount}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Aucun import pour le moment" description="Le premier relevé importé apparaîtra ici avec son nombre d'opérations." />
+        )}
+      </section>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export function applySortingRules(label: string, rules: Pick<SortingRule, 'patte
 }
 
 const BANK_PREFIXES = /^(CB|CARTE|PRLV|PRELEVEMENT|VIR|VIREMENT|SEPA|INST|DE|VERS|M|MME|MR|MLLE|RETRAIT|DAB|ACHAT|PAIEMENT|FACTURE|ECH|ECHEANCE)\.?(\s+|$)/i;
-const NOISE = /\b(\d{1,2}\/\d{1,2}(\/\d{2,4})?|\d{4,}|[A-Z]{2}\d{2}[A-Z0-9]{10,})\b/g;
+const NOISE = /\b(\d{1,2}\/\d{1,2}(\/\d{2,4})?|\d{4,}|X\d{4}|[A-Z]{2}\d{2}[A-Z0-9]{10,})\b/g;
 
 /** Propose un motif de règle lisible à partir d'un libellé bancaire. */
 export function suggestPattern(label: string): string {

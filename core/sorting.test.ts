@@ -34,6 +34,7 @@ describe('suggestPattern', () => {
     expect(suggestPattern('CB CARREFOUR MARKET 12/03/26')).toBe('CARREFOUR MARKET');
     expect(suggestPattern('PRLV SEPA EDF CLIENTS 1234567')).toBe('EDF CLIENTS');
     expect(suggestPattern('VIR SEPA DE M. DUPONT')).toBe('DUPONT');
+    expect(suggestPattern('CARTE X1234 11/03 CAFE DU COIN')).toBe('CAFE DU COIN');
   });
 
   it('garde le libellé si rien ne reste', () => {

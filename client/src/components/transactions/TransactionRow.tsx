@@ -1,0 +1,63 @@
+import { Check } from 'lucide-react';
+import type { Account, Envelope, Transaction } from '@shared/schemas';
+import { Amount, Badge, Button, Dot } from '@/components/ui';
+import { KIND_LABELS } from '@/lib/format';
+import { signedAmount } from './signed';
+import styles from './TransactionRow.module.css';
+
+type TransactionRowProps = {
+  transaction: Transaction;
+  accounts: Map<number, Account>;
+  envelopes: Map<number, Envelope>;
+  /** Compte depuis lequel on regarde (filtre actif), pour le signe des transferts. */
+  viewAccountId?: number;
+  onClick?: () => void;
+  onConfirm?: () => void;
+  confirming?: boolean;
+};
+
+export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming }: TransactionRowProps) {
+  const amount = signedAmount(t, viewAccountId);
+  const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
+  const fromEnvelope = t.fromEnvelopeId != null ? envelopes.get(t.fromEnvelopeId) : undefined;
+  const account = t.accountId != null ? accounts.get(t.accountId) : undefined;
+  const toAccount = t.toAccountId != null ? accounts.get(t.toAccountId) : undefined;
+  const planned = t.status === 'planned';
+
+  const where =
+    t.kind === 'transfer'
+      ? `${account?.name ?? '?'} → ${toAccount?.name ?? '?'}`
+      : t.kind === 'allocation'
+        ? `${fromEnvelope?.name ?? 'À répartir'} → ${envelope?.name ?? '?'}`
+        : account?.name ?? '';
+
+  return (
+    <li className={[styles.row, planned ? styles.planned : '', onClick ? styles.clickable : ''].join(' ')}>
+      <button type="button" className={styles.main} onClick={onClick} disabled={!onClick}>
+        <span className={styles.label}>{t.label}</span>
+        <span className={styles.meta}>
+          {t.kind !== 'expense' ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}
+          {t.kind === 'expense' ? (
+            envelope ? (
+              <Badge>
+                <Dot color={envelope.color} size={8} />
+                {envelope.name}
+              </Badge>
+            ) : (
+              <Badge tone="marking">À trier</Badge>
+            )
+          ) : null}
+          {planned ? <Badge tone="warning">Prévue</Badge> : null}
+          {where ? <span className={styles.where}>{where}</span> : null}
+          {t.note ? <span className={styles.note}>{t.note}</span> : null}
+        </span>
+      </button>
+      {planned && onConfirm ? (
+        <Button size="sm" variant="secondary" icon={<Check />} onClick={onConfirm} loading={confirming} className={styles.confirm}>
+          Confirmer
+        </Button>
+      ) : null}
+      <Amount cents={amount} tone={t.kind === 'allocation' ? 'neutral' : 'always'} className={styles.amount} />
+    </li>
+  );
+}

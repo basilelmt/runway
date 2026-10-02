@@ -1,0 +1,150 @@
+.wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.wrap :global(.recharts-cartesian-grid-horizontal line),
+.wrap :global(.recharts-cartesian-grid-vertical line) {
+  stroke: var(--rule);
+}
+
+.wrap :global(.recharts-cartesian-axis-line),
+.wrap :global(.recharts-cartesian-axis-tick-line) {
+  stroke: var(--rule-strong);
+}
+
+.wrap :global(.recharts-cartesian-axis-tick-value) {
+  fill: var(--ink-mute);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+.tooltip {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  padding: var(--s-2) var(--s-3);
+  box-shadow: var(--shadow-pop);
+  font-size: var(--text-sm);
+  min-width: 160px;
+}
+
+.tooltipTitle {
+  color: var(--ink-mute);
+  font-size: var(--text-xs);
+  margin-bottom: var(--s-1);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.tooltipLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--ink-soft);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  margin-top: var(--s-3);
+  font-size: var(--text-sm);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  border: none;
+  background: none;
+  padding: var(--s-1) 0;
+  color: var(--ink-soft);
+}
+
+.legendItem[aria-pressed='false'] {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.legendItem .swatch {
+  width: 12px;
+  height: 12px;
+}
+
+.centerLabel {
+  text-align: center;
+}
+
+.pieLayout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--s-6);
+  align-items: center;
+}
+
+.pieTable {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule);
+}
+
+.pieRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-2) var(--s-1);
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  font-size: var(--text-sm);
+  width: 100%;
+  color: inherit;
+}
+
+.pieRow:hover {
+  background: var(--paper-sunken);
+}
+
+.pieRow[aria-pressed='false'] {
+  opacity: 0.4;
+}
+
+.pieRow[aria-pressed='false'] .pieName {
+  text-decoration: line-through;
+}
+
+.pieName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.pieShare {
+  color: var(--ink-mute);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 767px) {
+  .pieLayout {
+    grid-template-columns: 1fr;
+  }
+}

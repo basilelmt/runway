@@ -1,0 +1,45 @@
+.toAllocate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-5) 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.hint {
+  color: var(--ink-mute);
+  font-size: var(--text-sm);
+  margin-top: var(--s-1);
+  max-width: 48ch;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s-4);
+}
+
+.error {
+  color: var(--negative);
+  font-size: var(--text-sm);
+}
+
+.dialogName {
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .toAllocate {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

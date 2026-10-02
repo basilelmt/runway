@@ -1,0 +1,121 @@
+.hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--s-4);
+}
+
+.toAllocate,
+.netWorth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.heroLinks {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  margin-top: var(--s-2);
+}
+
+.unsortedLink,
+.plainLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.plainLink {
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
+}
+
+.plainLink:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.alertsTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--text-md);
+  color: var(--negative);
+}
+
+.alertList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.alertRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-1) 0;
+  font-size: var(--text-sm);
+}
+
+.alertName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-8);
+}
+
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+}
+
+.envelopeRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3) 0;
+}
+
+.envelopeName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.envelopeTarget {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s-3);
+  align-items: center;
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 767px) {
+  .hero,
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .alertRow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .alertRow > :nth-child(2) {
+    grid-column: 1;
+  }
+}

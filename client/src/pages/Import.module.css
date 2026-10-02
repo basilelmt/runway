@@ -1,0 +1,107 @@
+.previewCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.fileLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+}
+
+.fileName {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.accountPick {
+  max-width: 420px;
+}
+
+.history {
+  font-size: var(--text-sm);
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: 150px 1fr 140px 90px 100px 80px;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-3) var(--s-2);
+}
+
+.historyHead {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  padding-top: 0;
+  padding-bottom: var(--s-2);
+}
+
+.file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.num {
+  text-align: right;
+}
+
+@media (max-width: 767px) {
+  .historyHead {
+    display: none;
+  }
+
+  .historyRow {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'date account'
+      'file file'
+      'new matched';
+  }
+
+  .historyRow > :nth-child(1) {
+    grid-area: date;
+  }
+
+  .historyRow > :nth-child(2) {
+    grid-area: file;
+  }
+
+  .historyRow > :nth-child(3) {
+    grid-area: account;
+    text-align: right;
+  }
+
+  .historyRow > :nth-child(4)::before {
+    content: 'nouvelles ';
+    color: var(--ink-mute);
+    font-family: var(--font-body);
+  }
+
+  .historyRow > :nth-child(5)::before {
+    content: 'rapprochées ';
+    color: var(--ink-mute);
+    font-family: var(--font-body);
+  }
+
+  .historyRow > :nth-child(4) {
+    grid-area: new;
+    text-align: left;
+  }
+
+  .historyRow > :nth-child(5) {
+    grid-area: matched;
+    text-align: left;
+  }
+
+  .historyRow > :nth-child(6) {
+    display: none;
+  }
+}
