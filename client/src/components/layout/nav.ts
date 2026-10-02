@@ -13,10 +13,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export type NavItem = { to: string; label: string; icon: LucideIcon; badge?: 'unsorted' };
+export type NavItem = { to: string; label: string; short?: string; icon: LucideIcon; badge?: 'unsorted' };
 
 export const NAV: NavItem[] = [
-  { to: '/', label: 'Tableau de bord', icon: LayoutDashboard },
+  { to: '/', label: 'Tableau de bord', short: 'Accueil', icon: LayoutDashboard },
   { to: '/operations', label: 'Opérations', icon: ArrowLeftRight },
   { to: '/a-trier', label: 'À trier', icon: Inbox, badge: 'unsorted' },
   { to: '/enveloppes', label: 'Enveloppes', icon: WalletCards },

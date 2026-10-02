@@ -36,7 +36,7 @@ export function BottomNav() {
         {primary.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => [styles.link, isActive ? styles.active : ''].join(' ')}>
             <item.icon aria-hidden />
-            <span>{item.label.split(' ')[0]}</span>
+            <span>{item.short ?? item.label}</span>
           </NavLink>
         ))}
         <button type="button" className={[styles.link, moreActive || open ? styles.active : ''].join(' ')} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
