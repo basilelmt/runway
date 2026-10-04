@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Transaction, TransactionFilter, TransactionInput } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { transactions } from '../db/schema';
@@ -138,6 +138,22 @@ export function lastConfirmedDate(db: Db, accountId: number): string | null {
     .select({ date: transactions.date })
     .from(transactions)
     .where(and(eq(transactions.status, 'confirmed'), or(eq(transactions.accountId, accountId), eq(transactions.toAccountId, accountId))))
+    .orderBy(desc(transactions.date))
+    .limit(1)
+    .get();
+  return row?.date ?? null;
+}
+
+/**
+ * Date de la dernière opération confirmée issue d'un import (relevé ou synchronisation) touchant un compte, ou null.
+ * Les saisies manuelles et les occurrences récurrentes confirmées n'en font pas partie : elles ne prouvent pas
+ * que l'historique bancaire est complet jusqu'à leur date.
+ */
+export function lastImportedDate(db: Db, accountId: number): string | null {
+  const row = db
+    .select({ date: transactions.date })
+    .from(transactions)
+    .where(and(eq(transactions.status, 'confirmed'), isNotNull(transactions.importId), or(eq(transactions.accountId, accountId), eq(transactions.toAccountId, accountId))))
     .orderBy(desc(transactions.date))
     .limit(1)
     .get();

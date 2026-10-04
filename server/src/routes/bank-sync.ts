@@ -51,7 +51,7 @@ export const bankSyncRoutes = (deps: BankDeps = {}) => {
   }
 
   return new Hono<AppEnv>()
-    .get('/', (c) => c.json(getState(c.get('db'), isConfigured(getSettings(c.get('db'))))))
+    .get('/', (c) => c.json(getState(c.get('db'), isConfigured(getSettings(c.get('db'))), c.get('today'))))
     .post('/test', async (c) => c.json(await guard(() => provider(c).getApplication())))
     .post('/connections', validate('json', bankStartSchema), async (c) => {
       const { connectionId } = c.req.valid('json');

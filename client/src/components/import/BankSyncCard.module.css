@@ -92,6 +92,17 @@
   color: var(--ink-mute);
 }
 
+.target {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+}
+
 .meta {
   display: flex;
   gap: var(--s-3);

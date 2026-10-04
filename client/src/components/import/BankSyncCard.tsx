@@ -2,6 +2,7 @@ import { ArrowRight, Landmark, RefreshCw, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { BankConnectionView } from '@shared/api-types';
+import type { ISODate } from '@shared/dates';
 import type { Account } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import {
@@ -177,7 +178,13 @@ export function BankSyncCard() {
           </div>
         </>
       ) : connection.status === 'authorized' ? (
-        <LinkStep connection={connection} accounts={accounts.data ?? []} onLinked={() => run.mutate(undefined)} />
+        <LinkStep
+          key={connection.id}
+          connection={connection}
+          accounts={accounts.data ?? []}
+          syncStartByAccount={state.data.syncStartByAccount}
+          onLinked={() => run.mutate(undefined)}
+        />
       ) : (
         <ActiveState
           connection={connection}
@@ -195,7 +202,17 @@ export function BankSyncCard() {
   );
 }
 
-function LinkStep({ connection, accounts, onLinked }: { connection: BankConnectionView; accounts: Account[]; onLinked: () => void }) {
+function LinkStep({
+  connection,
+  accounts,
+  syncStartByAccount,
+  onLinked,
+}: {
+  connection: BankConnectionView;
+  accounts: Account[];
+  syncStartByAccount: Record<number, ISODate>;
+  onLinked: () => void;
+}) {
   const toast = useToast();
   const [links, setLinks] = useState<Record<number, string>>(() => Object.fromEntries(connection.accounts.map((a) => [a.id, a.accountId ? String(a.accountId) : ''])));
   const link = useLinkBankAccounts({
@@ -206,11 +223,15 @@ function LinkStep({ connection, accounts, onLinked }: { connection: BankConnecti
     onError: (e) => toast.error(errorMessage(e)),
   });
   const chosen = Object.values(links).filter(Boolean);
+  const startOf = (bankAccountId: number): ISODate | null => {
+    const chosenId = links[bankAccountId];
+    return chosenId ? (syncStartByAccount[Number(chosenId)] ?? null) : null;
+  };
   const duplicates = new Set(chosen).size !== chosen.length;
 
   return (
     <>
-      <p className={styles.text}>Associe chaque compte de la banque à un compte Runway. La synchronisation reprendra au lendemain de la dernière opération connue de chaque compte.</p>
+      <p className={styles.text}>Associe chaque compte de la banque à un compte Runway. La synchronisation reprend au lendemain de la dernière opération importée de chaque compte.</p>
       <div className={styles.accounts}>
         {connection.accounts.map((a) => (
           <div key={a.id} className={styles.accountRow}>
@@ -219,14 +240,26 @@ function LinkStep({ connection, accounts, onLinked }: { connection: BankConnecti
               {a.iban ? <span className={['mono', styles.iban].join(' ')}>{a.iban}</span> : null}
             </span>
             <ArrowRight className={styles.arrow} aria-hidden />
-            <Select value={links[a.id] ?? ''} onChange={(e) => setLinks({ ...links, [a.id]: e.target.value })} aria-label={`Compte Runway pour ${a.bankName}`}>
-              <option value="">Ignorer ce compte</option>
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name}
-                </option>
-              ))}
-            </Select>
+            <span className={styles.target}>
+              <Select
+                value={links[a.id] ?? ''}
+                onChange={(e) => setLinks({ ...links, [a.id]: e.target.value })}
+                aria-label={`Compte Runway pour ${a.bankName}`}
+                aria-describedby={startOf(a.id) ? `bank-start-${a.id}` : undefined}
+              >
+                <option value="">Ignorer ce compte</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+              </Select>
+              {startOf(a.id) ? (
+                <span id={`bank-start-${a.id}`} className={styles.hint}>
+                  Reprise des opérations à partir du {formatDateLong(startOf(a.id)!)}
+                </span>
+              ) : null}
+            </span>
           </div>
         ))}
       </div>
@@ -293,6 +326,7 @@ function ActiveState({
             <ArrowRight className={styles.arrow} aria-hidden />
             <span>
               {accountName(a.accountId!)}
+              {a.syncFrom ? <span className="muted"> · depuis le {formatDateLong(a.syncFrom)}</span> : null}
               {a.lastSyncedDate ? <span className="muted"> · à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
             </span>
           </div>

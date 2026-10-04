@@ -105,7 +105,7 @@ describe('connexion', () => {
     expect(auth.redirectUrl).toBe('https://localhost:3000/bank-sync/callback');
     expect(listConnections(ctx.db)[0]).toMatchObject({ status: 'pending', state: auth.state });
     // Une connexion en attente n'apparaît pas dans l'état.
-    expect(getState(ctx.db, true).connections).toEqual([]);
+    expect(getState(ctx.db, true, TODAY).connections).toEqual([]);
   });
 
   it('sans durée connue, 90 jours ; une nouvelle autorisation purge la précédente en attente', async () => {
@@ -139,14 +139,36 @@ describe('connexion', () => {
     const view = await connect();
     expect(view.status).toBe('active');
     expect(view.accounts.find((a) => a.iban === IBAN_COURANT)).toMatchObject({ accountId: ctx.courant.id, syncFrom: '2026-09-21' });
-    expect(view.accounts.find((a) => a.iban === IBAN_LIVRET)).toMatchObject({ accountId: ctx.livret.id, syncFrom: '2026-07-06' });
+    expect(view.accounts.find((a) => a.iban === IBAN_LIVRET)).toMatchObject({ accountId: ctx.livret.id, syncFrom: '2026-07-06', linkedAt: TODAY });
+  });
+
+  it('la date de départ suit le dernier relevé importé, pas une saisie manuelle plus récente', async () => {
+    const importId = ctx.db.run(`insert into imports (file_name, account_id, row_count, new_count, duplicate_count, matched_count) values ('releve.pdf', ${ctx.courant.id}, 1, 1, 0, 0)`).lastInsertRowid;
+    createTransaction(ctx.db, { kind: 'expense', date: '2026-09-07', amount: 12_00, label: 'RELEVE PHARMACIE', accountId: ctx.courant.id, importId: Number(importId) });
+    // Loyer confirmé à la main (ou occurrence récurrente confirmée) : pas issu d'un relevé.
+    createTransaction(ctx.db, { kind: 'expense', date: '2026-10-01', amount: 800_00, label: 'Loyer', accountId: ctx.courant.id });
+    expect(getState(ctx.db, true, TODAY).syncStartByAccount).toEqual({ [ctx.courant.id]: '2026-09-08', [ctx.livret.id]: '2026-07-06' });
+
+    provider.transactions['u-courant'] = [tx('2026-09-15', '30.00', 'DBIT', 'CARTE CINEMA'), tx('2026-10-01', '800.00', 'DBIT', 'PRLV LOYER SCI')];
+    const view = await connect();
+    expect(view.accounts.find((a) => a.iban === IBAN_COURANT)).toMatchObject({ syncFrom: '2026-09-08', linkedAt: TODAY });
+    const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    // Le loyer, à plus de 10 jours de la date de départ mais avant la liaison, est reconnu par la jonction.
+    expect(result.connections[0]).toMatchObject({ created: 1, duplicates: 1 });
+    const rows = ctx.db.all<{ label: string }>(`select label from transactions where account_id = ${ctx.courant.id} order by date`);
+    expect(rows.map((r) => r.label)).toEqual(['RELEVE PHARMACIE', 'CARTE CINEMA', 'Loyer']);
+  });
+
+  it('un compte ignoré n’a pas de date de liaison', async () => {
+    const view = await connect({ livret: null });
+    expect(view.accounts.find((a) => a.iban === IBAN_LIVRET)).toMatchObject({ accountId: null, syncFrom: null, linkedAt: null });
   });
 
   it('déconnecte : session supprimée, statut revoked', async () => {
     const view = await connect();
     await disconnect(ctx.db, provider, view.id);
     expect(provider.calls.some((c) => c.method === 'deleteSession' && c.args[0] === 'sess-ok')).toBe(true);
-    expect(getState(ctx.db, true).connections[0]).toMatchObject({ status: 'revoked' });
+    expect(getState(ctx.db, true, TODAY).connections[0]).toMatchObject({ status: 'revoked' });
   });
 
   it('renouvelle une connexion existante en gardant les liaisons', async () => {
@@ -199,7 +221,7 @@ describe('synchronisation', () => {
     const imports = ctx.db.all<{ file_name: string; new_count: number; matched_count: number }>(`select file_name, new_count, matched_count from imports`);
     expect(imports).toEqual([{ file_name: 'Synchronisation La Banque Postale', new_count: 2, matched_count: 1 }]);
 
-    const state = getState(ctx.db, true);
+    const state = getState(ctx.db, true, TODAY);
     expect(state.connections[0]).toMatchObject({ lastSyncAt: NOW.toISOString(), lastError: null });
     expect(state.connections[0]!.accounts.find((a) => a.iban === IBAN_COURANT)!.lastSyncedDate).toBe('2026-10-02');
   });
@@ -215,7 +237,7 @@ describe('synchronisation', () => {
     expect(ctx.db.all(`select id from imports`)).toHaveLength(1);
   });
 
-  it('jonction : même date et même montant qu’une opération du relevé = doublon pendant 10 jours', async () => {
+  it('jonction : même date et même montant qu’une opération du relevé = doublon jusqu’à 10 jours après la liaison', async () => {
     createTransaction(ctx.db, { kind: 'expense', date: '2026-09-30', amount: 15_00, label: 'RELEVE CAFE DU COIN', accountId: ctx.courant.id });
     createTransaction(ctx.db, { kind: 'expense', date: '2026-09-28', amount: 10_00, label: 'Ancien', accountId: ctx.courant.id });
     // syncFrom = 2026-10-01 ; la banque renvoie une opération du 30/09 datée différemment ? Non : on teste
@@ -231,9 +253,9 @@ describe('synchronisation', () => {
     expect(view.accounts.find((a) => a.iban === IBAN_COURANT)!.syncFrom).toBe('2026-10-13');
     // Date de départ après les opérations : rien à synchroniser. On la force pour tester la fenêtre.
     const bank = listBankAccounts(ctx.db, view.id).find((a) => a.iban === IBAN_COURANT)!;
-    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01' where id = ${bank.id}`);
+    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01', linked_at = '2026-10-01' where id = ${bank.id}`);
     const result = await runSync(ctx.db, provider, { today: '2026-10-15', now: NOW });
-    // 20 € du 01/10 : doublon de jonction ; 7 € : nouvelle ; 20 € du 12/10 : hors fenêtre de 10 jours, nouvelle.
+    // 20 € du 01/10 : doublon de jonction ; 7 € : nouvelle ; 20 € du 12/10 : au-delà de 10 jours après la liaison, nouvelle.
     expect(result.connections[0]).toMatchObject({ created: 2, duplicates: 1 });
   });
 
@@ -242,7 +264,7 @@ describe('synchronisation', () => {
     provider.transactions['u-courant'] = [tx('2026-10-01', '5.00', 'DBIT', 'CAFE', 'CAFE'), tx('2026-10-01', '5.00', 'DBIT', 'CAFE', 'CAFE 2')];
     const view = await connect();
     const bank = listBankAccounts(ctx.db, view.id).find((a) => a.iban === IBAN_COURANT)!;
-    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01' where id = ${bank.id}`);
+    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01', linked_at = '2026-10-01' where id = ${bank.id}`);
     const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     // Le relevé n'en connaît qu'une : la seconde est bien une nouvelle dépense.
     expect(result.connections[0]).toMatchObject({ created: 1, duplicates: 1 });
@@ -252,7 +274,7 @@ describe('synchronisation', () => {
     provider.transactions['u-courant'] = [tx('2026-10-02', '5.00', 'DBIT', 'CARTE CAFE', 'CAFE')];
     const view = await connect();
     const bank = listBankAccounts(ctx.db, view.id).find((a) => a.iban === IBAN_COURANT)!;
-    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01' where id = ${bank.id}`);
+    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01', linked_at = '2026-10-01' where id = ${bank.id}`);
     expect((await runSync(ctx.db, provider, { today: TODAY, now: NOW })).connections[0]).toMatchObject({ created: 1, duplicates: 0 });
     provider.transactions['u-courant'].push(tx('2026-10-02', '5.00', 'DBIT', 'CARTE CAFE BIS', 'CAFE 2'));
     const again = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
@@ -288,7 +310,7 @@ describe('synchronisation', () => {
     provider.sessionStatus = 'EXPIRED';
     const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     expect(result.connections[0]).toMatchObject({ status: 'expired', error: null });
-    expect(getState(ctx.db, true).connections[0]!.status).toBe('expired');
+    expect(getState(ctx.db, true, TODAY).connections[0]!.status).toBe('expired');
     expect(await runSync(ctx.db, provider, { today: TODAY, now: NOW })).toEqual({ reason: 'no_connection', connections: [] });
   });
 
@@ -297,10 +319,10 @@ describe('synchronisation', () => {
     provider.failListWith = new Error('ECONNRESET');
     const failed = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     expect(failed.connections[0]).toMatchObject({ error: 'Synchronisation impossible : ECONNRESET', created: 0 });
-    expect(getState(ctx.db, true).connections[0]!.lastError).toBe('Synchronisation impossible : ECONNRESET');
+    expect(getState(ctx.db, true, TODAY).connections[0]!.lastError).toBe('Synchronisation impossible : ECONNRESET');
     provider.failListWith = null;
     await runSync(ctx.db, provider, { today: TODAY, now: NOW });
-    expect(getState(ctx.db, true).connections[0]!.lastError).toBeNull();
+    expect(getState(ctx.db, true, TODAY).connections[0]!.lastError).toBeNull();
   });
 
   it('onlyIfStaleMinutes : saute si la dernière synchro est récente', async () => {
@@ -343,7 +365,12 @@ describe('routes /api/bank-sync', () => {
   }
 
   it('sans identifiants : état non configuré, run sans erreur, autres routes en 400', async () => {
-    expect((await t.call('GET', '/api/bank-sync')).body).toEqual({ configured: false, redirectUrl: 'https://localhost:3000/bank-sync/callback', connections: [] });
+    expect((await t.call('GET', '/api/bank-sync')).body).toEqual({
+      configured: false,
+      redirectUrl: 'https://localhost:3000/bank-sync/callback',
+      connections: [],
+      syncStartByAccount: { [t.courant.id]: '2026-07-06', [t.livret.id]: '2026-07-06' },
+    });
     expect((await t.call('POST', '/api/bank-sync/run', {})).body).toEqual({ reason: 'not_configured', connections: [] });
     const test = await t.call('POST', '/api/bank-sync/test', {});
     expect(test.status).toBe(400);

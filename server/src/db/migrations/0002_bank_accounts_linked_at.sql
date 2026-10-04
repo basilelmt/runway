@@ -1,0 +1,1 @@
+ALTER TABLE `bank_accounts` ADD `linked_at` text;

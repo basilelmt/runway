@@ -124,6 +124,8 @@ export const bankAccounts = sqliteTable(
     accountId: integer('account_id').references(() => accounts.id, { onDelete: 'set null' }),
     /** Première date synchronisée ; null tant que la liaison n'est pas confirmée. */
     syncFrom: text('sync_from'),
+    /** Jour de la liaison confirmée : borne la fenêtre de jonction avec l'historique ; null si le compte est ignoré. */
+    linkedAt: text('linked_at'),
     lastSyncedDate: text('last_synced_date'),
   },
   (t) => [index('bank_accounts_connection_idx').on(t.connectionId)],

@@ -16,8 +16,9 @@ Les opérations récupérées passent par le même traitement que les fichiers (
   Ce qui n'est pas classé par une règle de tri atterrit dans « À trier », comme aujourd'hui.
 - Cadence : synchronisation à l'ouverture de l'app si la dernière date de plus d'une heure, plus un bouton « Synchroniser maintenant ».
   Pas de tâche de fond quand l'app est fermée.
-- Jonction avec l'historique PDF : pour chaque compte, la première synchronisation part du lendemain de la dernière opération confirmée connue.
-  Sur les 10 premiers jours après cette date de départ, une opération de même date et même montant qu'une opération existante du compte est traitée comme doublon.
+- Jonction avec l'historique PDF : pour chaque compte, la première synchronisation part du lendemain de la dernière opération confirmée issue d'un import (à défaut, de la dernière opération confirmée).
+  Les saisies manuelles et les récurrences confirmées ne repoussent pas cette date : elles ne prouvent pas que l'historique bancaire est complet.
+  Jusqu'à 10 jours après la liaison, une opération de même date et même montant qu'une opération existante du compte est traitée comme doublon.
 - Opérations en attente (non comptabilisées) : ignorées.
   Seules les opérations au statut `BOOK` sont récupérées.
 - Secrets : l'Application ID et la clé privée sont saisis dans Paramètres et stockés dans la table `settings`.
@@ -85,6 +86,7 @@ Un compte renvoyé par l'API, lié ou non à un compte Runway.
 | bank_name | text | libellé renvoyé par la banque (`name` ou `product`) |
 | account_id | integer nullable | FK `accounts` ; null = ignoré |
 | sync_from | text nullable | date de départ ISO, fixée au moment de la liaison |
+| linked_at | text nullable | jour de la liaison ISO ; borne la fenêtre de jonction ; null si le compte est ignoré |
 | last_synced_date | text nullable | `booking_date` la plus récente enregistrée |
 
 ### `settings`
@@ -132,16 +134,19 @@ Quand le libellé cite un IBAN, il désigne la cible (cas des relevés PDF) ; sa
   Un compte déjà connu de la connexion (même IBAN, sinon même `uid`) garde sa liaison et ses dates, seul `uid` est rafraîchi.
   Pour un compte nouveau, propose un `account_id` quand les caractères 15 à 25 de l'IBAN (numéro de compte français) égalent `accounts.bank_account_number`.
   Renseigne `valid_until`, puis passe la connexion en `authorized` (première connexion, liaisons à confirmer) ou directement en `active` (renouvellement, liaisons déjà connues).
-- `linkAccounts(db, { connectionId, links: { bankAccountId, accountId | null }[], today })` : enregistre les liaisons, fixe `sync_from` = lendemain de la dernière opération confirmée du compte Runway (ou aujourd'hui moins 90 jours si le compte est vide) et passe une connexion `authorized` en `active`.
-  Un compte ignoré (`accountId` null) garde `sync_from` null et n'est jamais synchronisé.
+- `linkAccounts(db, { connectionId, links: { bankAccountId, accountId | null }[], today })` : enregistre les liaisons, fixe `sync_from` = lendemain de la dernière opération confirmée importée du compte Runway (`import_id` non nul), sinon de la dernière opération confirmée, sinon aujourd'hui moins 90 jours, fixe `linked_at` = aujourd'hui et passe une connexion `authorized` en `active`.
+  Un compte ignoré (`accountId` null) garde `sync_from` et `linked_at` null et n'est jamais synchronisé.
+  `getState` expose la même date de départ pour chaque compte Runway non archivé (`syncStartByAccount`), affichée sous chaque sélecteur avant la liaison.
 - `runSync(db, provider, { onlyIfStaleMinutes?, today })` :
   1. Verrou en mémoire : si une synchro est en cours, renvoie son résultat à venir plutôt que d'en lancer une seconde.
   2. Si `onlyIfStaleMinutes` est fourni et que `last_sync_at` est plus récent, ne fait rien.
   3. Pour chaque connexion `active` : vérifie `GET /sessions/{id}` ; statut autre que `AUTHORIZED` ou `valid_until` dépassé → statut `expired`, on passe à la suivante.
   4. Pour chaque `bank_accounts` lié à un compte Runway non archivé : `date_from` = max(`sync_from`, `last_synced_date` moins 7 jours), `date_to` = aujourd'hui, statut `BOOK`, toutes les pages.
-  5. Construit une `Source` par compte avec les autres comptes du lot en `siblings`, appelle `buildPreview`, puis applique la déduplication de jonction : une ligne `new` dont la date est dans les 10 jours suivant `sync_from` et qui a une opération confirmée existante de même compte, même date et même montant signé devient `duplicate`.
-  6. Appelle `commitImport` avec les lignes `new`, `matched` et `transfer` ; met à jour `last_synced_date`.
-  7. Met à jour `last_sync_at`, efface ou renseigne `last_error`.
+  5. Construit une `Source` par compte avec les autres comptes du lot en `siblings`, appelle `buildPreview`, puis applique la déduplication de jonction : une ligne `new` datée au plus tard 10 jours après `linked_at` et qui a une opération confirmée existante de même compte, même date et même montant signé devient `duplicate`.
+     Les opérations antérieures à `sync_from` ne sont jamais demandées.
+  6. Une fois toutes les prévisualisations construites, et avant toute écriture, `markClaimedCounterparts` marque `internal` le crédit qui sert de contrepartie à chaque ligne `transfer` d'un autre compte du lot (même montant opposé, ±4 jours, chaque crédit une seule fois), quel que soit l'ordre des comptes.
+  7. Appelle `commitImport` avec les lignes `new`, `matched` et `transfer` ; met à jour `last_synced_date`.
+  8. Met à jour `last_sync_at`, efface ou renseigne `last_error`.
   Renvoie un résumé `{ reason: 'ok' | 'fresh' | 'not_configured' | 'no_connection', connections: { connectionId, status, created, matched, duplicates, skipped, error }[] }`.
 - `disconnect(db, provider, connectionId)` : `DELETE /sessions/{id}` (erreur ignorée si déjà expirée), statut `revoked`, les `bank_accounts` restent pour l'historique.
 

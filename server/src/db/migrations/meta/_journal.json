@@ -15,6 +15,13 @@
       "when": 1791139635600,
       "tag": "0001_bank_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791143856456,
+      "tag": "0002_bank_accounts_linked_at",
+      "breakpoints": true
     }
   ]
 }

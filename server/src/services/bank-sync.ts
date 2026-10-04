@@ -6,7 +6,7 @@ import { toSourceRow } from '../bank/mapping';
 import type { Aspsp, BankProvider } from '../bank/provider';
 import type { Db } from '../db/client';
 import { BadRequestError } from '../errors';
-import { findAccountByBankNumber, getAccount } from '../repos/accounts';
+import { findAccountByBankNumber, getAccount, listAccounts } from '../repos/accounts';
 import {
   createConnection,
   deletePendingConnections,
@@ -20,7 +20,7 @@ import {
   type BankAccount,
   type BankConnection,
 } from '../repos/bank';
-import { countConfirmedOn, lastConfirmedDate } from '../repos/transactions';
+import { countConfirmedOn, lastConfirmedDate, lastImportedDate } from '../repos/transactions';
 import { buildPreview, commitImport, markClaimedCounterparts, type Sibling, type SourceRow } from './import';
 
 export const ASPSP: Aspsp = { name: 'La Banque Postale', country: 'FR' };
@@ -32,12 +32,16 @@ const PARSER_ID = 'enablebanking';
 const DEFAULT_CONSENT_SECONDS = 90 * 86_400;
 /** Les banques datent parfois en retard : on relit les derniers jours, l'empreinte absorbe le chevauchement. */
 const OVERLAP_DAYS = 7;
-/** Après la date de départ, fenêtre où une opération déjà connue (date + montant) est un doublon de jonction. */
+/**
+ * Jusqu'à ce nombre de jours après la liaison, une opération déjà connue (date + montant) est un doublon
+ * de jonction : saisies manuelles et récurrences confirmées entre la date de départ et la liaison,
+ * plus quelques jours pour les opérations que la banque date en retard.
+ */
 const JUNCTION_DAYS = 10;
 const EMPTY_ACCOUNT_HISTORY_DAYS = 90;
 
 function toAccountView(a: BankAccount): BankAccountView {
-  return { id: a.id, uid: a.uid, iban: a.iban, bankName: a.bankName, accountId: a.accountId, syncFrom: a.syncFrom, lastSyncedDate: a.lastSyncedDate };
+  return { id: a.id, uid: a.uid, iban: a.iban, bankName: a.bankName, accountId: a.accountId, syncFrom: a.syncFrom, linkedAt: a.linkedAt, lastSyncedDate: a.lastSyncedDate };
 }
 
 function toConnectionView(db: Db, c: BankConnection): BankConnectionView {
@@ -52,13 +56,23 @@ function toConnectionView(db: Db, c: BankConnection): BankConnectionView {
   };
 }
 
-export function getState(db: Db, configured: boolean): BankSyncState {
+/**
+ * Première date à synchroniser pour un compte lié aujourd'hui : lendemain du dernier relevé importé,
+ * sinon de la dernière opération confirmée, sinon 90 jours d'historique.
+ */
+function syncStart(db: Db, accountId: number, today: ISODate): ISODate {
+  const last = lastImportedDate(db, accountId) ?? lastConfirmedDate(db, accountId);
+  return last ? addDays(last, 1) : addDays(today, -EMPTY_ACCOUNT_HISTORY_DAYS);
+}
+
+export function getState(db: Db, configured: boolean, today: ISODate): BankSyncState {
   return {
     configured,
     redirectUrl: REDIRECT_URL,
     connections: listConnections(db)
       .filter((c) => c.status !== 'pending')
       .map((c) => toConnectionView(db, c)),
+    syncStartByAccount: Object.fromEntries(listAccounts(db).map((a) => [a.id, syncStart(db, a.id, today)])),
   };
 }
 
@@ -112,13 +126,11 @@ export function linkAccounts(db: Db, input: { connectionId: number; links: BankL
       const bank = getBankAccount(t, link.bankAccountId);
       if (bank.connectionId !== connection.id) throw new BadRequestError("Ce compte n'appartient pas à cette connexion");
       if (link.accountId === null) {
-        updateBankAccount(t, bank.id, { accountId: null, syncFrom: null });
+        updateBankAccount(t, bank.id, { accountId: null, syncFrom: null, linkedAt: null });
         continue;
       }
       getAccount(t, link.accountId);
-      const last = lastConfirmedDate(t, link.accountId);
-      const syncFrom = last ? addDays(last, 1) : addDays(input.today, -EMPTY_ACCOUNT_HISTORY_DAYS);
-      updateBankAccount(t, bank.id, { accountId: link.accountId, syncFrom, lastSyncedDate: null });
+      updateBankAccount(t, bank.id, { accountId: link.accountId, syncFrom: syncStart(t, link.accountId, input.today), linkedAt: input.today, lastSyncedDate: null });
     }
     if (connection.status === 'authorized') updateConnection(t, connection.id, { status: 'active' });
   });
@@ -138,12 +150,13 @@ export async function disconnect(db: Db, provider: BankProvider, connectionId: n
 }
 
 /**
- * Jonction avec l'historique des relevés, dont les libellés diffèrent : près de la date de départ,
- * une opération déjà connue (même jour, même montant) est un doublon. Les opérations identiques
+ * Jonction avec l'historique des relevés et des saisies, dont les libellés diffèrent : jusqu'à
+ * 10 jours après la liaison, une opération déjà connue (même jour, même montant) est un doublon. Les opérations identiques
  * sont comptées : s'il en existe une seule et que la banque en renvoie deux, la seconde reste nouvelle.
  */
 function applyJunctionDedup(db: Db, bank: BankAccount, rows: ReturnType<typeof buildPreview>['rows']): void {
-  const limit = addDays(bank.syncFrom!, JUNCTION_DAYS);
+  // Liaison antérieure à la colonne linked_at : la date de départ sert de repère.
+  const limit = addDays(bank.linkedAt ?? bank.syncFrom!, JUNCTION_DAYS);
   const keyOf = (row: (typeof rows)[number]) => `${row.date}|${row.signedAmount}`;
   const groups = new Map<string, typeof rows>();
   // Opérations déjà reconnues par empreinte (écrites par une synchro précédente) : elles

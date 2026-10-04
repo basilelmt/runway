@@ -164,6 +164,8 @@ export type BankAccountView = {
   bankName: string;
   accountId: number | null;
   syncFrom: ISODate | null;
+  /** Jour où la liaison a été confirmée ; null si le compte est ignoré. */
+  linkedAt: ISODate | null;
   lastSyncedDate: ISODate | null;
 };
 
@@ -183,6 +185,8 @@ export type BankSyncState = {
   redirectUrl: string;
   /** Connexions hors `pending` (une autorisation abandonnée n'apparaît pas). */
   connections: BankConnectionView[];
+  /** Date de départ qu'aurait chaque compte Runway non archivé s'il était lié aujourd'hui. */
+  syncStartByAccount: Record<number, ISODate>;
 };
 
 export type BankAuthStart = { connectionId: number; url: string };
