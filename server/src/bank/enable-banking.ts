@@ -63,7 +63,9 @@ export class EnableBankingClient implements BankProvider {
     }
     if (!res.ok) {
       const err = (data ?? {}) as { message?: unknown; error?: unknown; code?: unknown };
-      const message = typeof err.message === 'string' ? err.message : typeof err.error === 'string' ? err.error : `Enable Banking a répondu ${res.status}`;
+      // Le message distant est en anglais et sans contexte : on le préfixe pour qu'il reste compréhensible dans un toast.
+      const remote = typeof err.message === 'string' ? err.message : typeof err.error === 'string' ? err.error : null;
+      const message = remote ? `Enable Banking a refusé la demande : ${remote}` : `Enable Banking a répondu ${res.status}`;
       throw new BankProviderError(message, res.status, typeof err.code === 'string' ? err.code : null);
     }
     const parsed = schema.safeParse(data);

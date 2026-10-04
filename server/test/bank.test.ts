@@ -124,7 +124,7 @@ describe('EnableBankingClient', () => {
 
   it('convertit les erreurs HTTP en BankProviderError', async () => {
     const { fetchFn } = fakeFetch({ '/sessions/s1': [{ status: 401, body: { message: 'Invalid JWT', code: 'unauthorized' } }] });
-    await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ name: 'BankProviderError', status: 401, code: 'unauthorized', message: 'Invalid JWT' });
+    await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ name: 'BankProviderError', status: 401, code: 'unauthorized', message: 'Enable Banking a refusé la demande : Invalid JWT' });
     expect(new BankProviderError('x', 500)).toBeInstanceOf(Error);
   });
 });
