@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { BankAccountView, BankAuthStart, BankConnectionView, BankSyncConnectionResult, BankSyncRunResult, BankSyncState } from '@shared/api-types';
+import type { BankAccountView, BankAuthStart, BankConnectionView, BankSyncConnectionResult, BankSyncRunResult, BankSyncState, ImportPreviewRow } from '@shared/api-types';
 import { addDays, compareISODate, type ISODate } from '@shared/dates';
 import type { BankLinkInput } from '@shared/schemas';
 import { toSourceRow } from '../bank/mapping';
@@ -178,8 +178,18 @@ function applyJunctionDedup(db: Db, bank: BankAccount, rows: ReturnType<typeof b
   }
 }
 
+function causeOf(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Synchronise les comptes liés d'une connexion. Une erreur sur un compte (lecture ou écriture)
+ * n'empêche pas les autres : les messages sont regroupés dans `lastError`, compte par compte.
+ */
 async function syncConnection(db: Db, provider: BankProvider, connection: BankConnection, today: ISODate, now: Date): Promise<BankSyncConnectionResult> {
   const result: BankSyncConnectionResult = { connectionId: connection.id, status: connection.status, created: 0, matched: 0, duplicates: 0, skipped: 0, error: null };
+  const errors: string[] = [];
+  const fail = (bank: BankAccount, err: unknown) => errors.push(`${bank.bankName} : ${causeOf(err)}`);
   try {
     const session = await provider.getSession(connection.sessionId!);
     const expired = session.status !== 'AUTHORIZED' || (session.validUntil !== null && new Date(session.validUntil).getTime() < now.getTime());
@@ -194,48 +204,60 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
     for (const bank of linked) {
       const overlapFrom = bank.lastSyncedDate ? addDays(bank.lastSyncedDate, -OVERLAP_DAYS) : bank.syncFrom!;
       const from = compareISODate(overlapFrom, bank.syncFrom!) > 0 ? overlapFrom : bank.syncFrom!;
-      const rows: SourceRow[] = [];
-      for (const tx of await provider.listTransactions(bank.uid, from, today)) {
-        const mapped = toSourceRow(tx);
-        if (mapped.ok) rows.push(mapped.row);
-        else result.skipped++;
+      try {
+        const rows: SourceRow[] = [];
+        for (const tx of await provider.listTransactions(bank.uid, from, today)) {
+          const mapped = toSourceRow(tx);
+          if (mapped.ok) rows.push(mapped.row);
+          else result.skipped++;
+        }
+        fetched.push({ bank, rows });
+      } catch (err) {
+        fail(bank, err);
       }
-      fetched.push({ bank, rows });
     }
 
     // Toutes les prévisualisations d'abord : la contrepartie d'un virement interne doit être connue
     // avant d'écrire quoi que ce soit, quel que soit l'ordre des comptes.
-    const previews = fetched.map(({ bank, rows }) => {
-      const siblings: Sibling[] = fetched.filter((f) => f.bank.id !== bank.id).map((f) => ({ accountId: f.bank.accountId, iban: f.bank.iban, rows: f.rows }));
-      const preview = buildPreview(db, { parserId: PARSER_ID, bankAccountNumber: null, rows, sections: [], sectionIndex: 0, siblings }, bank.accountId);
-      applyJunctionDedup(db, bank, preview.rows);
-      return { bank, sourceRows: rows, accountId: bank.accountId!, rows: preview.rows };
-    });
+    const previews: { bank: BankAccount; sourceRows: SourceRow[]; accountId: number; rows: ImportPreviewRow[] }[] = [];
+    for (const { bank, rows } of fetched) {
+      try {
+        const siblings: Sibling[] = fetched.filter((f) => f.bank.id !== bank.id).map((f) => ({ accountId: f.bank.accountId, iban: f.bank.iban, rows: f.rows }));
+        const preview = buildPreview(db, { parserId: PARSER_ID, bankAccountNumber: null, rows, sections: [], sectionIndex: 0, siblings }, bank.accountId);
+        applyJunctionDedup(db, bank, preview.rows);
+        previews.push({ bank, sourceRows: rows, accountId: bank.accountId!, rows: preview.rows });
+      } catch (err) {
+        fail(bank, err);
+      }
+    }
     markClaimedCounterparts(previews);
 
     for (const { bank, sourceRows, rows } of previews) {
-      const toWrite = rows.filter((r) => r.status === 'new' || r.status === 'matched' || r.status === 'transfer');
-      const duplicates = rows.length - toWrite.length;
-      if (toWrite.length > 0) {
-        const record = commitImport(db, {
-          fileName: SYNC_FILE_NAME,
-          accountId: bank.accountId!,
-          duplicateCount: duplicates,
-          rows: toWrite.map(({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId }) => ({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId })),
-        });
-        result.created += record.newCount;
-        result.matched += record.matchedCount;
+      try {
+        const toWrite = rows.filter((r) => r.status === 'new' || r.status === 'matched' || r.status === 'transfer');
+        const duplicates = rows.length - toWrite.length;
+        if (toWrite.length > 0) {
+          const record = commitImport(db, {
+            fileName: SYNC_FILE_NAME,
+            accountId: bank.accountId!,
+            duplicateCount: duplicates,
+            rows: toWrite.map(({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId }) => ({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId })),
+          });
+          result.created += record.newCount;
+          result.matched += record.matchedCount;
+        }
+        result.duplicates += duplicates;
+        const latest = sourceRows.reduce<string | null>((max, r) => (max === null || compareISODate(r.date, max) > 0 ? r.date : max), bank.lastSyncedDate);
+        if (latest !== bank.lastSyncedDate) updateBankAccount(db, bank.id, { lastSyncedDate: latest });
+      } catch (err) {
+        fail(bank, err);
       }
-      result.duplicates += duplicates;
-      const latest = sourceRows.reduce<string | null>((max, r) => (max === null || compareISODate(r.date, max) > 0 ? r.date : max), bank.lastSyncedDate);
-      if (latest !== bank.lastSyncedDate) updateBankAccount(db, bank.id, { lastSyncedDate: latest });
     }
-    updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: null });
   } catch (err) {
-    const message = `Synchronisation impossible : ${err instanceof Error ? err.message : String(err)}`;
-    updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: message });
-    result.error = message;
+    errors.push(causeOf(err));
   }
+  result.error = errors.length > 0 ? errors.join(' ; ') : null;
+  updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: result.error });
   return result;
 }
 

@@ -1,3 +1,4 @@
+import type { BankSyncRunResult } from '@shared/api-types';
 import { formatDateLong, formatDateShort, today } from '@shared/dates';
 import type { TransactionKind } from '@shared/schemas';
 
@@ -40,4 +41,17 @@ export function inDays(n: number): string {
 /** « 4 oct., 10:32 » à partir d'un horodatage ISO. */
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Résumé d'une synchronisation bancaire pour un toast : « 3 opérations synchronisées, 2 rapprochées ».
+ * Null quand rien n'a été créé ni rapproché.
+ */
+export function syncSummary(result: BankSyncRunResult): string | null {
+  const created = result.connections.reduce((n, c) => n + c.created, 0);
+  const matched = result.connections.reduce((n, c) => n + c.matched, 0);
+  if (created === 0 && matched === 0) return null;
+  if (matched === 0) return plural(created, 'opération synchronisée', 'opérations synchronisées');
+  if (created === 0) return plural(matched, 'opération rapprochée', 'opérations rapprochées');
+  return `${plural(created, 'opération synchronisée', 'opérations synchronisées')}, ${plural(matched, 'rapprochée')}`;
 }

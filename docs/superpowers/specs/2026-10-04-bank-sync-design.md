@@ -200,7 +200,9 @@ Les erreurs ne font pas de toast au démarrage, elles restent visibles dans la c
 
 - Identifiants absents ou JWT refusé (401) : message dans Paramètres, aucune synchro tentée.
 - Session `REJECTED` ou `valid_until` dépassé : connexion `expired`, pas d'exception.
-- 429 ou erreur réseau : `last_error` renseigné, les autres connexions continuent, synchro manuelle → toast d'erreur.
+- 429 ou erreur réseau : les autres comptes et les autres connexions continuent.
+  `last_error` ne garde que la cause, préfixée du nom du compte quand l'erreur touche un seul compte (« Livret A : … », plusieurs causes séparées par « ; »).
+  Synchro manuelle → toast d'erreur avec cette cause telle quelle.
 - `state` inattendu au retour : 400 « Retour d'autorisation invalide, relance la connexion ».
 - Opération API sans date ou sans montant : ligne ignorée et comptée dans le résumé, le reste du lot est traité.
 - Compte Runway archivé entre deux synchros : la liaison est ignorée, signalé dans la carte.

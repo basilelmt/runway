@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useRunBankSync } from '@/api/hooks';
 import { useToast } from '@/components/ui';
-import { plural } from '@/lib/format';
+import { syncSummary } from '@/lib/format';
 
 const STALE_MINUTES = 60;
 
@@ -13,11 +13,8 @@ export function useAutoBankSync(): void {
   const toast = useToast();
   const { mutate } = useRunBankSync({
     onSuccess: (r) => {
-      if (r.reason !== 'ok') return;
-      const created = r.connections.reduce((n, c) => n + c.created, 0);
-      const matched = r.connections.reduce((n, c) => n + c.matched, 0);
-      if (created + matched === 0) return;
-      toast.success(`${plural(created, 'opération synchronisée', 'opérations synchronisées')}${matched ? `, ${matched} rapprochée${matched > 1 ? 's' : ''}` : ''}`);
+      const summary = syncSummary(r);
+      if (summary) toast.success(summary);
     },
   });
   const started = useRef(false);

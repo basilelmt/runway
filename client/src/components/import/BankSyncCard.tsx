@@ -15,7 +15,7 @@ import {
   useStartBankConnection,
 } from '@/api/hooks';
 import { Badge, Button, Card, Input, Select, SkeletonRows, useToast } from '@/components/ui';
-import { formatDateLong, formatDateTime, plural } from '@/lib/format';
+import { formatDateLong, formatDateTime, plural, syncSummary } from '@/lib/format';
 import styles from './BankSyncCard.module.css';
 
 const EXPIRY_WARNING_DAYS = 15;
@@ -76,12 +76,12 @@ export function BankSyncCard() {
   });
   const run = useRunBankSync({
     onSuccess: (r) => {
-      const created = r.connections.reduce((n, c) => n + c.created, 0);
-      const matched = r.connections.reduce((n, c) => n + c.matched, 0);
+      const summary = syncSummary(r);
       const failed = r.connections.find((c) => c.error);
+      // Échec partiel : ce qui est arrivé est annoncé, puis la cause telle quelle.
+      if (summary) toast.success(summary);
       if (failed) toast.error(failed.error!);
-      else if (created + matched === 0) toast.toast('Rien de nouveau');
-      else toast.success(`${plural(created, 'opération synchronisée', 'opérations synchronisées')}${matched ? `, ${matched} rapprochée${matched > 1 ? 's' : ''}` : ''}`);
+      else if (!summary) toast.toast('Rien de nouveau');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -333,7 +333,7 @@ function ActiveState({
         ))}
       </div>
       {connection.lastError ? (
-        <p className={styles.error} role="alert">
+        <p className={styles.error} role="status">
           Dernière synchronisation en échec : {connection.lastError}
         </p>
       ) : null}

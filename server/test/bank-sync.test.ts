@@ -29,6 +29,9 @@ class FakeProvider implements BankProvider {
   validUntil: string | null = '2027-01-02T00:00:00Z';
   maxConsent: number | null = 15552000;
   failListWith: Error | null = null;
+  /** Échec ciblé : seul le compte de cet uid est en erreur. */
+  failListFor: Record<string, Error> = {};
+  failSessionWith: Error | null = null;
   gate: Deferred<void> | null = null;
   calls: { method: string; args: unknown[] }[] = [];
 
@@ -54,12 +57,14 @@ class FakeProvider implements BankProvider {
   }
   async getSession(sessionId: string) {
     this.log('getSession', sessionId);
+    if (this.failSessionWith) throw this.failSessionWith;
     return { status: this.sessionStatus, validUntil: this.validUntil };
   }
   async listTransactions(uid: string, dateFrom: string, dateTo: string) {
     this.log('listTransactions', uid, dateFrom, dateTo);
     if (this.gate) await this.gate.promise;
     if (this.failListWith) throw this.failListWith;
+    if (this.failListFor[uid]) throw this.failListFor[uid];
     return (this.transactions[uid] ?? []).filter((t) => t.booking_date! >= dateFrom && t.booking_date! <= dateTo);
   }
   async deleteSession(sessionId: string) {
@@ -318,11 +323,32 @@ describe('synchronisation', () => {
     await connect();
     provider.failListWith = new Error('ECONNRESET');
     const failed = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
-    expect(failed.connections[0]).toMatchObject({ error: 'Synchronisation impossible : ECONNRESET', created: 0 });
-    expect(getState(ctx.db, true, TODAY).connections[0]!.lastError).toBe('Synchronisation impossible : ECONNRESET');
+    const message = 'Compte Courant Postal : ECONNRESET ; Livret A : ECONNRESET';
+    expect(failed.connections[0]).toMatchObject({ error: message, created: 0 });
+    expect(getState(ctx.db, true, TODAY).connections[0]).toMatchObject({ lastError: message, lastSyncAt: NOW.toISOString() });
     provider.failListWith = null;
     await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     expect(getState(ctx.db, true, TODAY).connections[0]!.lastError).toBeNull();
+  });
+
+  it('erreur sur un seul compte : les autres sont synchronisés, l’erreur nomme le compte', async () => {
+    provider.transactions['u-courant'] = [tx('2026-10-01', '5.00', 'DBIT', 'CAFE')];
+    await connect();
+    provider.failListFor['u-livret'] = new Error('429 Too Many Requests');
+    const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    expect(result.connections[0]).toMatchObject({ created: 1, error: 'Livret A : 429 Too Many Requests' });
+    const state = getState(ctx.db, true, TODAY).connections[0]!;
+    expect(state).toMatchObject({ lastError: 'Livret A : 429 Too Many Requests', lastSyncAt: NOW.toISOString() });
+    expect(state.accounts.find((a) => a.iban === IBAN_COURANT)!.lastSyncedDate).toBe('2026-10-01');
+    expect(state.accounts.find((a) => a.iban === IBAN_LIVRET)!.lastSyncedDate).toBeNull();
+  });
+
+  it('erreur sur la session : seule la cause est stockée', async () => {
+    await connect();
+    provider.failSessionWith = new Error('Enable Banking injoignable : fetch failed');
+    const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    expect(result.connections[0]!.error).toBe('Enable Banking injoignable : fetch failed');
+    expect(getState(ctx.db, true, TODAY).connections[0]!.lastError).toBe('Enable Banking injoignable : fetch failed');
   });
 
   it('onlyIfStaleMinutes : saute si la dernière synchro est récente', async () => {
