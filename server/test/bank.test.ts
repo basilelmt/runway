@@ -16,6 +16,12 @@ describe('signJwt', () => {
     expect(JSON.parse(Buffer.from(p!, 'base64url').toString())).toEqual({ iss: 'enablebanking.com', aud: 'api.enablebanking.com', iat: 1_700_000_000, exp: 1_700_003_600 });
     expect(createVerify('RSA-SHA256').update(`${h}.${p}`).verify(publicKey, Buffer.from(s!, 'base64url'))).toBe(true);
   });
+
+  it('rejette une clé privée illisible avec un message en français', () => {
+    const fake = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANfake\n-----END PRIVATE KEY-----';
+    expect(() => signJwt('app-123', fake)).toThrow(BankProviderError);
+    expect(() => signJwt('app-123', fake)).toThrow(/Clé privée Enable Banking illisible/);
+  });
 });
 
 type Call = { url: string; init: RequestInit };
