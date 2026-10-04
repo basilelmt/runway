@@ -460,6 +460,17 @@ describe('routes /api/bank-sync', () => {
     expect(consoleError).toHaveBeenCalledWith(expect.stringMatching(/bank-sync/), expect.objectContaining({ message: 'Code refusé' }));
   });
 
+  it('déconnexion possible après avoir effacé les identifiants : statut revoked sans appel à la banque', async () => {
+    await configure();
+    const start = await t.call('POST', '/api/bank-sync/connections', {});
+    const state = (p.calls.find((c) => c.method === 'startAuth')!.args[0] as { state: string }).state;
+    await t.call('POST', `/api/bank-sync/connections/${start.body.connectionId}/complete`, { code: 'ok', state });
+    await t.call('PUT', '/api/settings', { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: '', enableBankingPrivateKey: '' });
+    expect((await t.call('DELETE', `/api/bank-sync/connections/${start.body.connectionId}`)).status).toBe(204);
+    expect((await t.call('GET', '/api/bank-sync')).body.connections[0].status).toBe('revoked');
+    expect(p.calls.some((c) => c.method === 'deleteSession')).toBe(false);
+  });
+
   it('clé privée illisible : 400 avec le message du fournisseur, pas une 502', async () => {
     const real = createTestApp('2026-10-04');
     await real.call('PUT', '/api/settings', { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app', enableBankingPrivateKey: 'pas une clé' });

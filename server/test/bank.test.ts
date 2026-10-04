@@ -210,6 +210,21 @@ describe('toSourceRow', () => {
     expect(toSourceRow({ ...base, remittance_information: [] })).toMatchObject({ ok: true, row: { label: 'Opération' } });
   });
 
+  it('date : date de transaction en dernier recours, une date comptable non ISO est ignorée', () => {
+    expect(toSourceRow({ ...base, booking_date: null, value_date: null, transaction_date: '2026-09-30' })).toMatchObject({ ok: true, row: { date: '2026-09-30' } });
+    expect(toSourceRow({ ...base, booking_date: '02/10/2026' })).toMatchObject({ ok: true, row: { date: '2026-10-03' } });
+  });
+
+  it('le sens vient de l’indicateur, pas du signe du montant', () => {
+    expect(toSourceRow({ ...base, credit_debit_indicator: 'CRDT', transaction_amount: { amount: '-12.34' } })).toMatchObject({ ok: true, row: { signedAmount: 12_34 } });
+    expect(toSourceRow({ ...base, transaction_amount: { amount: '-12.34' } })).toMatchObject({ ok: true, row: { signedAmount: -12_34 } });
+  });
+
+  it('libellé coupé à 200 caractères', () => {
+    const r = toSourceRow({ ...base, remittance_information: ['X'.repeat(250)] });
+    expect(r.ok && r.row.label).toBe('X'.repeat(200));
+  });
+
   it('rejette une opération sans date ou à montant nul', () => {
     expect(toSourceRow({ ...base, booking_date: null, value_date: null })).toEqual({ ok: false, reason: 'date absente' });
     expect(toSourceRow({ ...base, transaction_amount: { amount: '0.00' } })).toEqual({ ok: false, reason: 'montant nul' });

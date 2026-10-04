@@ -165,7 +165,7 @@ En test, un faux `BankProvider` en mémoire.
 | `POST /api/bank-sync/run` | Corps `{ onlyIfStaleMinutes? }`, lance la synchro, renvoie le résumé. |
 | `DELETE /api/bank-sync/connections/:id` | Déconnecte. |
 
-Hors `GET /api/bank-sync` et `POST /api/bank-sync/run` (qui répond `{ reason: 'not_configured' }`), toutes les routes répondent 400 avec un message explicite si les identifiants ne sont pas configurés.
+Hors `GET /api/bank-sync`, `POST /api/bank-sync/run` (qui répond `{ reason: 'not_configured' }`) et `DELETE /api/bank-sync/connections/:id` (qui marque la connexion `revoked` sans appeler la banque), toutes les routes répondent 400 avec un message explicite si les identifiants ne sont pas configurés.
 Une erreur renvoyée par Enable Banking devient une 502 avec son message.
 
 ## Interface

@@ -80,7 +80,8 @@ export const bankSyncRoutes = (deps: BankDeps = {}) => {
       return c.json(await runSync(c.get('db'), p, { today: c.get('today'), now: now(), onlyIfStaleMinutes: c.req.valid('json').onlyIfStaleMinutes }));
     })
     .delete('/connections/:id', validate('param', idParam), async (c) => {
-      const p = provider(c);
+      const settings = getSettings(c.get('db'));
+      const p = isConfigured(settings) ? makeProvider(settings, psuInfo(c)) : null;
       await disconnect(c.get('db'), p, c.req.valid('param').id);
       return c.body(null, 204);
     });

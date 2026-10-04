@@ -137,9 +137,10 @@ export function linkAccounts(db: Db, input: { connectionId: number; links: BankL
   return toConnectionView(db, getConnection(db, connection.id));
 }
 
-export async function disconnect(db: Db, provider: BankProvider, connectionId: number): Promise<void> {
+/** Sans fournisseur (identifiants effacés), la session reste chez Enable Banking jusqu'à son expiration : seul l'état local change. */
+export async function disconnect(db: Db, provider: BankProvider | null, connectionId: number): Promise<void> {
   const connection = getConnection(db, connectionId);
-  if (connection.sessionId) {
+  if (provider && connection.sessionId) {
     try {
       await provider.deleteSession(connection.sessionId);
     } catch {

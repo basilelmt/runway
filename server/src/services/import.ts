@@ -32,6 +32,8 @@ export type Source = {
 };
 
 const TRANSFER_TOLERANCE_DAYS = 4;
+/** « VIREMENT » des relevés, « VIR SEPA … » des libellés renvoyés par l'API. */
+const TRANSFER_KEYWORD = /\bVIR(?:EMENT)?\b/i;
 
 async function readFileSource(db: Db, input: { buffer: Buffer; accountId: number | null; section: number | null }, deps: ImportDeps): Promise<Source> {
   if (isPdf(input.buffer)) {
@@ -80,7 +82,7 @@ function rowText(row: ImportPreviewRow): string {
 }
 
 /**
- * Virements entre comptes propres : un débit « VIREMENT » avec un crédit du même montant à ±4 jours
+ * Virements entre comptes propres : un débit « VIREMENT » (ou « VIR ») avec un crédit du même montant à ±4 jours
  * chez un compte frère devient un transfert vers ce compte. Le texte examiné est le libellé plus la note :
  * - s'il cite l'IBAN d'un compte frère, ce compte est la cible ;
  * - s'il cite un autre IBAN valide (tiers inconnu), la ligne reste telle quelle ;
@@ -100,7 +102,7 @@ function detectInternalTransfers(siblings: Sibling[], rows: ImportPreviewRow[]):
     s.rows.findIndex((r, i) => !claimedOf(s).has(i) && r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
   for (const row of rows) {
     const text = rowText(row);
-    if (row.status !== 'new' || row.signedAmount >= 0 || !/VIREMENT/i.test(text)) continue;
+    if (row.status !== 'new' || row.signedAmount >= 0 || !TRANSFER_KEYWORD.test(text)) continue;
     const ibans = extractIbans(text);
     const byIban = known.find((s) => s.iban && ibans.includes(s.iban.replace(/\s/g, '').toUpperCase()));
     const candidates = byIban ? [byIban] : ibans.length > 0 ? [] : known.filter((s) => findCounterpart(s, row) >= 0);
@@ -141,7 +143,7 @@ export function markClaimedCounterparts(previews: { accountId: number; rows: Imp
 function markInternalCredits(db: Db, accountId: number, rows: ImportPreviewRow[]): void {
   const claimed = new Set<number>();
   for (const row of rows) {
-    if (row.status !== 'new' || row.signedAmount <= 0 || !/VIREMENT/i.test(rowText(row))) continue;
+    if (row.status !== 'new' || row.signedAmount <= 0 || !TRANSFER_KEYWORD.test(rowText(row))) continue;
     const transfers = findTransfersTo(db, accountId, row.signedAmount, addDays(row.date, -TRANSFER_TOLERANCE_DAYS), addDays(row.date, TRANSFER_TOLERANCE_DAYS));
     const free = transfers.find((t) => !claimed.has(t.id));
     if (!free) continue;

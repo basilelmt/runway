@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { ImportPreviewRow } from '@shared/api-types';
 import type { ISODate } from '@shared/dates';
 import { createAccount } from '../src/repos/accounts';
-import { buildPreview, type Sibling, type Source, type SourceRow } from '../src/services/import';
+import { buildPreview, markClaimedCounterparts, type Sibling, type Source, type SourceRow } from '../src/services/import';
+import { createTransaction } from '../src/repos/transactions';
 import { createTestDb, type TestContext } from './helpers';
 
 /** IBAN valides (somme de contrôle ISO 13616 juste). */
@@ -58,5 +60,41 @@ describe('virements internes entre comptes du même lot', () => {
     const rows = [row('2026-10-04', 'VIREMENT EPARGNE', -200_00), row('2026-10-04', 'VIREMENT EPARGNE', -200_00)];
     const preview = buildPreview(ctx.db, source(rows, [livret]), ctx.courant.id);
     expect(preview.rows.map((r) => r.status)).toEqual(['transfer', 'new']);
+  });
+
+  it('libellé abrégé « VIR SEPA » (API) : reconnu comme virement, côté débit et côté crédit', () => {
+    const preview = buildPreview(ctx.db, source([row('2026-10-04', 'VIR SEPA M LAMOTTE EPARGNE', -200_00)], [livret]), ctx.courant.id);
+    expect(preview.rows[0]).toMatchObject({ status: 'transfer', transferToAccountId: ctx.livret.id });
+    createTransaction(ctx.db, { kind: 'transfer', date: '2026-10-04', amount: 200_00, label: 'Virement', accountId: ctx.courant.id, toAccountId: ctx.livret.id });
+    const credit = buildPreview(ctx.db, source([row('2026-10-05', 'VIR SEPA DE M LAMOTTE', 200_00)], []), ctx.livret.id);
+    expect(credit.rows[0]!.status).toBe('internal');
+  });
+
+  it('un mot qui commence par VIR n’est pas un virement', () => {
+    const preview = buildPreview(ctx.db, source([row('2026-10-04', 'CARTE VIRGIN MOBILE', -200_00)], [livret]), ctx.courant.id);
+    expect(preview.rows[0]).toMatchObject({ status: 'new', transferToAccountId: null });
+  });
+});
+
+describe('markClaimedCounterparts', () => {
+  const previewRow = (index: number, date: ISODate, signedAmount: number, status: ImportPreviewRow['status'], transferToAccountId: number | null = null): ImportPreviewRow => ({
+    index,
+    date,
+    label: 'VIREMENT',
+    signedAmount,
+    status,
+    fingerprint: `f${index}`,
+    plannedId: null,
+    plannedLabel: null,
+    envelopeId: null,
+    note: null,
+    transferToAccountId,
+  });
+
+  it('marque internal la contrepartie de chaque transfert, une seule fois, dans la tolérance de 4 jours', () => {
+    const courant = { accountId: 1, rows: [previewRow(0, '2026-10-01', -100_00, 'transfer', 2), previewRow(1, '2026-10-01', -100_00, 'transfer', 2)] };
+    const livret = { accountId: 2, rows: [previewRow(0, '2026-10-10', 100_00, 'new'), previewRow(1, '2026-10-02', 100_00, 'duplicate'), previewRow(2, '2026-10-03', 100_00, 'new')] };
+    markClaimedCounterparts([livret, courant]);
+    expect(livret.rows.map((r) => r.status)).toEqual(['new', 'duplicate', 'internal']);
   });
 });

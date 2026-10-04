@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { bankConnectionStatuses } from '@shared/schemas';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
 
@@ -103,7 +104,7 @@ export const bankConnections = sqliteTable('bank_connections', {
   /** Jeton aléatoire envoyé à `/auth`, vérifié au retour. */
   state: text('state').notNull(),
   sessionId: text('session_id'),
-  status: text('status', { enum: ['pending', 'authorized', 'active', 'expired', 'revoked'] }).notNull().default('pending'),
+  status: text('status', { enum: bankConnectionStatuses }).notNull().default('pending'),
   validUntil: text('valid_until'),
   lastSyncAt: text('last_sync_at'),
   lastError: text('last_error'),
