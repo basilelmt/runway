@@ -10,7 +10,7 @@ import {
   upsertBankAccount,
 } from '../src/repos/bank';
 import { createTransaction } from '../src/repos/transactions';
-import { hasConfirmedOn, lastConfirmedDate } from '../src/repos/transactions';
+import { countConfirmedOn, lastConfirmedDate } from '../src/repos/transactions';
 import { createTestDb, type TestContext } from './helpers';
 
 let ctx: TestContext;
@@ -55,11 +55,11 @@ describe('requêtes de jonction', () => {
     createTransaction(ctx.db, { kind: 'expense', date: '2026-03-09', amount: 5_00, label: 'Prévue', accountId: ctx.courant.id, status: 'planned' });
     expect(lastConfirmedDate(ctx.db, ctx.courant.id)).toBe('2026-03-07');
     expect(lastConfirmedDate(ctx.db, ctx.livret.id)).toBe('2026-03-07');
-    expect(hasConfirmedOn(ctx.db, ctx.courant.id, '2026-03-01', -12_50)).toBe(true);
-    expect(hasConfirmedOn(ctx.db, ctx.courant.id, '2026-03-01', 12_50)).toBe(false);
-    expect(hasConfirmedOn(ctx.db, ctx.courant.id, '2026-03-05', 2000_00)).toBe(true);
-    expect(hasConfirmedOn(ctx.db, ctx.courant.id, '2026-03-07', -100_00)).toBe(true);
-    expect(hasConfirmedOn(ctx.db, ctx.livret.id, '2026-03-07', 100_00)).toBe(true);
-    expect(hasConfirmedOn(ctx.db, ctx.courant.id, '2026-03-09', -5_00)).toBe(false);
+    expect(countConfirmedOn(ctx.db, ctx.courant.id, '2026-03-01', -12_50)).toBe(1);
+    expect(countConfirmedOn(ctx.db, ctx.courant.id, '2026-03-01', 12_50)).toBe(0);
+    expect(countConfirmedOn(ctx.db, ctx.courant.id, '2026-03-05', 2000_00)).toBe(1);
+    expect(countConfirmedOn(ctx.db, ctx.courant.id, '2026-03-07', -100_00)).toBe(1);
+    expect(countConfirmedOn(ctx.db, ctx.livret.id, '2026-03-07', 100_00)).toBe(1);
+    expect(countConfirmedOn(ctx.db, ctx.courant.id, '2026-03-09', -5_00)).toBe(0);
   });
 });

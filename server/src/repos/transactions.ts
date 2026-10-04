@@ -145,20 +145,19 @@ export function lastConfirmedDate(db: Db, accountId: number): string | null {
 }
 
 /**
- * Une opération confirmée existe-t-elle sur ce compte, ce jour, pour ce montant signé ?
+ * Nombre d'opérations confirmées sur ce compte, ce jour, pour ce montant signé.
  * Sert à la jonction entre l'historique importé des relevés et la synchronisation API,
  * dont les libellés diffèrent (l'empreinte ne suffit pas).
  */
-export function hasConfirmedOn(db: Db, accountId: number, date: string, signedAmount: number): boolean {
+export function countConfirmedOn(db: Db, accountId: number, date: string, signedAmount: number): number {
   const side =
     signedAmount < 0
       ? and(eq(transactions.accountId, accountId), inArray(transactions.kind, ['expense', 'transfer']))
       : or(and(eq(transactions.accountId, accountId), eq(transactions.kind, 'income')), and(eq(transactions.toAccountId, accountId), eq(transactions.kind, 'transfer')));
   const row = db
-    .select({ id: transactions.id })
+    .select({ n: sql<number>`count(*)` })
     .from(transactions)
     .where(and(eq(transactions.status, 'confirmed'), eq(transactions.date, date), eq(transactions.amount, Math.abs(signedAmount)), side))
-    .limit(1)
     .get();
-  return row !== undefined;
+  return row?.n ?? 0;
 }
