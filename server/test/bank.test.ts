@@ -2,6 +2,7 @@ import { createVerify, generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { EnableBankingClient } from '../src/bank/enable-banking';
 import { signJwt } from '../src/bank/jwt';
+import { parseAmountToCents, toSourceRow } from '../src/bank/mapping';
 import { BankProviderError } from '../src/bank/provider';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -119,5 +120,49 @@ describe('EnableBankingClient', () => {
     const { fetchFn } = fakeFetch({ '/sessions/s1': [{ status: 401, body: { message: 'Invalid JWT', code: 'unauthorized' } }] });
     await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ name: 'BankProviderError', status: 401, code: 'unauthorized', message: 'Invalid JWT' });
     expect(new BankProviderError('x', 500)).toBeInstanceOf(Error);
+  });
+});
+
+describe('parseAmountToCents', () => {
+  it('lit les montants décimaux sans flottant', () => {
+    expect(parseAmountToCents('1.23')).toBe(123);
+    expect(parseAmountToCents('0.1')).toBe(10);
+    expect(parseAmountToCents('2000')).toBe(2000_00);
+    expect(parseAmountToCents('-12,50')).toBe(-12_50);
+    expect(() => parseAmountToCents('abc')).toThrow();
+  });
+});
+
+describe('toSourceRow', () => {
+  const base = {
+    booking_date: '2026-10-02',
+    value_date: '2026-10-03',
+    transaction_amount: { amount: '42.10', currency: 'EUR' },
+    credit_debit_indicator: 'DBIT' as const,
+    status: 'BOOK',
+  };
+
+  it('débit : montant négatif, libellé depuis la référence, note avec les détails', () => {
+    const r = toSourceRow({ ...base, remittance_information: ['CARTE X1234 02/10', 'CARREFOUR PARIS'], creditor: { name: 'CARREFOUR' }, entry_reference: 'ABC1' });
+    expect(r).toEqual({
+      ok: true,
+      row: { date: '2026-10-02', label: 'CARTE X1234 02/10 CARREFOUR PARIS', signedAmount: -42_10, note: 'CARTE X1234 02/10 CARREFOUR PARIS · CARREFOUR · Réf. ABC1 · Valeur 2026-10-03' },
+    });
+  });
+
+  it('crédit sans référence : libellé depuis le débiteur, note nulle', () => {
+    const r = toSourceRow({ ...base, credit_debit_indicator: 'CRDT', value_date: '2026-10-02', debtor: { name: 'EMPLOYEUR SA' } });
+    expect(r).toEqual({ ok: true, row: { date: '2026-10-02', label: 'EMPLOYEUR SA', signedAmount: 42_10, note: null } });
+  });
+
+  it('replis : description du code, puis « Opération » ; date de valeur si pas de date comptable', () => {
+    expect(toSourceRow({ ...base, booking_date: null, bank_transaction_code: { description: 'Frais bancaires' } })).toMatchObject({ ok: true, row: { date: '2026-10-03', label: 'Frais bancaires' } });
+    expect(toSourceRow({ ...base, remittance_information: [] })).toMatchObject({ ok: true, row: { label: 'Opération' } });
+  });
+
+  it('rejette une opération sans date ou à montant nul', () => {
+    expect(toSourceRow({ ...base, booking_date: null, value_date: null })).toEqual({ ok: false, reason: 'date absente' });
+    expect(toSourceRow({ ...base, transaction_amount: { amount: '0.00' } })).toEqual({ ok: false, reason: 'montant nul' });
+    expect(toSourceRow({ ...base, transaction_amount: { amount: 'n/a' } })).toEqual({ ok: false, reason: 'montant illisible' });
   });
 });
