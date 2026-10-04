@@ -26,9 +26,16 @@
   max-width: 240px;
 }
 
+/* Identifiant technique (UUID) : même police que la clé PEM, et assez compact pour tenir en entier. */
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: var(--s-2);
 }
 
 .text {

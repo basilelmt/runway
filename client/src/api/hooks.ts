@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
+  BankAuthStart,
+  BankConnectionView,
+  BankSyncRunResult,
+  BankSyncState,
   ForecastResponse,
   ImportCommitInput,
   ImportPreview,
@@ -12,6 +16,7 @@ import type {
 import type {
   Account,
   AccountInput,
+  BankLinkInput,
   Envelope,
   EnvelopeInput,
   ImportRecord,
@@ -44,6 +49,7 @@ export const keys = {
   monthly: (months: number) => ['reports', 'monthly', months] as const,
   netWorth: (months: number, horizon: number) => ['reports', 'net-worth', months, horizon] as const,
   imports: ['imports'] as const,
+  bankSync: ['bank-sync'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -244,4 +250,64 @@ export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: ()
 export function useSaveSettings(opts?: MutOpts<Settings, Settings>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (input) => api.put<Settings>('/api/settings', input), onSuccess: (...a) => { invalidate(keys.settings); opts?.onSuccess?.(...a); } });
+}
+
+// Synchronisation bancaire
+
+export const useBankSync = () => useQuery({ queryKey: keys.bankSync, queryFn: () => api.get<BankSyncState>('/api/bank-sync') });
+
+export function useTestBankCredentials(opts?: MutOpts<{ name: string; environment: string }, void>) {
+  return useMutation({ ...opts, mutationFn: () => api.post<{ name: string; environment: string }>('/api/bank-sync/test', {}) });
+}
+
+export function useStartBankConnection(opts?: MutOpts<BankAuthStart, number | undefined>) {
+  return useMutation({ ...opts, mutationFn: (connectionId) => api.post<BankAuthStart>('/api/bank-sync/connections', { connectionId: connectionId ?? null }) });
+}
+
+export function useCompleteBankConnection(opts?: MutOpts<BankConnectionView, { connectionId: number; code: string; state: string }>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: ({ connectionId, code, state }) => api.post<BankConnectionView>(`/api/bank-sync/connections/${connectionId}/complete`, { code, state }),
+    onSuccess: (...a) => {
+      invalidate(keys.bankSync);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export function useLinkBankAccounts(opts?: MutOpts<BankConnectionView, { connectionId: number } & BankLinkInput>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: ({ connectionId, links }) => api.put<BankConnectionView>(`/api/bank-sync/connections/${connectionId}/accounts`, { links }),
+    onSuccess: (...a) => {
+      invalidate(keys.bankSync);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export function useRunBankSync(opts?: MutOpts<BankSyncRunResult, number | undefined>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (onlyIfStaleMinutes) => api.post<BankSyncRunResult>('/api/bank-sync/run', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}),
+    onSuccess: (...a) => {
+      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export function useDisconnectBank(opts?: MutOpts<void, number>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (id) => api.delete(`/api/bank-sync/connections/${id}`),
+    onSuccess: (...a) => {
+      invalidate(keys.bankSync);
+      opts?.onSuccess?.(...a);
+    },
+  });
 }

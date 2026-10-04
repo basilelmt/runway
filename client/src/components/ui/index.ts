@@ -5,7 +5,7 @@ export { Card } from './Card';
 export { Dialog } from './Dialog';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
-export { DateInput, Input, Select } from './Input';
+export { DateInput, Input, Select, Textarea } from './Input';
 export { MoneyInput } from './MoneyInput';
 export { ProgressBar } from './ProgressBar';
 export { Segmented } from './Segmented';

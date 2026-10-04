@@ -36,3 +36,8 @@ export function inDays(n: number): string {
   if (n === 1) return 'demain';
   return `dans ${n} j`;
 }
+
+/** « 4 oct., 10:32 » à partir d'un horodatage ISO. */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}

@@ -1,10 +1,10 @@
-import { Download, FileJson } from 'lucide-react';
+import { Download, FileJson, Landmark } from 'lucide-react';
 import { useState } from 'react';
 import { settingsSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useSaveSettings, useSettings } from '@/api/hooks';
+import { useSaveSettings, useSettings, useTestBankCredentials } from '@/api/hooks';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button, Card, Field, Input, SkeletonRows, useToast } from '@/components/ui';
+import { Button, Card, Field, Input, SkeletonRows, Textarea, useToast } from '@/components/ui';
 import styles from './Settings.module.css';
 
 export function SettingsPage() {
@@ -14,6 +14,14 @@ export function SettingsPage() {
 
   const [horizon, setHorizon] = useState('90');
   const [model, setModel] = useState('');
+  const [appId, setAppId] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
+  const [bankErrors, setBankErrors] = useState<{ appId?: string; privateKey?: string }>({});
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const testBank = useTestBankCredentials({
+    onSuccess: (r) => setTestResult(`Connexion réussie : application « ${r.name} » (${r.environment.toLowerCase()})`),
+    onError: (e) => setTestResult(`Échec : ${errorMessage(e)}`),
+  });
   const [errors, setErrors] = useState<{ horizon?: string; model?: string }>({});
 
   // Le formulaire se remplit à l'arrivée des réglages (et se resynchronise après enregistrement).
@@ -22,11 +30,13 @@ export function SettingsPage() {
     setLoaded(settings.data);
     setHorizon(String(settings.data.forecastHorizonDays));
     setModel(settings.data.claudeModel);
+    setAppId(settings.data.enableBankingAppId);
+    setPrivateKey(settings.data.enableBankingPrivateKey);
   }
 
   function submit(e: { preventDefault(): void }) {
     e.preventDefault();
-    const parsed = settingsSchema.safeParse({ forecastHorizonDays: Number(horizon), claudeModel: model });
+    const parsed = settingsSchema.safeParse({ ...settings.data, forecastHorizonDays: Number(horizon), claudeModel: model });
     if (!parsed.success) {
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
@@ -37,6 +47,27 @@ export function SettingsPage() {
       return;
     }
     setErrors({});
+    save.mutate(parsed.data);
+  }
+
+  function submitBank(e: { preventDefault(): void }) {
+    e.preventDefault();
+    const parsed = settingsSchema.safeParse({ ...settings.data, enableBankingAppId: appId, enableBankingPrivateKey: privateKey });
+    if (!parsed.success) {
+      const next: typeof bankErrors = {};
+      for (const issue of parsed.error.issues) {
+        if (issue.path[0] === 'enableBankingAppId') next.appId = issue.message;
+        if (issue.path[0] === 'enableBankingPrivateKey') next.privateKey = issue.message;
+      }
+      setBankErrors(next);
+      return;
+    }
+    if (parsed.data.enableBankingPrivateKey && !/BEGIN (RSA )?PRIVATE KEY/.test(parsed.data.enableBankingPrivateKey)) {
+      setBankErrors({ privateKey: 'Colle le contenu complet du fichier .pem, avec les lignes BEGIN et END' });
+      return;
+    }
+    setBankErrors({});
+    setTestResult(null);
     save.mutate(parsed.data);
   }
 
@@ -60,6 +91,44 @@ export function SettingsPage() {
                 {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={model} onChange={(e) => setModel(e.target.value)} placeholder="Par défaut" className={styles.short} />}
               </Field>
               <div className={styles.actions}>
+                <Button type="submit" variant="primary" loading={save.isPending}>
+                  Enregistrer
+                </Button>
+              </div>
+            </form>
+          )}
+        </Card>
+
+        <Card className={styles.card}>
+          <h2 className={styles.cardTitle}>Banque (Enable Banking)</h2>
+          <p className={styles.text}>
+            Runway lit tes opérations La Banque Postale par l'API Enable Banking. Crée une application <strong>Production</strong> sur{' '}
+            <a href="https://enablebanking.com/cp/" target="_blank" rel="noreferrer">
+              enablebanking.com/cp
+            </a>{' '}
+            avec l'URL de redirection <code className="mono">https://localhost:3000/bank-sync/callback</code>, puis colle ici son identifiant et la clé privée téléchargée.
+          </p>
+          {settings.isPending ? (
+            <SkeletonRows rows={2} />
+          ) : (
+            <form className={styles.form} onSubmit={submitBank} noValidate>
+              <Field label="Application ID" error={bankErrors.appId} hint="Affiché dans la console Enable Banking, onglet API applications.">
+                {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={appId} onChange={(e) => setAppId(e.target.value)} autoComplete="off" spellCheck={false} className={styles.code} />}
+              </Field>
+              <Field label="Clé privée (PEM)" error={bankErrors.privateKey} hint="Le fichier .pem téléchargé à la création de l'application. Stockée en clair dans la base locale, jamais exportée.">
+                {(id, describedBy) => (
+                  <Textarea id={id} aria-describedby={describedBy} value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'} spellCheck={false} />
+                )}
+              </Field>
+              {testResult ? (
+                <p className={styles.text} role="status">
+                  {testResult}
+                </p>
+              ) : null}
+              <div className={styles.actions}>
+                <Button type="button" icon={<Landmark aria-hidden />} loading={testBank.isPending} disabled={!settings.data?.enableBankingAppId || !settings.data?.enableBankingPrivateKey} onClick={() => testBank.mutate()}>
+                  Tester la connexion
+                </Button>
                 <Button type="submit" variant="primary" loading={save.isPending}>
                   Enregistrer
                 </Button>

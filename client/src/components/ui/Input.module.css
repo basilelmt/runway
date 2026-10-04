@@ -36,6 +36,16 @@
   background-position: right var(--s-3) center;
 }
 
+.textarea {
+  height: auto;
+  min-height: 120px;
+  padding: var(--s-2) var(--s-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  resize: vertical;
+}
+
 .money {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
