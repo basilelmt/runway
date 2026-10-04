@@ -205,8 +205,15 @@ export type ImportRecord = z.infer<typeof importRecordSchema>;
 export const settingsSchema = z.object({
   forecastHorizonDays: z.number().int().min(7).max(730).default(90),
   claudeModel: z.string().trim().max(60).default(''),
+  /** Application ID Enable Banking (en-tête `kid` du JWT). Vide = synchro bancaire désactivée. */
+  enableBankingAppId: z.string().trim().max(100).default(''),
+  /** Clé privée PEM de l'application Enable Banking. */
+  enableBankingPrivateKey: z.string().trim().max(10_000).default(''),
 });
 export type Settings = z.infer<typeof settingsSchema>;
+
+export const bankConnectionStatuses = ['pending', 'authorized', 'active', 'expired', 'revoked'] as const;
+export type BankConnectionStatus = (typeof bankConnectionStatuses)[number];
 
 export const idListSchema = z.object({ ids: z.array(idSchema).min(1) });
 

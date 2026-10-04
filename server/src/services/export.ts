@@ -15,7 +15,8 @@ export function exportJson(db: Db) {
     recurringRules: state.rules,
     sortingRules: listSortingRules(db),
     imports: listImports(db),
-    settings: getSettings(db),
+    // La clé privée Enable Banking ne sort jamais de la base : l'utilisateur garde le fichier .pem.
+    settings: { ...getSettings(db), enableBankingPrivateKey: '' },
   };
 }
 

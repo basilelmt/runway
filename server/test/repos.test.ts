@@ -141,8 +141,8 @@ describe('sorting rules', () => {
 
 describe('settings', () => {
   it('valeurs par défaut puis sauvegarde', () => {
-    expect(getSettings(ctx.db)).toEqual({ forecastHorizonDays: 90, claudeModel: '' });
-    saveSettings(ctx.db, { forecastHorizonDays: 120, claudeModel: 'sonnet' });
-    expect(getSettings(ctx.db)).toEqual({ forecastHorizonDays: 120, claudeModel: 'sonnet' });
+    expect(getSettings(ctx.db)).toEqual({ forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: '', enableBankingPrivateKey: '' });
+    saveSettings(ctx.db, { forecastHorizonDays: 120, claudeModel: 'sonnet', enableBankingAppId: 'app-1', enableBankingPrivateKey: 'cle' });
+    expect(getSettings(ctx.db)).toEqual({ forecastHorizonDays: 120, claudeModel: 'sonnet', enableBankingAppId: 'app-1', enableBankingPrivateKey: 'cle' });
   });
 });

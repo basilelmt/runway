@@ -94,3 +94,37 @@ export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+export const bankConnections = sqliteTable('bank_connections', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  provider: text('provider').notNull().default('enablebanking'),
+  aspspName: text('aspsp_name').notNull(),
+  aspspCountry: text('aspsp_country').notNull(),
+  /** Jeton aléatoire envoyé à `/auth`, vérifié au retour. */
+  state: text('state').notNull(),
+  sessionId: text('session_id'),
+  status: text('status', { enum: ['pending', 'authorized', 'active', 'expired', 'revoked'] }).notNull().default('pending'),
+  validUntil: text('valid_until'),
+  lastSyncAt: text('last_sync_at'),
+  lastError: text('last_error'),
+  createdAt: text('created_at').notNull().default(now),
+});
+
+export const bankAccounts = sqliteTable(
+  'bank_accounts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    connectionId: integer('connection_id')
+      .notNull()
+      .references(() => bankConnections.id, { onDelete: 'cascade' }),
+    /** Identifiant du compte chez Enable Banking. */
+    uid: text('uid').notNull(),
+    iban: text('iban'),
+    bankName: text('bank_name').notNull(),
+    accountId: integer('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    /** Première date synchronisée ; null tant que la liaison n'est pas confirmée. */
+    syncFrom: text('sync_from'),
+    lastSyncedDate: text('last_synced_date'),
+  },
+  (t) => [index('bank_accounts_connection_idx').on(t.connectionId)],
+);

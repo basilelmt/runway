@@ -126,11 +126,19 @@ describe('sorting rules apply', () => {
 });
 
 describe('settings', () => {
-  it('lit et écrit', async () => {
-    expect((await t.call('GET', '/api/settings')).body).toEqual({ forecastHorizonDays: 90, claudeModel: '' });
-    const r = await t.call('PUT', '/api/settings', { forecastHorizonDays: 60, claudeModel: 'haiku' });
-    expect(r.body).toEqual({ forecastHorizonDays: 60, claudeModel: 'haiku' });
+  it('lit les valeurs par défaut et enregistre', async () => {
+    expect((await t.call('GET', '/api/settings')).body).toEqual({ forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: '', enableBankingPrivateKey: '' });
+    const r = await t.call('PUT', '/api/settings', { forecastHorizonDays: 60, claudeModel: 'haiku', enableBankingAppId: 'app-1', enableBankingPrivateKey: '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----' });
+    expect(r.body).toMatchObject({ forecastHorizonDays: 60, claudeModel: 'haiku', enableBankingAppId: 'app-1' });
     expect((await t.call('PUT', '/api/settings', { forecastHorizonDays: 1 })).status).toBe(400);
+  });
+
+  it("l'export JSON ne contient pas la clé privée", async () => {
+    await t.call('PUT', '/api/settings', { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app-1', enableBankingPrivateKey: 'SECRET' });
+    const res = await t.app.request('/api/export.json');
+    const body = (await res.json()) as { settings: { enableBankingPrivateKey: string; enableBankingAppId: string } };
+    expect(body.settings.enableBankingAppId).toBe('app-1');
+    expect(body.settings.enableBankingPrivateKey).toBe('');
   });
 });
 
