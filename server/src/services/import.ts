@@ -7,7 +7,7 @@ import type { ImportRecord } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { BadRequestError } from '../errors';
 import { detectParser } from '../parsers';
-import { extractPdfText as defaultExtractPdfText, isPdf, parseLbpStatementText, type StatementSection } from '../parsers/lbp-pdf';
+import { extractPdfText as defaultExtractPdfText, isPdf, parseLbpStatementText } from '../parsers/lbp-pdf';
 import { findAccountByBankNumber, getAccount, updateAccount } from '../repos/accounts';
 import { createImport } from '../repos/imports';
 import { listSortingRules } from '../repos/sorting-rules';
@@ -15,21 +15,25 @@ import { createTransaction, findByFingerprints, findTransfersTo, getTransaction,
 
 export type ImportDeps = { extractPdfText?: (buffer: Buffer) => Promise<string> };
 
-type SourceRow = { date: ISODate; label: string; signedAmount: number; note: string | null; raw: string };
+export type SourceRow = { date: ISODate; label: string; signedAmount: number; note: string | null };
 
-type Source = {
+/** Autre compte lu dans le même lot (section d'un PDF, autre compte synchronisé) : sert à reconnaître les virements internes. */
+export type Sibling = { accountId: number | null; iban: string | null; rows: { date: ISODate; signedAmount: number }[] };
+
+/** Opérations d'un compte prêtes à être traitées, quelle que soit leur origine (fichier ou API). */
+export type Source = {
   parserId: string;
   bankAccountNumber: string | null;
   rows: SourceRow[];
   sections: ImportSection[];
   sectionIndex: number;
-  /** Sections d'un PDF, pour reconnaître les virements entre comptes propres. */
-  pdfSections: StatementSection[];
+  siblings: Sibling[];
 };
 
 const TRANSFER_TOLERANCE_DAYS = 4;
+const IBAN_RE = /[A-Z]{2}\d{2}[A-Z0-9]{10,30}/;
 
-async function readSource(db: Db, input: { buffer: Buffer; accountId: number | null; section: number | null }, deps: ImportDeps): Promise<Source> {
+async function readFileSource(db: Db, input: { buffer: Buffer; accountId: number | null; section: number | null }, deps: ImportDeps): Promise<Source> {
   if (isPdf(input.buffer)) {
     const text = await (deps.extractPdfText ?? defaultExtractPdfText)(input.buffer);
     const { sections } = parseLbpStatementText(text);
@@ -51,10 +55,10 @@ async function readSource(db: Db, input: { buffer: Buffer; accountId: number | n
     return {
       parserId: 'lbp-pdf',
       bankAccountNumber: section.bankAccountNumber,
-      rows: section.rows.map((r) => ({ date: r.date, label: r.label, signedAmount: r.signedAmount, note: r.raw, raw: r.raw })),
+      rows: section.rows.map((r) => ({ date: r.date, label: r.label, signedAmount: r.signedAmount, note: r.raw })),
       sections: meta,
       sectionIndex,
-      pdfSections: sections,
+      siblings: sections.filter((s) => s !== section).map((s) => ({ accountId: meta.find((m) => m.bankAccountNumber === s.bankAccountNumber)?.accountId ?? null, iban: s.iban, rows: s.rows })),
     };
   }
 
@@ -64,32 +68,36 @@ async function readSource(db: Db, input: { buffer: Buffer; accountId: number | n
   return {
     parserId: parser.id,
     bankAccountNumber: statement.bankAccountNumber,
-    rows: statement.rows.map((r) => ({ ...r, note: null, raw: r.label })),
+    rows: statement.rows.map((r) => ({ ...r, note: null })),
     sections: [],
     sectionIndex: 0,
-    pdfSections: [],
+    siblings: [],
   };
 }
 
+function rowText(row: ImportPreviewRow): string {
+  return `${row.label} ${row.note ?? ''}`;
+}
+
 /**
- * Virements entre comptes propres dans un relevé PDF : un débit qui cite l'IBAN d'une autre section,
- * avec un crédit du même montant à ±4 jours dans cette section, devient un transfert vers ce compte.
+ * Virements entre comptes propres : un débit « VIREMENT » avec un crédit du même montant à ±4 jours
+ * chez un compte frère devient un transfert vers ce compte. Quand le libellé cite un IBAN, il désigne
+ * la cible ; sans IBAN (cas de l'API), un unique compte frère portant la contrepartie suffit.
  */
-function detectInternalTransfers(db: Db, source: Source, rows: ImportPreviewRow[]): void {
-  const current = source.pdfSections[source.sectionIndex];
-  if (!current) return;
-  const others = source.pdfSections.filter((s) => s !== current && s.iban);
+function detectInternalTransfers(siblings: Sibling[], rows: ImportPreviewRow[]): void {
+  const known = siblings.filter((s) => s.accountId !== null);
+  if (known.length === 0) return;
   for (const row of rows) {
-    if (row.status !== 'new' || row.signedAmount >= 0 || !/VIREMENT/i.test(row.note ?? '')) continue;
-    const compact = (row.note ?? '').replace(/\s/g, '');
-    const target = others.find((s) => compact.includes(s.iban!));
-    if (!target) continue;
-    const account = findAccountByBankNumber(db, target.bankAccountNumber);
-    if (!account) continue;
-    const counterpart = target.rows.find((r) => r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
-    if (!counterpart) continue;
+    const text = rowText(row);
+    if (row.status !== 'new' || row.signedAmount >= 0 || !/VIREMENT/i.test(text)) continue;
+    const compact = text.replace(/\s/g, '').toUpperCase();
+    const hasCounterpart = (s: Sibling) => s.rows.some((r) => r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
+    const byIban = known.find((s) => s.iban && compact.includes(s.iban));
+    const candidates = byIban ? [byIban] : IBAN_RE.test(compact) ? [] : known.filter(hasCounterpart);
+    const target = candidates.length === 1 ? candidates[0]! : null;
+    if (!target || !hasCounterpart(target)) continue;
     row.status = 'transfer';
-    row.transferToAccountId = account.id;
+    row.transferToAccountId = target.accountId;
     row.envelopeId = null;
   }
 }
@@ -98,7 +106,7 @@ function detectInternalTransfers(db: Db, source: Source, rows: ImportPreviewRow[
 function markInternalCredits(db: Db, accountId: number, rows: ImportPreviewRow[]): void {
   const claimed = new Set<number>();
   for (const row of rows) {
-    if (row.status !== 'new' || row.signedAmount <= 0 || !/VIREMENT/i.test(row.note ?? '')) continue;
+    if (row.status !== 'new' || row.signedAmount <= 0 || !/VIREMENT/i.test(rowText(row))) continue;
     const transfers = findTransfersTo(db, accountId, row.signedAmount, addDays(row.date, -TRANSFER_TOLERANCE_DAYS), addDays(row.date, TRANSFER_TOLERANCE_DAYS));
     const free = transfers.find((t) => !claimed.has(t.id));
     if (!free) continue;
@@ -107,18 +115,11 @@ function markInternalCredits(db: Db, accountId: number, rows: ImportPreviewRow[]
   }
 }
 
-export async function previewImport(
-  db: Db,
-  input: { buffer: Buffer; accountId?: number | null; section?: number | null },
-  deps: ImportDeps = {},
-): Promise<ImportPreview> {
-  const source = await readSource(db, { buffer: input.buffer, accountId: input.accountId ?? null, section: input.section ?? null }, deps);
-
-  let accountId = input.accountId ?? null;
-  if (source.sections.length > 0) accountId = source.sections[source.sectionIndex]?.accountId ?? null;
-  if (accountId == null && source.bankAccountNumber) {
-    accountId = findAccountByBankNumber(db, source.bankAccountNumber)?.id ?? null;
-  }
+/**
+ * Traitement commun à toutes les sources : empreintes, doublons, virements internes,
+ * rapprochement des opérations prévues et règles de tri.
+ */
+export function buildPreview(db: Db, source: Source, accountId: number | null): ImportPreview {
   if (accountId != null) getAccount(db, accountId);
 
   const rules = listSortingRules(db);
@@ -149,7 +150,7 @@ export async function previewImport(
   for (const row of rows) if (existing.has(row.fingerprint)) row.status = 'duplicate';
 
   if (accountId != null) {
-    detectInternalTransfers(db, source, rows);
+    detectInternalTransfers(source.siblings, rows);
     markInternalCredits(db, accountId, rows);
   }
 
@@ -176,6 +177,21 @@ export async function previewImport(
     sections: source.sections,
     sectionIndex: source.sectionIndex,
   };
+}
+
+export async function previewImport(
+  db: Db,
+  input: { buffer: Buffer; accountId?: number | null; section?: number | null },
+  deps: ImportDeps = {},
+): Promise<ImportPreview> {
+  const source = await readFileSource(db, { buffer: input.buffer, accountId: input.accountId ?? null, section: input.section ?? null }, deps);
+
+  let accountId = input.accountId ?? null;
+  if (source.sections.length > 0) accountId = source.sections[source.sectionIndex]?.accountId ?? null;
+  if (accountId == null && source.bankAccountNumber) {
+    accountId = findAccountByBankNumber(db, source.bankAccountNumber)?.id ?? null;
+  }
+  return buildPreview(db, source, accountId);
 }
 
 export function commitImport(db: Db, input: ImportCommitInput & { bankAccountNumber?: string | null }): ImportRecord {
