@@ -1,4 +1,5 @@
 import { fingerprint } from '@core/fingerprint';
+import { extractIbans } from '@core/iban';
 import { matchPlanned } from '@core/matching';
 import { applySortingRules } from '@core/sorting';
 import type { ImportCommitInput, ImportPreview, ImportPreviewRow, ImportSection } from '@shared/api-types';
@@ -31,7 +32,6 @@ export type Source = {
 };
 
 const TRANSFER_TOLERANCE_DAYS = 4;
-const IBAN_RE = /[A-Z]{2}\d{2}[A-Z0-9]{10,30}/;
 
 async function readFileSource(db: Db, input: { buffer: Buffer; accountId: number | null; section: number | null }, deps: ImportDeps): Promise<Source> {
   if (isPdf(input.buffer)) {
@@ -81,21 +81,29 @@ function rowText(row: ImportPreviewRow): string {
 
 /**
  * Virements entre comptes propres : un débit « VIREMENT » avec un crédit du même montant à ±4 jours
- * chez un compte frère devient un transfert vers ce compte. Quand le libellé cite un IBAN, il désigne
- * la cible ; sans IBAN (cas de l'API), un unique compte frère portant la contrepartie suffit.
+ * chez un compte frère devient un transfert vers ce compte. Le texte examiné est le libellé plus la note :
+ * - s'il cite l'IBAN d'un compte frère, ce compte est la cible ;
+ * - s'il cite un autre IBAN valide (tiers inconnu), la ligne reste telle quelle ;
+ * - sans IBAN (cas de l'API), la cible est l'unique compte frère portant la contrepartie.
+ * Chaque crédit d'un compte frère ne sert de contrepartie qu'à un seul débit.
  */
 function detectInternalTransfers(siblings: Sibling[], rows: ImportPreviewRow[]): void {
   const known = siblings.filter((s) => s.accountId !== null);
   if (known.length === 0) return;
+  const claimed = new Map<Sibling, Set<number>>(known.map((s) => [s, new Set<number>()]));
+  const findCounterpart = (s: Sibling, row: ImportPreviewRow): number =>
+    s.rows.findIndex((r, i) => !claimed.get(s)!.has(i) && r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
   for (const row of rows) {
     const text = rowText(row);
     if (row.status !== 'new' || row.signedAmount >= 0 || !/VIREMENT/i.test(text)) continue;
-    const compact = text.replace(/\s/g, '').toUpperCase();
-    const hasCounterpart = (s: Sibling) => s.rows.some((r) => r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
-    const byIban = known.find((s) => s.iban && compact.includes(s.iban));
-    const candidates = byIban ? [byIban] : IBAN_RE.test(compact) ? [] : known.filter(hasCounterpart);
+    const ibans = extractIbans(text);
+    const byIban = known.find((s) => s.iban && ibans.includes(s.iban.replace(/\s/g, '').toUpperCase()));
+    const candidates = byIban ? [byIban] : ibans.length > 0 ? [] : known.filter((s) => findCounterpart(s, row) >= 0);
     const target = candidates.length === 1 ? candidates[0]! : null;
-    if (!target || !hasCounterpart(target)) continue;
+    if (!target) continue;
+    const counterpart = findCounterpart(target, row);
+    if (counterpart < 0) continue;
+    claimed.get(target)!.add(counterpart);
     row.status = 'transfer';
     row.transferToAccountId = target.accountId;
     row.envelopeId = null;
