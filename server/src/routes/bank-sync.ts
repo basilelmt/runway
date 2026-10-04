@@ -1,0 +1,80 @@
+import { Hono, type Context } from 'hono';
+import { z } from 'zod';
+import { bankCompleteSchema, bankLinkSchema, bankRunSchema, bankStartSchema, type Settings } from '@shared/schemas';
+import type { AppEnv } from '../app';
+import { EnableBankingClient, type PsuInfo } from '../bank/enable-banking';
+import { BankProviderError, type BankProvider } from '../bank/provider';
+import { AppError, BadRequestError } from '../errors';
+import { getSettings } from '../repos/settings';
+import { completeConnection, disconnect, getState, linkAccounts, runSync, startConnection } from '../services/bank-sync';
+import { validate } from '../validate';
+
+export type BankDeps = {
+  /** Fabrique du fournisseur, injectable pour les tests. */
+  provider?: (settings: Settings, psu: PsuInfo) => BankProvider;
+  now?: () => Date;
+};
+
+const idParam = z.object({ id: z.coerce.number().int().positive() });
+
+const defaultProvider: NonNullable<BankDeps['provider']> = (s, psu) => new EnableBankingClient({ appId: s.enableBankingAppId, privateKey: s.enableBankingPrivateKey, psu });
+
+function isConfigured(s: Settings): boolean {
+  return s.enableBankingAppId !== '' && s.enableBankingPrivateKey !== '';
+}
+
+function psuInfo(c: Context<AppEnv>): PsuInfo {
+  const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+  return { ip: forwarded || '127.0.0.1', userAgent: c.req.header('user-agent') ?? 'Runway' };
+}
+
+/** Une erreur du fournisseur devient une 502 lisible plutôt qu'une 500 anonyme. */
+async function guard<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof BankProviderError) throw new AppError(err.message, 502, 'bank_provider');
+    if (err instanceof AppError) throw err;
+    if (err instanceof Error) throw new AppError(err.message, 502, 'bank_provider');
+    throw err;
+  }
+}
+
+export const bankSyncRoutes = (deps: BankDeps = {}) => {
+  const makeProvider = deps.provider ?? defaultProvider;
+  const now = deps.now ?? (() => new Date());
+
+  function provider(c: Context<AppEnv>): BankProvider {
+    const settings = getSettings(c.get('db'));
+    if (!isConfigured(settings)) throw new BadRequestError('Identifiants Enable Banking manquants : renseigne-les dans Paramètres, section Banque');
+    return makeProvider(settings, psuInfo(c));
+  }
+
+  return new Hono<AppEnv>()
+    .get('/', (c) => c.json(getState(c.get('db'), isConfigured(getSettings(c.get('db'))))))
+    .post('/test', async (c) => c.json(await guard(() => provider(c).getApplication())))
+    .post('/connections', validate('json', bankStartSchema), async (c) => {
+      const { connectionId } = c.req.valid('json');
+      const p = provider(c);
+      return c.json(await guard(() => startConnection(c.get('db'), p, { connectionId: connectionId ?? undefined, now: now() })), 201);
+    })
+    .post('/connections/:id/complete', validate('param', idParam), validate('json', bankCompleteSchema), async (c) => {
+      const p = provider(c);
+      const { code, state } = c.req.valid('json');
+      return c.json(await guard(() => completeConnection(c.get('db'), p, { connectionId: c.req.valid('param').id, code, state })));
+    })
+    .put('/connections/:id/accounts', validate('param', idParam), validate('json', bankLinkSchema), (c) => {
+      return c.json(linkAccounts(c.get('db'), { connectionId: c.req.valid('param').id, links: c.req.valid('json').links, today: c.get('today') }));
+    })
+    .post('/run', validate('json', bankRunSchema), async (c) => {
+      const settings = getSettings(c.get('db'));
+      if (!isConfigured(settings)) return c.json({ reason: 'not_configured', connections: [] });
+      const p = makeProvider(settings, psuInfo(c));
+      return c.json(await runSync(c.get('db'), p, { today: c.get('today'), now: now(), onlyIfStaleMinutes: c.req.valid('json').onlyIfStaleMinutes }));
+    })
+    .delete('/connections/:id', validate('param', idParam), async (c) => {
+      const p = provider(c);
+      await disconnect(c.get('db'), p, c.req.valid('param').id);
+      return c.body(null, 204);
+    });
+};

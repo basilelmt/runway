@@ -3,6 +3,7 @@ import { today } from '@shared/dates';
 import type { Db } from './db/client';
 import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
+import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
 import { envelopeRoutes } from './routes/envelopes';
 import { importRoutes } from './routes/imports';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
@@ -25,9 +26,11 @@ export type AppOptions = {
   exec?: Exec;
   /** Extraction du texte des PDF, injectable pour les tests. */
   importDeps?: ImportDeps;
+  /** Fournisseur bancaire et horloge, injectables pour les tests. */
+  bankDeps?: BankDeps;
 };
 
-export function createApp({ db, now = today, exec, importDeps }: AppOptions) {
+export function createApp({ db, now = today, exec, importDeps, bankDeps }: AppOptions) {
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
@@ -71,6 +74,7 @@ export function createApp({ db, now = today, exec, importDeps }: AppOptions) {
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
   app.route('/api/imports', importRoutes(importDeps));
+  app.route('/api/bank-sync', bankSyncRoutes(bankDeps));
   app.route('/api', exportRoutes);
 
   return app;

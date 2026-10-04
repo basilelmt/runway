@@ -3,7 +3,7 @@ import type { BankAccountInfo, BankProvider, BankTransaction } from '../src/bank
 import { listBankAccounts, listConnections, updateConnection } from '../src/repos/bank';
 import { createTransaction } from '../src/repos/transactions';
 import { completeConnection, disconnect, getState, linkAccounts, runSync, startConnection } from '../src/services/bank-sync';
-import { createTestDb, type TestContext } from './helpers';
+import { createTestApp, createTestDb, type TestApp, type TestContext } from './helpers';
 
 const NOW = new Date('2026-10-04T10:00:00Z');
 const TODAY = '2026-10-04';
@@ -316,5 +316,77 @@ describe('synchronisation', () => {
     await connect();
     const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     expect(result.connections[0]).toMatchObject({ created: 1, skipped: 1 });
+  });
+});
+
+describe('routes /api/bank-sync', () => {
+  let t: TestApp;
+  let p: FakeProvider;
+  beforeEach(() => {
+    p = new FakeProvider();
+    t = createTestApp('2026-10-04', { bankProvider: p });
+  });
+
+  async function configure() {
+    await t.call('PUT', '/api/settings', { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app', enableBankingPrivateKey: 'key' });
+  }
+
+  it('sans identifiants : état non configuré, run sans erreur, autres routes en 400', async () => {
+    expect((await t.call('GET', '/api/bank-sync')).body).toEqual({ configured: false, redirectUrl: 'https://localhost:3000/bank-sync/callback', connections: [] });
+    expect((await t.call('POST', '/api/bank-sync/run', {})).body).toEqual({ reason: 'not_configured', connections: [] });
+    const test = await t.call('POST', '/api/bank-sync/test', {});
+    expect(test.status).toBe(400);
+    expect(test.body.error).toMatch(/Paramètres/);
+    expect((await t.call('POST', '/api/bank-sync/connections', {})).status).toBe(400);
+  });
+
+  it('parcours complet : test, connexion, retour, liaison, synchro, déconnexion', async () => {
+    await configure();
+    expect((await t.call('POST', '/api/bank-sync/test', {})).body).toEqual({ name: 'Runway', environment: 'PRODUCTION' });
+
+    const start = await t.call('POST', '/api/bank-sync/connections', {});
+    expect(start.status).toBe(201);
+    expect(start.body.url).toMatch(/^https:\/\/auth\.example\//);
+    const state = (p.calls.find((c) => c.method === 'startAuth')!.args[0] as { state: string }).state;
+
+    const bad = await t.call('POST', `/api/bank-sync/connections/${start.body.connectionId}/complete`, { code: 'ok', state: 'wrong' });
+    expect(bad.status).toBe(400);
+    const done = await t.call('POST', `/api/bank-sync/connections/${start.body.connectionId}/complete`, { code: 'ok', state });
+    expect(done.status).toBe(200);
+    expect(done.body.status).toBe('authorized');
+    expect(done.body.accounts).toHaveLength(2);
+
+    p.transactions['u-courant'] = [tx('2026-10-01', '5.00', 'DBIT', 'CAFE')];
+    const linked = await t.call('PUT', `/api/bank-sync/connections/${start.body.connectionId}/accounts`, {
+      links: [
+        { bankAccountId: done.body.accounts[0].id, accountId: t.courant.id },
+        { bankAccountId: done.body.accounts[1].id, accountId: null },
+      ],
+    });
+    expect(linked.body.status).toBe('active');
+
+    const run = await t.call('POST', '/api/bank-sync/run', {});
+    expect(run.body.reason).toBe('ok');
+    expect(run.body.connections[0]).toMatchObject({ created: 1 });
+    const listCall = p.calls.find((c) => c.method === 'listTransactions')!;
+    expect(listCall.args[2]).toBe('2026-10-04');
+
+    const stale = await t.call('POST', '/api/bank-sync/run', { onlyIfStaleMinutes: 60 });
+    expect(stale.body.reason).toBe('fresh');
+
+    const state2 = await t.call('GET', '/api/bank-sync');
+    expect(state2.body.connections[0]).toMatchObject({ status: 'active', lastError: null });
+
+    expect((await t.call('DELETE', `/api/bank-sync/connections/${start.body.connectionId}`)).status).toBe(204);
+    expect((await t.call('GET', '/api/bank-sync')).body.connections[0].status).toBe('revoked');
+  });
+
+  it('renvoie une erreur lisible quand Enable Banking refuse la session', async () => {
+    await configure();
+    const start = await t.call('POST', '/api/bank-sync/connections', {});
+    const state = (p.calls.find((c) => c.method === 'startAuth')!.args[0] as { state: string }).state;
+    const res = await t.call('POST', `/api/bank-sync/connections/${start.body.connectionId}/complete`, { code: 'bad', state });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('Code refusé');
   });
 });

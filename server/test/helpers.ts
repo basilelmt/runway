@@ -1,5 +1,6 @@
 import type { Account, Envelope } from '@shared/schemas';
 import { createApp } from '../src/app';
+import type { BankProvider } from '../src/bank/provider';
 import { openDb, type Db } from '../src/db/client';
 import { createAccount } from '../src/repos/accounts';
 import { createEnvelope } from '../src/repos/envelopes';
@@ -31,10 +32,17 @@ export type TestApp = TestContext & {
   call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
 };
 
-export function createTestApp(initialToday = '2026-03-10'): TestApp {
+export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider } = {}): TestApp {
   const ctx = createTestDb();
   let today = initialToday;
-  const app = createApp({ db: ctx.db, now: () => today });
+  const app = createApp({
+    db: ctx.db,
+    now: () => today,
+    bankDeps: {
+      provider: opts.bankProvider ? () => opts.bankProvider! : undefined,
+      now: () => new Date(`${today}T10:00:00Z`),
+    },
+  });
   return {
     ...ctx,
     app,
