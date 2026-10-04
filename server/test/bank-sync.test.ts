@@ -272,6 +272,17 @@ describe('synchronisation', () => {
     expect(rows).toEqual([{ kind: 'transfer', account_id: ctx.courant.id, to_account_id: ctx.livret.id }]);
   });
 
+  it('virement entre deux comptes synchronisés, compte receveur traité en premier : un seul transfert', async () => {
+    provider.accounts = [...provider.accounts].reverse();
+    provider.transactions['u-courant'] = [tx('2026-10-01', '100.00', 'DBIT', 'VIREMENT VERS LIVRET A')];
+    provider.transactions['u-livret'] = [tx('2026-10-02', '100.00', 'CRDT', 'VIREMENT DE M LAMOTTE')];
+    await connect();
+    const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    expect(result.connections[0]).toMatchObject({ created: 1, duplicates: 1 });
+    const rows = ctx.db.all<{ kind: string; account_id: number; to_account_id: number | null }>(`select kind, account_id, to_account_id from transactions`);
+    expect(rows).toEqual([{ kind: 'transfer', account_id: ctx.courant.id, to_account_id: ctx.livret.id }]);
+  });
+
   it('session expirée : la connexion passe en expired sans erreur', async () => {
     await connect();
     provider.sessionStatus = 'EXPIRED';

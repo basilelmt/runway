@@ -21,7 +21,7 @@ import {
   type BankConnection,
 } from '../repos/bank';
 import { countConfirmedOn, lastConfirmedDate } from '../repos/transactions';
-import { buildPreview, commitImport, type Sibling, type SourceRow } from './import';
+import { buildPreview, commitImport, markClaimedCounterparts, type Sibling, type SourceRow } from './import';
 
 export const ASPSP: Aspsp = { name: 'La Banque Postale', country: 'FR' };
 /** Déclarée telle quelle dans l'application Enable Banking. Le navigateur ne la charge pas : l'utilisateur colle l'URL. */
@@ -190,12 +190,19 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
       fetched.push({ bank, rows });
     }
 
-    for (const { bank, rows } of fetched) {
+    // Toutes les prévisualisations d'abord : la contrepartie d'un virement interne doit être connue
+    // avant d'écrire quoi que ce soit, quel que soit l'ordre des comptes.
+    const previews = fetched.map(({ bank, rows }) => {
       const siblings: Sibling[] = fetched.filter((f) => f.bank.id !== bank.id).map((f) => ({ accountId: f.bank.accountId, iban: f.bank.iban, rows: f.rows }));
       const preview = buildPreview(db, { parserId: PARSER_ID, bankAccountNumber: null, rows, sections: [], sectionIndex: 0, siblings }, bank.accountId);
       applyJunctionDedup(db, bank, preview.rows);
-      const toWrite = preview.rows.filter((r) => r.status === 'new' || r.status === 'matched' || r.status === 'transfer');
-      const duplicates = preview.rows.length - toWrite.length;
+      return { bank, sourceRows: rows, accountId: bank.accountId!, rows: preview.rows };
+    });
+    markClaimedCounterparts(previews);
+
+    for (const { bank, sourceRows, rows } of previews) {
+      const toWrite = rows.filter((r) => r.status === 'new' || r.status === 'matched' || r.status === 'transfer');
+      const duplicates = rows.length - toWrite.length;
       if (toWrite.length > 0) {
         const record = commitImport(db, {
           fileName: SYNC_FILE_NAME,
@@ -207,7 +214,7 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
         result.matched += record.matchedCount;
       }
       result.duplicates += duplicates;
-      const latest = rows.reduce<string | null>((max, r) => (max === null || compareISODate(r.date, max) > 0 ? r.date : max), bank.lastSyncedDate);
+      const latest = sourceRows.reduce<string | null>((max, r) => (max === null || compareISODate(r.date, max) > 0 ? r.date : max), bank.lastSyncedDate);
       if (latest !== bank.lastSyncedDate) updateBankAccount(db, bank.id, { lastSyncedDate: latest });
     }
     updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: null });

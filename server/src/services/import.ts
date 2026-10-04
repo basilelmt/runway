@@ -115,6 +115,28 @@ function detectInternalTransfers(siblings: Sibling[], rows: ImportPreviewRow[]):
   }
 }
 
+/**
+ * Lot de plusieurs comptes prévisualisés ensemble (synchronisation) : le crédit qui sert de contrepartie
+ * à un transfert détecté sur un autre compte du lot devient `internal`, quel que soit l'ordre de traitement.
+ * Sans cela, le crédit serait enregistré comme revenu si son compte passait avant celui du débit.
+ */
+export function markClaimedCounterparts(previews: { accountId: number; rows: ImportPreviewRow[] }[]): void {
+  const claimed = new Set<ImportPreviewRow>();
+  for (const { rows } of previews) {
+    for (const row of rows) {
+      if (row.status !== 'transfer' || row.transferToAccountId === null) continue;
+      const target = previews.find((p) => p.accountId === row.transferToAccountId);
+      const counterpart = target?.rows.find(
+        (r) => !claimed.has(r) && r.status === 'new' && r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS,
+      );
+      if (!counterpart) continue;
+      claimed.add(counterpart);
+      counterpart.status = 'internal';
+      counterpart.envelopeId = null;
+    }
+  }
+}
+
 /** Crédit d'un virement dont le transfert est déjà saisi (importé depuis l'autre compte) : à ignorer. */
 function markInternalCredits(db: Db, accountId: number, rows: ImportPreviewRow[]): void {
   const claimed = new Set<number>();
