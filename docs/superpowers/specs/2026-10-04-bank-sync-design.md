@@ -66,7 +66,7 @@ Une connexion = un consentement auprès d'une banque, couvrant plusieurs comptes
 | aspsp_country | text | `FR` |
 | state | text | jeton aléatoire envoyé à `/auth`, vérifié au retour |
 | session_id | text nullable | null tant que l'autorisation n'est pas terminée |
-| status | `pending` / `active` / `expired` / `revoked` | |
+| status | `pending` / `authorized` / `active` / `expired` / `revoked` | `pending` : autorisation lancée ; `authorized` : session créée, liaisons à confirmer ; `active` : synchronisable |
 | valid_until | text nullable | fin du consentement, ISO datetime |
 | last_sync_at | text nullable | ISO datetime |
 | last_error | text nullable | message de la dernière synchro en échec, effacé au prochain succès |
@@ -90,6 +90,7 @@ Un compte renvoyé par l'API, lié ou non à un compte Runway.
 ### `settings`
 
 Deux clés ajoutées : `enableBankingAppId` (chaîne, vide par défaut) et `enableBankingPrivateKey` (PEM, vide par défaut).
+L'export JSON de sauvegarde masque la clé privée (chaîne vide) : l'utilisateur conserve le fichier `.pem`.
 
 ### `imports`
 
@@ -105,8 +106,9 @@ Chaque synchro qui enregistre au moins une opération crée une ligne par compte
 1. Lecture : `readFileSource(db, buffer, accountId, section)` (code actuel) ou construction directe d'une `Source` par la synchro.
 2. Traitement : `buildPreview(db, source, accountId)` produit les `ImportPreviewRow` (empreintes, doublons, virements internes, crédits internes, rapprochement des prévues, règles de tri).
 
-Le type `Source` évolue : les sections PDF (`pdfSections`) deviennent des `siblings: { bankAccountNumber, iban, rows }[]`, c'est-à-dire les autres comptes lus dans le même lot.
+Le type `Source` évolue : les sections PDF (`pdfSections`) deviennent des `siblings: { accountId, iban, rows }[]`, c'est-à-dire les autres comptes lus dans le même lot.
 La détection des virements internes travaille sur `siblings`, qu'ils viennent d'un PDF multi-comptes ou d'une synchro multi-comptes.
+Quand le libellé cite un IBAN, il désigne la cible (cas des relevés PDF) ; sans aucun IBAN dans le libellé (cas de l'API), un unique compte frère portant la contrepartie (même montant, ±4 jours) suffit.
 `previewImport` (route fichier) et `commitImport` gardent leur signature.
 
 ### Module `server/src/bank/`
@@ -125,21 +127,22 @@ La détection des virements internes travaille sur `siblings`, qu'ils viennent d
 
 ### Service `server/src/services/bank-sync.ts`
 
-- `startConnection(db, provider, { redirectUrl, connectionId? })` : lit `maximum_consent_validity`, appelle `/auth`, crée la ligne `pending` (ou, pour un renouvellement, régénère `state` sur la connexion existante sans toucher à ses `bank_accounts`), renvoie `{ connectionId, url }`.
+- `startConnection(db, provider, { connectionId?, now })` : lit `maximum_consent_validity` (90 jours par défaut), appelle `/auth`, supprime les connexions `pending` abandonnées puis crée la ligne `pending` (ou, pour un renouvellement, régénère `state` sur la connexion existante sans toucher à ses `bank_accounts`), renvoie `{ connectionId, url }`.
 - `completeConnection(db, provider, { connectionId, code, state })` : vérifie `state`, crée la session, enregistre les `bank_accounts`.
   Un compte déjà connu de la connexion (même IBAN, sinon même `uid`) garde sa liaison et ses dates, seul `uid` est rafraîchi.
   Pour un compte nouveau, propose un `account_id` quand les caractères 15 à 25 de l'IBAN (numéro de compte français) égalent `accounts.bank_account_number`.
-  Passe la connexion en `active` et renseigne `valid_until`.
-- `linkAccounts(db, { connectionId, links: { bankAccountId, accountId | null }[] })` : enregistre les liaisons et fixe `sync_from` = lendemain de la dernière opération confirmée du compte Runway, ou aujourd'hui moins 90 jours si le compte est vide.
+  Renseigne `valid_until`, puis passe la connexion en `authorized` (première connexion, liaisons à confirmer) ou directement en `active` (renouvellement, liaisons déjà connues).
+- `linkAccounts(db, { connectionId, links: { bankAccountId, accountId | null }[], today })` : enregistre les liaisons, fixe `sync_from` = lendemain de la dernière opération confirmée du compte Runway (ou aujourd'hui moins 90 jours si le compte est vide) et passe une connexion `authorized` en `active`.
+  Un compte ignoré (`accountId` null) garde `sync_from` null et n'est jamais synchronisé.
 - `runSync(db, provider, { onlyIfStaleMinutes?, today })` :
   1. Verrou en mémoire : si une synchro est en cours, renvoie son résultat à venir plutôt que d'en lancer une seconde.
   2. Si `onlyIfStaleMinutes` est fourni et que `last_sync_at` est plus récent, ne fait rien.
-  3. Pour chaque connexion `active` : vérifie `GET /sessions/{id}` ; `REJECTED` ou `valid_until` dépassé → statut `expired`, on passe à la suivante.
-  4. Pour chaque `bank_accounts` lié : `date_from` = max(`sync_from`, `last_synced_date` moins 7 jours), `date_to` = aujourd'hui, statut `BOOK`, toutes les pages.
+  3. Pour chaque connexion `active` : vérifie `GET /sessions/{id}` ; statut autre que `AUTHORIZED` ou `valid_until` dépassé → statut `expired`, on passe à la suivante.
+  4. Pour chaque `bank_accounts` lié à un compte Runway non archivé : `date_from` = max(`sync_from`, `last_synced_date` moins 7 jours), `date_to` = aujourd'hui, statut `BOOK`, toutes les pages.
   5. Construit une `Source` par compte avec les autres comptes du lot en `siblings`, appelle `buildPreview`, puis applique la déduplication de jonction : une ligne `new` dont la date est dans les 10 jours suivant `sync_from` et qui a une opération confirmée existante de même compte, même date et même montant signé devient `duplicate`.
   6. Appelle `commitImport` avec les lignes `new`, `matched` et `transfer` ; met à jour `last_synced_date`.
   7. Met à jour `last_sync_at`, efface ou renseigne `last_error`.
-  Renvoie un résumé `{ connections: { id, status, created, matched, duplicates, error }[] }`.
+  Renvoie un résumé `{ reason: 'ok' | 'fresh' | 'not_configured' | 'no_connection', connections: { connectionId, status, created, matched, duplicates, skipped, error }[] }`.
 - `disconnect(db, provider, connectionId)` : `DELETE /sessions/{id}` (erreur ignorée si déjà expirée), statut `revoked`, les `bank_accounts` restent pour l'historique.
 
 Le fournisseur est injecté dans `createApp` via `bankDeps: { provider?: (settings, psu) => BankProvider }`, comme `importDeps` et `exec`.
@@ -149,7 +152,7 @@ En test, un faux `BankProvider` en mémoire.
 
 | Méthode et chemin | Rôle |
 |---|---|
-| `GET /api/bank-sync` | État : connexions, comptes liés, dernière synchro, erreurs, expiration. |
+| `GET /api/bank-sync` | État : identifiants configurés ou non, URL de redirection, connexions (hors `pending`), comptes liés, dernière synchro, erreurs, expiration. |
 | `POST /api/bank-sync/test` | Vérifie les identifiants (`GET /application`). |
 | `POST /api/bank-sync/connections` | Démarre une autorisation, renvoie l'URL à ouvrir. |
 | `POST /api/bank-sync/connections/:id/complete` | Corps `{ code, state }`, renvoie les comptes découverts avec la liaison proposée. |
@@ -157,7 +160,8 @@ En test, un faux `BankProvider` en mémoire.
 | `POST /api/bank-sync/run` | Corps `{ onlyIfStaleMinutes? }`, lance la synchro, renvoie le résumé. |
 | `DELETE /api/bank-sync/connections/:id` | Déconnecte. |
 
-Hors `GET /api/bank-sync`, toutes les routes répondent 400 avec un message explicite si les identifiants ne sont pas configurés.
+Hors `GET /api/bank-sync` et `POST /api/bank-sync/run` (qui répond `{ reason: 'not_configured' }`), toutes les routes répondent 400 avec un message explicite si les identifiants ne sont pas configurés.
+Une erreur renvoyée par Enable Banking devient une 502 avec son message.
 
 ## Interface
 
