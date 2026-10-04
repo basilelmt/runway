@@ -106,7 +106,8 @@ export function SettingsPage() {
             <a href="https://enablebanking.com/cp/" target="_blank" rel="noreferrer">
               enablebanking.com/cp
             </a>{' '}
-            avec l'URL de redirection <code className="mono">https://localhost:3000/bank-sync/callback</code>, puis colle ici son identifiant et la clé privée téléchargée.
+            avec l'URL de redirection <code className="mono">https://localhost:3000/bank-sync/callback</code>, puis, dans l'application Enable Banking, « Link accounts » pour lier tes comptes La Banque
+            Postale (mode Restricted Production). Colle enfin ici l'identifiant de l'application et la clé privée téléchargée.
           </p>
           {settings.isPending ? (
             <SkeletonRows rows={2} />

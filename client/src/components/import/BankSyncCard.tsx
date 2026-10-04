@@ -123,7 +123,7 @@ export function BankSyncCard() {
         <>
           <ol className={styles.steps}>
             <li>Un onglet La Banque Postale s'est ouvert : identifie-toi et autorise l'accès à tes comptes.</li>
-            <li>À la fin, le navigateur affiche une page introuvable sur localhost. C'est normal.</li>
+            <li>À la fin, le navigateur affiche une erreur de connexion sécurisée sur localhost. C'est normal.</li>
             <li>Copie l'adresse complète de cette page et colle-la ici.</li>
           </ol>
           <div className={styles.paste}>
@@ -136,6 +136,7 @@ export function BankSyncCard() {
               placeholder="https://localhost:3000/bank-sync/callback?code=...&state=..."
               aria-label="URL de retour"
               aria-invalid={pasteError ? true : undefined}
+              aria-describedby={pasteError ? 'bank-paste-error' : undefined}
               spellCheck={false}
             />
             <Button variant="primary" onClick={submitPaste} loading={complete.isPending} disabled={!pasted.trim()}>
@@ -146,7 +147,7 @@ export function BankSyncCard() {
             </Button>
           </div>
           {pasteError ? (
-            <p className={styles.error} role="alert">
+            <p id="bank-paste-error" className={styles.error} role="alert">
               {pasteError}
             </p>
           ) : (
@@ -193,6 +194,7 @@ export function BankSyncCard() {
           onSync={() => run.mutate(undefined)}
           onRenew={() => start.mutate(connection.id)}
           renewing={start.isPending}
+          disconnecting={disconnect.isPending}
           onDisconnect={() => {
             if (window.confirm('Déconnecter La Banque Postale ? Les opérations déjà importées restent.')) disconnect.mutate(connection.id);
           }}
@@ -294,6 +296,7 @@ function ActiveState({
   onSync,
   onRenew,
   renewing,
+  disconnecting,
   onDisconnect,
 }: {
   connection: BankConnectionView;
@@ -302,6 +305,7 @@ function ActiveState({
   onSync: () => void;
   onRenew: () => void;
   renewing: boolean;
+  disconnecting: boolean;
   onDisconnect: () => void;
 }) {
   const expired = connection.status === 'expired';
@@ -353,7 +357,7 @@ function ActiveState({
             Synchroniser maintenant
           </Button>
         ) : null}
-        <Button variant="ghost" onClick={onDisconnect}>
+        <Button variant="ghost" loading={disconnecting} onClick={onDisconnect}>
           Déconnecter
         </Button>
       </div>
