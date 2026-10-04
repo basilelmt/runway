@@ -13,8 +13,6 @@ const IBAN_LENGTHS: Record<string, number> = {
   VA: 22, VG: 24, XK: 20, YE: 30,
 };
 
-const CANDIDATE_RE = /[A-Z]{2}\d{2}[A-Z0-9]{11,30}/g;
-
 /** Somme de contrôle ISO 13616 : quatre premiers caractères en fin, lettres en 10..35, reste modulo 97 égal à 1. */
 export function isValidIban(iban: string): boolean {
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban) || IBAN_LENGTHS[iban.slice(0, 2)] !== iban.length) return false;
@@ -33,16 +31,17 @@ export function isValidIban(iban: string): boolean {
 export function extractIbans(text: string): string[] {
   const compact = text.replace(/\s/g, '').toUpperCase();
   const found: string[] = [];
-  for (const match of compact.matchAll(CANDIDATE_RE)) {
-    const run = match[0];
-    for (let start = 0; start + 4 <= run.length; start++) {
-      const length = IBAN_LENGTHS[run.slice(start, start + 2)];
-      if (!length || !/^\d{2}$/.test(run.slice(start + 2, start + 4))) continue;
-      const candidate = run.slice(start, start + length);
-      if (candidate.length === length && isValidIban(candidate)) {
-        found.push(candidate);
-        start += length - 1;
-      }
+  // Chaque position « code pays + 2 chiffres » est testée : une référence alphanumérique juste avant
+  // l'IBAN ne doit pas le masquer.
+  let next = 0;
+  for (const match of compact.matchAll(/(?=[A-Z]{2}\d{2})/g)) {
+    if (match.index < next) continue;
+    const length = IBAN_LENGTHS[compact.slice(match.index, match.index + 2)];
+    if (!length) continue;
+    const candidate = compact.slice(match.index, match.index + length);
+    if (isValidIban(candidate)) {
+      found.push(candidate);
+      next = match.index + length;
     }
   }
   return found;

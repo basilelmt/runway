@@ -90,9 +90,14 @@ function rowText(row: ImportPreviewRow): string {
 function detectInternalTransfers(siblings: Sibling[], rows: ImportPreviewRow[]): void {
   const known = siblings.filter((s) => s.accountId !== null);
   if (known.length === 0) return;
-  const claimed = new Map<Sibling, Set<number>>(known.map((s) => [s, new Set<number>()]));
+  const claimed = new Map<Sibling, Set<number>>();
+  const claimedOf = (s: Sibling): Set<number> => {
+    let set = claimed.get(s);
+    if (!set) claimed.set(s, (set = new Set<number>()));
+    return set;
+  };
   const findCounterpart = (s: Sibling, row: ImportPreviewRow): number =>
-    s.rows.findIndex((r, i) => !claimed.get(s)!.has(i) && r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
+    s.rows.findIndex((r, i) => !claimedOf(s).has(i) && r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS);
   for (const row of rows) {
     const text = rowText(row);
     if (row.status !== 'new' || row.signedAmount >= 0 || !/VIREMENT/i.test(text)) continue;
@@ -103,7 +108,7 @@ function detectInternalTransfers(siblings: Sibling[], rows: ImportPreviewRow[]):
     if (!target) continue;
     const counterpart = findCounterpart(target, row);
     if (counterpart < 0) continue;
-    claimed.get(target)!.add(counterpart);
+    claimedOf(target).add(counterpart);
     row.status = 'transfer';
     row.transferToAccountId = target.accountId;
     row.envelopeId = null;

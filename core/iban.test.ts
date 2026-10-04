@@ -27,6 +27,11 @@ describe('extractIbans', () => {
     expect(extractIbans('VIR SEPA 0410 LOYER OCTOBRE')).toEqual([]);
   });
 
+  it('trouve un IBAN précédé d\'une référence alphanumérique', () => {
+    expect(extractIbans('VIREMENT REF123456 FR76 3000 6000 0112 3456 7890 189')).toEqual(['FR7630006000011234567890189']);
+    expect(extractIbans('VIREMENT AB1234567890 FR76 3000 6000 0112 3456 7890 189')).toEqual(['FR7630006000011234567890189']);
+  });
+
   it('trouve un IBAN au milieu du texte compacté', () => {
     expect(extractIbans('VIR SEPA vers gb82 west 1234 5698 7654 32 epargne')).toEqual(['GB82WEST12345698765432']);
   });
