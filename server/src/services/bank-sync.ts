@@ -1,0 +1,235 @@
+import { randomBytes } from 'node:crypto';
+import type { BankAccountView, BankAuthStart, BankConnectionView, BankSyncConnectionResult, BankSyncRunResult, BankSyncState } from '@shared/api-types';
+import { addDays, compareISODate, type ISODate } from '@shared/dates';
+import type { BankLinkInput } from '@shared/schemas';
+import { toSourceRow } from '../bank/mapping';
+import type { Aspsp, BankProvider } from '../bank/provider';
+import type { Db } from '../db/client';
+import { BadRequestError } from '../errors';
+import { findAccountByBankNumber, getAccount } from '../repos/accounts';
+import {
+  createConnection,
+  deletePendingConnections,
+  getBankAccount,
+  getConnection,
+  listBankAccounts,
+  listConnections,
+  updateBankAccount,
+  updateConnection,
+  upsertBankAccount,
+  type BankAccount,
+  type BankConnection,
+} from '../repos/bank';
+import { countConfirmedOn, lastConfirmedDate } from '../repos/transactions';
+import { buildPreview, commitImport, type Sibling, type SourceRow } from './import';
+
+export const ASPSP: Aspsp = { name: 'La Banque Postale', country: 'FR' };
+/** Déclarée telle quelle dans l'application Enable Banking. Le navigateur ne la charge pas : l'utilisateur colle l'URL. */
+export const REDIRECT_URL = 'https://localhost:3000/bank-sync/callback';
+
+const SYNC_FILE_NAME = 'Synchronisation La Banque Postale';
+const PARSER_ID = 'enablebanking';
+const DEFAULT_CONSENT_SECONDS = 90 * 86_400;
+/** Les banques datent parfois en retard : on relit les derniers jours, l'empreinte absorbe le chevauchement. */
+const OVERLAP_DAYS = 7;
+/** Après la date de départ, fenêtre où une opération déjà connue (date + montant) est un doublon de jonction. */
+const JUNCTION_DAYS = 10;
+const EMPTY_ACCOUNT_HISTORY_DAYS = 90;
+
+function toAccountView(a: BankAccount): BankAccountView {
+  return { id: a.id, uid: a.uid, iban: a.iban, bankName: a.bankName, accountId: a.accountId, syncFrom: a.syncFrom, lastSyncedDate: a.lastSyncedDate };
+}
+
+function toConnectionView(db: Db, c: BankConnection): BankConnectionView {
+  return {
+    id: c.id,
+    aspspName: c.aspspName,
+    status: c.status,
+    validUntil: c.validUntil,
+    lastSyncAt: c.lastSyncAt,
+    lastError: c.lastError,
+    accounts: listBankAccounts(db, c.id).map(toAccountView),
+  };
+}
+
+export function getState(db: Db, configured: boolean): BankSyncState {
+  return {
+    configured,
+    redirectUrl: REDIRECT_URL,
+    connections: listConnections(db)
+      .filter((c) => c.status !== 'pending')
+      .map((c) => toConnectionView(db, c)),
+  };
+}
+
+/** Numéro de compte français (11 caractères) contenu dans un IBAN FR, pour retrouver un compte Runway. */
+function frenchAccountNumber(iban: string | null): string | null {
+  const compact = iban?.replace(/\s/g, '').toUpperCase() ?? '';
+  return compact.startsWith('FR') && compact.length === 27 ? compact.slice(14, 25) : null;
+}
+
+export async function startConnection(db: Db, provider: BankProvider, input: { connectionId?: number; now: Date }): Promise<BankAuthStart> {
+  const state = randomBytes(16).toString('hex');
+  const maxSeconds = (await provider.getMaxConsentSeconds(ASPSP)) ?? DEFAULT_CONSENT_SECONDS;
+  const validUntil = new Date(input.now.getTime() + maxSeconds * 1000).toISOString();
+  const { url } = await provider.startAuth({ aspsp: ASPSP, validUntil, redirectUrl: REDIRECT_URL, state });
+
+  let connection: BankConnection;
+  if (input.connectionId !== undefined) {
+    // Renouvellement : la connexion garde son statut et ses comptes, seul le state change.
+    connection = updateConnection(db, getConnection(db, input.connectionId).id, { state });
+  } else {
+    deletePendingConnections(db);
+    connection = createConnection(db, { aspspName: ASPSP.name, aspspCountry: ASPSP.country, state });
+  }
+  return { connectionId: connection.id, url };
+}
+
+export async function completeConnection(db: Db, provider: BankProvider, input: { connectionId: number; code: string; state: string }): Promise<BankConnectionView> {
+  const connection = getConnection(db, input.connectionId);
+  if (connection.state !== input.state) throw new BadRequestError("Retour d'autorisation invalide : relance la connexion");
+
+  const session = await provider.createSession(input.code);
+  const known = listBankAccounts(db, connection.id);
+  for (const account of session.accounts) {
+    const suggested = frenchAccountNumber(account.iban);
+    const accountId = suggested ? (findAccountByBankNumber(db, suggested)?.id ?? null) : null;
+    upsertBankAccount(db, { connectionId: connection.id, uid: account.uid, iban: account.iban, bankName: account.name, accountId });
+  }
+  // Première connexion : les liaisons restent à confirmer. Renouvellement : la synchro peut reprendre.
+  const status = known.some((a) => a.syncFrom !== null) ? 'active' : 'authorized';
+  const updated = updateConnection(db, connection.id, { sessionId: session.sessionId, validUntil: session.validUntil, status, lastError: null });
+  return toConnectionView(db, updated);
+}
+
+export function linkAccounts(db: Db, input: { connectionId: number; links: BankLinkInput['links']; today: ISODate }): BankConnectionView {
+  const connection = getConnection(db, input.connectionId);
+  db.transaction((tx) => {
+    const t = tx as unknown as Db;
+    for (const link of input.links) {
+      const bank = getBankAccount(t, link.bankAccountId);
+      if (bank.connectionId !== connection.id) throw new BadRequestError("Ce compte n'appartient pas à cette connexion");
+      if (link.accountId === null) {
+        updateBankAccount(t, bank.id, { accountId: null, syncFrom: null });
+        continue;
+      }
+      getAccount(t, link.accountId);
+      const last = lastConfirmedDate(t, link.accountId);
+      const syncFrom = last ? addDays(last, 1) : addDays(input.today, -EMPTY_ACCOUNT_HISTORY_DAYS);
+      updateBankAccount(t, bank.id, { accountId: link.accountId, syncFrom, lastSyncedDate: null });
+    }
+    if (connection.status === 'authorized') updateConnection(t, connection.id, { status: 'active' });
+  });
+  return toConnectionView(db, getConnection(db, connection.id));
+}
+
+export async function disconnect(db: Db, provider: BankProvider, connectionId: number): Promise<void> {
+  const connection = getConnection(db, connectionId);
+  if (connection.sessionId) {
+    try {
+      await provider.deleteSession(connection.sessionId);
+    } catch {
+      // Session déjà expirée ou révoquée côté banque : l'état local suffit.
+    }
+  }
+  updateConnection(db, connection.id, { status: 'revoked', lastError: null });
+}
+
+/**
+ * Jonction avec l'historique des relevés, dont les libellés diffèrent : près de la date de départ,
+ * une opération déjà connue (même jour, même montant) est un doublon. Les opérations identiques
+ * sont comptées : s'il en existe une seule et que la banque en renvoie deux, la seconde reste nouvelle.
+ */
+function applyJunctionDedup(db: Db, bank: BankAccount, rows: ReturnType<typeof buildPreview>['rows']): void {
+  const limit = addDays(bank.syncFrom!, JUNCTION_DAYS);
+  const groups = new Map<string, typeof rows>();
+  for (const row of rows) {
+    if (row.status !== 'new' || compareISODate(row.date, limit) > 0) continue;
+    const key = `${row.date}|${row.signedAmount}`;
+    const group = groups.get(key);
+    if (group) group.push(row);
+    else groups.set(key, [row]);
+  }
+  for (const group of groups.values()) {
+    const known = countConfirmedOn(db, bank.accountId!, group[0]!.date, group[0]!.signedAmount);
+    for (const row of group.slice(0, known)) row.status = 'duplicate';
+  }
+}
+
+async function syncConnection(db: Db, provider: BankProvider, connection: BankConnection, today: ISODate, now: Date): Promise<BankSyncConnectionResult> {
+  const result: BankSyncConnectionResult = { connectionId: connection.id, status: connection.status, created: 0, matched: 0, duplicates: 0, skipped: 0, error: null };
+  try {
+    const session = await provider.getSession(connection.sessionId!);
+    const expired = session.status !== 'AUTHORIZED' || (session.validUntil !== null && new Date(session.validUntil).getTime() < now.getTime());
+    if (expired) {
+      updateConnection(db, connection.id, { status: 'expired', lastError: null });
+      result.status = 'expired';
+      return result;
+    }
+
+    const linked = listBankAccounts(db, connection.id).filter((a) => a.accountId !== null && a.syncFrom !== null && !getAccount(db, a.accountId).archived);
+    const fetched: { bank: BankAccount; rows: SourceRow[] }[] = [];
+    for (const bank of linked) {
+      const overlapFrom = bank.lastSyncedDate ? addDays(bank.lastSyncedDate, -OVERLAP_DAYS) : bank.syncFrom!;
+      const from = compareISODate(overlapFrom, bank.syncFrom!) > 0 ? overlapFrom : bank.syncFrom!;
+      const rows: SourceRow[] = [];
+      for (const tx of await provider.listTransactions(bank.uid, from, today)) {
+        const mapped = toSourceRow(tx);
+        if (mapped.ok) rows.push(mapped.row);
+        else result.skipped++;
+      }
+      fetched.push({ bank, rows });
+    }
+
+    for (const { bank, rows } of fetched) {
+      const siblings: Sibling[] = fetched.filter((f) => f.bank.id !== bank.id).map((f) => ({ accountId: f.bank.accountId, iban: f.bank.iban, rows: f.rows }));
+      const preview = buildPreview(db, { parserId: PARSER_ID, bankAccountNumber: null, rows, sections: [], sectionIndex: 0, siblings }, bank.accountId);
+      applyJunctionDedup(db, bank, preview.rows);
+      const toWrite = preview.rows.filter((r) => r.status === 'new' || r.status === 'matched' || r.status === 'transfer');
+      const duplicates = preview.rows.length - toWrite.length;
+      if (toWrite.length > 0) {
+        const record = commitImport(db, {
+          fileName: SYNC_FILE_NAME,
+          accountId: bank.accountId!,
+          duplicateCount: duplicates,
+          rows: toWrite.map(({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId }) => ({ index, date, label, signedAmount, fingerprint, plannedId, envelopeId, note, transferToAccountId })),
+        });
+        result.created += record.newCount;
+        result.matched += record.matchedCount;
+      }
+      result.duplicates += duplicates;
+      const latest = rows.reduce<string | null>((max, r) => (max === null || compareISODate(r.date, max) > 0 ? r.date : max), bank.lastSyncedDate);
+      if (latest !== bank.lastSyncedDate) updateBankAccount(db, bank.id, { lastSyncedDate: latest });
+    }
+    updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: null });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: message });
+    result.error = message;
+  }
+  return result;
+}
+
+let running: Promise<BankSyncRunResult> | null = null;
+
+/**
+ * Synchronise toutes les connexions actives. Une seule exécution à la fois : un second appel
+ * pendant qu'une synchro tourne reçoit le même résultat.
+ */
+export function runSync(db: Db, provider: BankProvider, input: { today: ISODate; now: Date; onlyIfStaleMinutes?: number }): Promise<BankSyncRunResult> {
+  if (running) return running;
+  running = (async () => {
+    const active = listConnections(db).filter((c) => c.status === 'active' && c.sessionId !== null);
+    if (active.length === 0) return { reason: 'no_connection' as const, connections: [] };
+    if (input.onlyIfStaleMinutes !== undefined) {
+      const latest = Math.max(...active.map((c) => (c.lastSyncAt ? new Date(c.lastSyncAt).getTime() : 0)));
+      if (input.now.getTime() - latest < input.onlyIfStaleMinutes * 60_000) return { reason: 'fresh' as const, connections: [] };
+    }
+    const connections: BankSyncConnectionResult[] = [];
+    for (const c of active) connections.push(await syncConnection(db, provider, c, input.today, input.now));
+    return { reason: 'ok' as const, connections };
+  })().finally(() => {
+    running = null;
+  });
+  return running;
+}

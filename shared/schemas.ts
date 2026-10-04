@@ -215,6 +215,23 @@ export type Settings = z.infer<typeof settingsSchema>;
 export const bankConnectionStatuses = ['pending', 'authorized', 'active', 'expired', 'revoked'] as const;
 export type BankConnectionStatus = (typeof bankConnectionStatuses)[number];
 
+export const bankStartSchema = z.object({ connectionId: idSchema.nullable().optional() });
+export type BankStartInput = z.infer<typeof bankStartSchema>;
+
+export const bankCompleteSchema = z.object({
+  code: z.string().trim().min(1, 'Code manquant').max(1000),
+  state: z.string().trim().min(1, 'State manquant').max(200),
+});
+export type BankCompleteInput = z.infer<typeof bankCompleteSchema>;
+
+export const bankLinkSchema = z.object({
+  links: z.array(z.object({ bankAccountId: idSchema, accountId: idSchema.nullable() })).min(1, 'Aucun compte'),
+});
+export type BankLinkInput = z.infer<typeof bankLinkSchema>;
+
+export const bankRunSchema = z.object({ onlyIfStaleMinutes: z.number().int().min(1).max(10_080).optional() });
+export type BankRunInput = z.infer<typeof bankRunSchema>;
+
 export const idListSchema = z.object({ ids: z.array(idSchema).min(1) });
 
 export const suggestionResultSchema = z.object({

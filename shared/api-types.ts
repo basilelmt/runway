@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, Envelope, ImportRecord, SortingRule, Transaction } from './schemas';
+import type { Account, BankConnectionStatus, Envelope, ImportRecord, SortingRule, Transaction } from './schemas';
 
 export type Balances = {
   accounts: Record<number, Cents>;
@@ -156,5 +156,51 @@ export type SuggestResponse = {
 };
 
 export type ApiErrorBody = { error: string; code?: string; issues?: unknown };
+
+export type BankAccountView = {
+  id: number;
+  uid: string;
+  iban: string | null;
+  bankName: string;
+  accountId: number | null;
+  syncFrom: ISODate | null;
+  lastSyncedDate: ISODate | null;
+};
+
+export type BankConnectionView = {
+  id: number;
+  aspspName: string;
+  status: BankConnectionStatus;
+  validUntil: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  accounts: BankAccountView[];
+};
+
+export type BankSyncState = {
+  /** Application ID et clé privée renseignés dans les réglages. */
+  configured: boolean;
+  redirectUrl: string;
+  /** Connexions hors `pending` (une autorisation abandonnée n'apparaît pas). */
+  connections: BankConnectionView[];
+};
+
+export type BankAuthStart = { connectionId: number; url: string };
+
+export type BankSyncConnectionResult = {
+  connectionId: number;
+  status: BankConnectionStatus;
+  created: number;
+  matched: number;
+  duplicates: number;
+  /** Opérations API illisibles (sans date ou montant), ignorées. */
+  skipped: number;
+  error: string | null;
+};
+
+export type BankSyncRunResult = {
+  reason: 'ok' | 'fresh' | 'not_configured' | 'no_connection';
+  connections: BankSyncConnectionResult[];
+};
 
 export type { Account, Envelope, ImportRecord, SortingRule, Transaction };
