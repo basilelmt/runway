@@ -3,6 +3,7 @@ import type { ImportPreviewRow } from '@shared/api-types';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useCommitImport, useEnvelopes, useImports, usePreviewImport, type ImportPreviewWithFile } from '@/api/hooks';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { BankSyncCard } from '@/components/import/BankSyncCard';
 import { DropZone } from '@/components/import/DropZone';
 import { ImportPreview } from '@/components/import/ImportPreview';
 import { Card, EmptyState, Field, Select, SkeletonRows, useToast } from '@/components/ui';
@@ -59,7 +60,9 @@ export function ImportPage() {
 
   return (
     <div className="page">
-      <PageHeader title="Import" subtitle="Relevés CSV ou PDF de La Banque Postale. Les doublons sont ignorés, les opérations prévues sont rapprochées, les virements entre tes comptes sont reconnus." />
+      <PageHeader title="Import" subtitle="Synchronisation bancaire ou relevés CSV et PDF de La Banque Postale. Les doublons sont ignorés, les opérations prévues sont rapprochées, les virements entre tes comptes sont reconnus." />
+
+      <BankSyncCard />
 
       {draft === null ? (
         <DropZone busy={preview.isPending} onFile={(file) => preview.mutate({ file })} />
