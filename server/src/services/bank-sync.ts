@@ -69,15 +69,17 @@ function frenchAccountNumber(iban: string | null): string | null {
 }
 
 export async function startConnection(db: Db, provider: BankProvider, input: { connectionId?: number; now: Date }): Promise<BankAuthStart> {
+  // Un identifiant inconnu échoue avant de créer une autorisation chez l'agrégateur.
+  const renewed = input.connectionId !== undefined ? getConnection(db, input.connectionId) : null;
   const state = randomBytes(16).toString('hex');
   const maxSeconds = (await provider.getMaxConsentSeconds(ASPSP)) ?? DEFAULT_CONSENT_SECONDS;
   const validUntil = new Date(input.now.getTime() + maxSeconds * 1000).toISOString();
   const { url } = await provider.startAuth({ aspsp: ASPSP, validUntil, redirectUrl: REDIRECT_URL, state });
 
   let connection: BankConnection;
-  if (input.connectionId !== undefined) {
+  if (renewed) {
     // Renouvellement : la connexion garde son statut et ses comptes, seul le state change.
-    connection = updateConnection(db, getConnection(db, input.connectionId).id, { state });
+    connection = updateConnection(db, renewed.id, { state });
   } else {
     deletePendingConnections(db);
     connection = createConnection(db, { aspspName: ASPSP.name, aspspCountry: ASPSP.country, state });
@@ -142,16 +144,23 @@ export async function disconnect(db: Db, provider: BankProvider, connectionId: n
  */
 function applyJunctionDedup(db: Db, bank: BankAccount, rows: ReturnType<typeof buildPreview>['rows']): void {
   const limit = addDays(bank.syncFrom!, JUNCTION_DAYS);
+  const keyOf = (row: (typeof rows)[number]) => `${row.date}|${row.signedAmount}`;
   const groups = new Map<string, typeof rows>();
+  // Opérations déjà reconnues par empreinte (écrites par une synchro précédente) : elles
+  // figurent dans le compte en base mais ne doivent pas consommer la jonction des nouvelles.
+  const recognized = new Map<string, number>();
   for (const row of rows) {
-    if (row.status !== 'new' || compareISODate(row.date, limit) > 0) continue;
-    const key = `${row.date}|${row.signedAmount}`;
+    if (compareISODate(row.date, limit) > 0) continue;
+    const key = keyOf(row);
+    if (row.status === 'duplicate') recognized.set(key, (recognized.get(key) ?? 0) + 1);
+    if (row.status !== 'new') continue;
     const group = groups.get(key);
     if (group) group.push(row);
     else groups.set(key, [row]);
   }
-  for (const group of groups.values()) {
-    const known = countConfirmedOn(db, bank.accountId!, group[0]!.date, group[0]!.signedAmount);
+  for (const [key, group] of groups) {
+    const confirmed = countConfirmedOn(db, bank.accountId!, group[0]!.date, group[0]!.signedAmount);
+    const known = Math.max(0, confirmed - (recognized.get(key) ?? 0));
     for (const row of group.slice(0, known)) row.status = 'duplicate';
   }
 }
@@ -203,7 +212,7 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
     }
     updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: null });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = `Synchronisation impossible : ${err instanceof Error ? err.message : String(err)}`;
     updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: message });
     result.error = message;
   }

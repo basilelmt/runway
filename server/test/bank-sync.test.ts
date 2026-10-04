@@ -248,6 +248,20 @@ describe('synchronisation', () => {
     expect(result.connections[0]).toMatchObject({ created: 1, duplicates: 1 });
   });
 
+  it('jonction : une opération déjà écrite par une synchro précédente ne masque pas une nouvelle identique', async () => {
+    provider.transactions['u-courant'] = [tx('2026-10-02', '5.00', 'DBIT', 'CARTE CAFE', 'CAFE')];
+    const view = await connect();
+    const bank = listBankAccounts(ctx.db, view.id).find((a) => a.iban === IBAN_COURANT)!;
+    ctx.db.run(`update bank_accounts set sync_from = '2026-10-01' where id = ${bank.id}`);
+    expect((await runSync(ctx.db, provider, { today: TODAY, now: NOW })).connections[0]).toMatchObject({ created: 1, duplicates: 0 });
+    provider.transactions['u-courant'].push(tx('2026-10-02', '5.00', 'DBIT', 'CARTE CAFE BIS', 'CAFE 2'));
+    const again = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    // La première est reconnue par empreinte : elle ne doit pas aussi consommer la jonction de la seconde.
+    expect(again.connections[0]).toMatchObject({ created: 1, duplicates: 1 });
+    const rows = ctx.db.all<{ amount: number }>(`select amount from transactions where kind = 'expense' and date = '2026-10-02'`);
+    expect(rows).toEqual([{ amount: 5_00 }, { amount: 5_00 }]);
+  });
+
   it('virement entre deux comptes synchronisés : transfert d’un côté, crédit interne de l’autre', async () => {
     provider.transactions['u-courant'] = [tx('2026-10-01', '100.00', 'DBIT', 'VIREMENT VERS LIVRET A')];
     provider.transactions['u-livret'] = [tx('2026-10-02', '100.00', 'CRDT', 'VIREMENT DE M LAMOTTE')];
@@ -271,8 +285,8 @@ describe('synchronisation', () => {
     await connect();
     provider.failListWith = new Error('ECONNRESET');
     const failed = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
-    expect(failed.connections[0]).toMatchObject({ error: 'ECONNRESET', created: 0 });
-    expect(getState(ctx.db, true).connections[0]!.lastError).toBe('ECONNRESET');
+    expect(failed.connections[0]).toMatchObject({ error: 'Synchronisation impossible : ECONNRESET', created: 0 });
+    expect(getState(ctx.db, true).connections[0]!.lastError).toBe('Synchronisation impossible : ECONNRESET');
     provider.failListWith = null;
     await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     expect(getState(ctx.db, true).connections[0]!.lastError).toBeNull();
