@@ -11,9 +11,21 @@ export type EnableBankingOptions = {
   psu: PsuInfo;
   fetch?: typeof fetch;
   baseUrl?: string;
+  /** Délai maximal d'une requête, en millisecondes. */
+  timeoutMs?: number;
 };
 
 const DEFAULT_BASE_URL = 'https://api.enablebanking.com';
+const DEFAULT_TIMEOUT_MS = 30_000;
+/** Garde-fou contre une pagination qui ne s'arrête pas. */
+const MAX_TRANSACTION_PAGES = 50;
+
+/** Cause lisible d'un échec réseau : `fetch failed` cache souvent la vraie raison (DNS, connexion refusée). */
+function networkCause(err: unknown, timeoutMs: number): string {
+  if (err instanceof Error && err.name === 'TimeoutError') return `pas de réponse après ${Math.round(timeoutMs / 1000)} s`;
+  if (err instanceof Error) return err.cause instanceof Error ? `${err.message} (${err.cause.message})` : err.message;
+  return String(err);
+}
 
 const aspspsSchema = z.object({ aspsps: z.array(z.object({ name: z.string(), country: z.string(), maximum_consent_validity: z.number().nullish() })) });
 const authSchema = z.object({ url: z.string() });
@@ -36,25 +48,35 @@ const applicationSchema = z.object({ name: z.string(), environment: z.string() }
 export class EnableBankingClient implements BankProvider {
   private readonly fetchFn: typeof fetch;
   private readonly baseUrl: string;
+  private readonly timeoutMs: number;
 
   constructor(private readonly opts: EnableBankingOptions) {
     this.fetchFn = opts.fetch ?? globalThis.fetch;
     this.baseUrl = opts.baseUrl ?? DEFAULT_BASE_URL;
+    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   private async request<T>(method: string, path: string, schema: z.ZodType<T>, body?: unknown): Promise<T> {
-    const res = await this.fetchFn(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${signJwt(this.opts.appId, this.opts.privateKey)}`,
-        accept: 'application/json',
-        'content-type': 'application/json',
-        'psu-ip-address': this.opts.psu.ip,
-        'psu-user-agent': this.opts.psu.userAgent,
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const text = await res.text();
+    const authorization = `Bearer ${signJwt(this.opts.appId, this.opts.privateKey)}`;
+    let res: Response;
+    let text: string;
+    try {
+      res = await this.fetchFn(`${this.baseUrl}${path}`, {
+        method,
+        headers: {
+          authorization,
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'psu-ip-address': this.opts.psu.ip,
+          'psu-user-agent': this.opts.psu.userAgent,
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      text = await res.text();
+    } catch (err) {
+      throw new BankProviderError(`Enable Banking injoignable : ${networkCause(err, this.timeoutMs)}`, 0);
+    }
     let data: unknown;
     try {
       data = text ? JSON.parse(text) : {};
@@ -66,10 +88,15 @@ export class EnableBankingClient implements BankProvider {
       // Le message distant est en anglais et sans contexte : on le préfixe pour qu'il reste compréhensible dans un toast.
       const remote = typeof err.message === 'string' ? err.message : typeof err.error === 'string' ? err.error : null;
       const message = remote ? `Enable Banking a refusé la demande : ${remote}` : `Enable Banking a répondu ${res.status}`;
-      throw new BankProviderError(message, res.status, typeof err.code === 'string' ? err.code : null);
+      // Le format d'erreur d'Enable Banking porte un code HTTP numérique dans `code` et l'identifiant dans `error`.
+      const code = typeof err.code === 'string' ? err.code : typeof err.error === 'string' ? err.error : null;
+      throw new BankProviderError(message, res.status, code);
     }
     const parsed = schema.safeParse(data);
-    if (!parsed.success) throw new BankProviderError(`Réponse inattendue d'Enable Banking sur ${path}`, res.status);
+    if (!parsed.success) {
+      const field = parsed.error.issues[0]?.path.join('.');
+      throw new BankProviderError(`Réponse inattendue d'Enable Banking sur ${path}${field ? ` (${field})` : ''}`, res.status);
+    }
     return parsed.data;
   }
 
@@ -109,15 +136,19 @@ export class EnableBankingClient implements BankProvider {
 
   async listTransactions(uid: string, dateFrom: string, dateTo: string): Promise<BankTransaction[]> {
     const all: BankTransaction[] = [];
+    const seen = new Set<string>();
     let continuation: string | null | undefined;
-    do {
+    for (let pages = 1; ; pages++) {
       const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, transaction_status: 'BOOK' });
       if (continuation) params.set('continuation_key', continuation);
       const page = await this.request('GET', `/accounts/${encodeURIComponent(uid)}/transactions?${params}`, transactionsSchema);
       for (const tx of page.transactions) if (!tx.status || tx.status === 'BOOK') all.push(tx);
       continuation = page.continuation_key;
-    } while (continuation);
-    return all;
+      if (!continuation) return all;
+      if (seen.has(continuation)) throw new BankProviderError('Enable Banking renvoie deux fois la même page (pagination en boucle)', 0);
+      if (pages >= MAX_TRANSACTION_PAGES) throw new BankProviderError(`Enable Banking renvoie plus de ${MAX_TRANSACTION_PAGES} pages d'opérations (pagination interrompue)`, 0);
+      seen.add(continuation);
+    }
   }
 
   async deleteSession(sessionId: string): Promise<void> {

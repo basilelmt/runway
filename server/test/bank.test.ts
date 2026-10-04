@@ -40,9 +40,11 @@ function fakeFetch(responses: Record<string, Array<{ status?: number; body: unkn
   return { fetchFn, calls };
 }
 
-function client(fetchFn: typeof fetch) {
-  return new EnableBankingClient({ appId: 'app-123', privateKey: pem, psu: { ip: '127.0.0.1', userAgent: 'Runway test' }, fetch: fetchFn });
+function client(fetchFn: typeof fetch, opts: { timeoutMs?: number } = {}) {
+  return new EnableBankingClient({ appId: 'app-123', privateKey: pem, psu: { ip: '127.0.0.1', userAgent: 'Runway test' }, fetch: fetchFn, ...opts });
 }
+
+const page = (continuationKey: string | null) => ({ body: { transactions: [], continuation_key: continuationKey } });
 
 describe('EnableBankingClient', () => {
   it('envoie le JWT et les en-têtes PSU', async () => {
@@ -126,6 +128,48 @@ describe('EnableBankingClient', () => {
     const { fetchFn } = fakeFetch({ '/sessions/s1': [{ status: 401, body: { message: 'Invalid JWT', code: 'unauthorized' } }] });
     await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ name: 'BankProviderError', status: 401, code: 'unauthorized', message: 'Enable Banking a refusé la demande : Invalid JWT' });
     expect(new BankProviderError('x', 500)).toBeInstanceOf(Error);
+  });
+
+  it('sans message dans la réponse : statut HTTP seul', async () => {
+    const { fetchFn } = fakeFetch({ '/sessions/s1': [{ status: 503, body: {} }] });
+    await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ name: 'BankProviderError', status: 503, code: null, message: 'Enable Banking a répondu 503' });
+  });
+
+  it('format d’erreur Enable Banking : code numérique, identifiant dans error', async () => {
+    const { fetchFn } = fakeFetch({ '/sessions/s1': [{ status: 422, body: { code: 422, message: 'Session expired', error: 'EXPIRED_SESSION' } }] });
+    await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ status: 422, code: 'EXPIRED_SESSION', message: 'Enable Banking a refusé la demande : Session expired' });
+    const { fetchFn: onlyError } = fakeFetch({ '/sessions/s1': [{ status: 404, body: { error: 'NOT_FOUND' } }] });
+    await expect(client(onlyError).getSession('s1')).rejects.toMatchObject({ status: 404, code: 'NOT_FOUND', message: 'Enable Banking a refusé la demande : NOT_FOUND' });
+  });
+
+  it('réponse au mauvais format : le message cite le champ fautif', async () => {
+    const { fetchFn } = fakeFetch({ '/sessions/s1': [{ body: { access: {} } }] });
+    await expect(client(fetchFn).getSession('s1')).rejects.toMatchObject({ name: 'BankProviderError', message: "Réponse inattendue d'Enable Banking sur /sessions/s1 (status)" });
+  });
+
+  it('erreur réseau : convertie en BankProviderError lisible', async () => {
+    const fetchFn = (async () => {
+      throw new TypeError('fetch failed');
+    }) as typeof fetch;
+    await expect(client(fetchFn).getApplication()).rejects.toMatchObject({ name: 'BankProviderError', status: 0, message: 'Enable Banking injoignable : fetch failed' });
+  });
+
+  it('délai dépassé : la requête est abandonnée', async () => {
+    const fetchFn = ((_input: string | URL | Request, init?: RequestInit) =>
+      new Promise((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(init.signal!.reason)))) as typeof fetch;
+    await expect(client(fetchFn, { timeoutMs: 10 }).getApplication()).rejects.toMatchObject({ name: 'BankProviderError', status: 0, message: expect.stringMatching(/^Enable Banking injoignable : /) });
+  });
+
+  it('pagination : une clé de continuation répétée arrête la boucle', async () => {
+    const { fetchFn, calls } = fakeFetch({ '/accounts/u1/transactions': [page('k1'), page('k2'), page('k1')] });
+    await expect(client(fetchFn).listTransactions('u1', '2026-09-01', '2026-10-04')).rejects.toMatchObject({ name: 'BankProviderError', message: expect.stringMatching(/pagination/) });
+    expect(calls).toHaveLength(3);
+  });
+
+  it('pagination : au plus 50 pages', async () => {
+    const { fetchFn, calls } = fakeFetch({ '/accounts/u1/transactions': Array.from({ length: 60 }, (_, i) => page(`k${i}`)) });
+    await expect(client(fetchFn).listTransactions('u1', '2026-09-01', '2026-10-04')).rejects.toMatchObject({ name: 'BankProviderError', message: expect.stringMatching(/pagination/) });
+    expect(calls).toHaveLength(50);
   });
 });
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import type { BankAccountInfo, BankProvider, BankTransaction } from '../src/bank/provider';
 import { listBankAccounts, listConnections, updateConnection } from '../src/repos/bank';
 import { createTransaction } from '../src/repos/transactions';
@@ -355,9 +355,14 @@ describe('synchronisation', () => {
 describe('routes /api/bank-sync', () => {
   let t: TestApp;
   let p: FakeProvider;
+  let consoleError: MockInstance<typeof console.error>;
   beforeEach(() => {
     p = new FakeProvider();
     t = createTestApp('2026-10-04', { bankProvider: p });
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    consoleError.mockRestore();
   });
 
   async function configure() {
@@ -426,5 +431,14 @@ describe('routes /api/bank-sync', () => {
     const res = await t.call('POST', `/api/bank-sync/connections/${start.body.connectionId}/complete`, { code: 'bad', state });
     expect(res.status).toBe(502);
     expect(res.body.error).toBe('Code refusé');
+    expect(consoleError).toHaveBeenCalledWith(expect.stringMatching(/bank-sync/), expect.objectContaining({ message: 'Code refusé' }));
+  });
+
+  it('clé privée illisible : 400 avec le message du fournisseur, pas une 502', async () => {
+    const real = createTestApp('2026-10-04');
+    await real.call('PUT', '/api/settings', { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app', enableBankingPrivateKey: 'pas une clé' });
+    const res = await real.call('POST', '/api/bank-sync/test', {});
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ code: 'bank_provider', error: expect.stringMatching(/Clé privée Enable Banking illisible/) });
   });
 });

@@ -28,14 +28,21 @@ function psuInfo(c: Context<AppEnv>): PsuInfo {
   return { ip: forwarded || '127.0.0.1', userAgent: c.req.header('user-agent') ?? 'Runway' };
 }
 
-/** Une erreur du fournisseur devient une 502 lisible plutôt qu'une 500 anonyme. */
+/**
+ * Une erreur du fournisseur devient une réponse lisible plutôt qu'une 500 anonyme : son statut s'il
+ * s'agit d'une erreur de la demande (4xx, par exemple une clé privée illisible), sinon une 502.
+ */
 async function guard<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    if (err instanceof BankProviderError) throw new AppError(err.message, 502, 'bank_provider');
+    if (err instanceof BankProviderError) throw new AppError(err.message, err.status >= 400 && err.status < 500 ? err.status : 502, 'bank_provider');
     if (err instanceof AppError) throw err;
-    if (err instanceof Error) throw new AppError(err.message, 502, 'bank_provider');
+    if (err instanceof Error) {
+      // Erreur inattendue (bogue, base) : la trace reste dans la console du serveur.
+      console.error('[bank-sync]', err);
+      throw new AppError(err.message, 502, 'bank_provider');
+    }
     throw err;
   }
 }
