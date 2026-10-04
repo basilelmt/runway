@@ -39,6 +39,11 @@ const OVERLAP_DAYS = 7;
  */
 const JUNCTION_DAYS = 10;
 const EMPTY_ACCOUNT_HISTORY_DAYS = 90;
+/**
+ * Hors première synchro, on ne demande jamais plus de 89 jours d'historique : passé les premières
+ * minutes après l'autorisation, beaucoup de banques refusent de remonter plus loin (DSP2, 90 jours).
+ */
+const MAX_HISTORY_DAYS_AFTER_FIRST_SYNC = 89;
 
 function toAccountView(a: BankAccount): BankAccountView {
   return { id: a.id, uid: a.uid, iban: a.iban, bankName: a.bankName, accountId: a.accountId, syncFrom: a.syncFrom, linkedAt: a.linkedAt, lastSyncedDate: a.lastSyncedDate };
@@ -179,6 +184,10 @@ function applyJunctionDedup(db: Db, bank: BankAccount, rows: ReturnType<typeof b
   }
 }
 
+function maxDate(a: ISODate, b: ISODate): ISODate {
+  return compareISODate(a, b) >= 0 ? a : b;
+}
+
 function causeOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -204,7 +213,8 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
     const fetched: { bank: BankAccount; rows: SourceRow[] }[] = [];
     for (const bank of linked) {
       const overlapFrom = bank.lastSyncedDate ? addDays(bank.lastSyncedDate, -OVERLAP_DAYS) : bank.syncFrom!;
-      const from = compareISODate(overlapFrom, bank.syncFrom!) > 0 ? overlapFrom : bank.syncFrom!;
+      let from = maxDate(overlapFrom, bank.syncFrom!);
+      if (bank.lastSyncedDate) from = maxDate(from, addDays(today, -MAX_HISTORY_DAYS_AFTER_FIRST_SYNC));
       try {
         const rows: SourceRow[] = [];
         for (const tx of await provider.listTransactions(bank.uid, from, today)) {
@@ -248,7 +258,9 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
           result.matched += record.matchedCount;
         }
         result.duplicates += duplicates;
-        const latest = sourceRows.reduce<string | null>((max, r) => (max === null || compareISODate(r.date, max) > 0 ? r.date : max), bank.lastSyncedDate);
+        // Lecture et écriture réussies : le compte est à jour au jour de la synchro, même sans opération,
+        // pour que la suivante reparte de quelques jours avant aujourd'hui et non de la date de départ.
+        const latest = sourceRows.reduce<ISODate>((max, r) => maxDate(max, r.date), today);
         if (latest !== bank.lastSyncedDate) updateBankAccount(db, bank.id, { lastSyncedDate: latest });
       } catch (err) {
         fail(bank, err);

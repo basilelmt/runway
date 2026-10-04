@@ -228,7 +228,8 @@ describe('synchronisation', () => {
 
     const state = getState(ctx.db, true, TODAY);
     expect(state.connections[0]).toMatchObject({ lastSyncAt: NOW.toISOString(), lastError: null });
-    expect(state.connections[0]!.accounts.find((a) => a.iban === IBAN_COURANT)!.lastSyncedDate).toBe('2026-10-02');
+    // Lecture réussie : le compte est à jour au jour de la synchro, même si sa dernière opération est plus ancienne.
+    expect(state.connections[0]!.accounts.find((a) => a.iban === IBAN_COURANT)!.lastSyncedDate).toBe(TODAY);
   });
 
   it('seconde synchro : chevauchement de 7 jours sans doublon, aucun import vide', async () => {
@@ -238,7 +239,7 @@ describe('synchronisation', () => {
     const again = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
     expect(again.connections[0]).toMatchObject({ created: 0, matched: 0, duplicates: 1 });
     const list = provider.calls.filter((c) => c.method === 'listTransactions' && c.args[0] === 'u-courant');
-    expect(list.at(-1)!.args[1]).toBe('2026-09-24');
+    expect(list.at(-1)!.args[1]).toBe('2026-09-27');
     expect(ctx.db.all(`select id from imports`)).toHaveLength(1);
   });
 
@@ -310,6 +311,55 @@ describe('synchronisation', () => {
     expect(rows).toEqual([{ kind: 'transfer', account_id: ctx.courant.id, to_account_id: ctx.livret.id }]);
   });
 
+  for (const order of ['courant d’abord', 'livret d’abord'] as const) {
+    it(`virement prévu entre deux comptes synchronisés (${order}) : la prévue est confirmée, rien d’autre n’est créé`, async () => {
+      if (order === 'livret d’abord') provider.accounts = [...provider.accounts].reverse();
+      const planned = createTransaction(ctx.db, {
+        kind: 'transfer',
+        date: '2026-10-03',
+        amount: 20_00,
+        label: 'Virement Compte courant → Livret Jeune',
+        accountId: ctx.courant.id,
+        toAccountId: ctx.livret.id,
+        status: 'planned',
+      });
+      provider.transactions['u-courant'] = [tx('2026-10-02', '20.00', 'DBIT', 'VIREMENT VERS LIVRET JEUNE')];
+      provider.transactions['u-livret'] = [tx('2026-10-03', '20.00', 'CRDT', 'VIREMENT DE M LAMOTTE')];
+      await connect();
+      const result = await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+      expect(result.connections[0]).toMatchObject({ created: 0, matched: 1, duplicates: 1, error: null });
+      const rows = ctx.db.all<{ id: number; kind: string; status: string; date: string; account_id: number; to_account_id: number; fingerprint: string | null }>(
+        `select id, kind, status, date, account_id, to_account_id, fingerprint from transactions`,
+      );
+      expect(rows).toEqual([
+        { id: planned.id, kind: 'transfer', status: 'confirmed', date: '2026-10-02', account_id: ctx.courant.id, to_account_id: ctx.livret.id, fingerprint: expect.any(String) },
+      ]);
+      // Seconde synchro : tout est reconnu, rien ne bouge.
+      expect((await runSync(ctx.db, provider, { today: TODAY, now: NOW })).connections[0]).toMatchObject({ created: 0, matched: 0, duplicates: 2 });
+    });
+  }
+
+  it('compte sans opération : à jour au jour de la synchro, la suivante repart de 7 jours avant', async () => {
+    const view = await connect();
+    await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    const livret = getState(ctx.db, true, TODAY).connections[0]!.accounts.find((a) => a.iban === IBAN_LIVRET)!;
+    expect(livret.lastSyncedDate).toBe(TODAY);
+    await runSync(ctx.db, provider, { today: '2026-10-10', now: NOW });
+    const calls = provider.calls.filter((c) => c.method === 'listTransactions' && c.args[0] === 'u-livret');
+    expect(calls.map((c) => c.args[1])).toEqual(['2026-07-06', '2026-09-27']);
+    expect(view.accounts).toHaveLength(2);
+  });
+
+  it('synchro après une longue pause : la date de départ ne remonte pas au-delà de 89 jours', async () => {
+    const view = await connect();
+    const bank = listBankAccounts(ctx.db, view.id).find((a) => a.iban === IBAN_LIVRET)!;
+    ctx.db.run(`update bank_accounts set sync_from = '2026-01-01', last_synced_date = '2026-06-06' where id = ${bank.id}`);
+    await runSync(ctx.db, provider, { today: TODAY, now: NOW });
+    const call = provider.calls.find((c) => c.method === 'listTransactions' && c.args[0] === 'u-livret')!;
+    // 120 jours sans synchro : on demande au plus 89 jours d'historique.
+    expect(call.args[1]).toBe('2026-07-07');
+  });
+
   it('session expirée : la connexion passe en expired sans erreur', async () => {
     await connect();
     provider.sessionStatus = 'EXPIRED';
@@ -339,7 +389,7 @@ describe('synchronisation', () => {
     expect(result.connections[0]).toMatchObject({ created: 1, error: 'Livret A : 429 Too Many Requests' });
     const state = getState(ctx.db, true, TODAY).connections[0]!;
     expect(state).toMatchObject({ lastError: 'Livret A : 429 Too Many Requests', lastSyncAt: NOW.toISOString() });
-    expect(state.accounts.find((a) => a.iban === IBAN_COURANT)!.lastSyncedDate).toBe('2026-10-01');
+    expect(state.accounts.find((a) => a.iban === IBAN_COURANT)!.lastSyncedDate).toBe(TODAY);
     expect(state.accounts.find((a) => a.iban === IBAN_LIVRET)!.lastSyncedDate).toBeNull();
   });
 

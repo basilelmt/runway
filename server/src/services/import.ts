@@ -126,7 +126,8 @@ export function markClaimedCounterparts(previews: { accountId: number; rows: Imp
   const claimed = new Set<ImportPreviewRow>();
   for (const { rows } of previews) {
     for (const row of rows) {
-      if (row.status !== 'transfer' || row.transferToAccountId === null) continue;
+      // Un virement rapproché d'une prévue garde sa cible : il réclame aussi sa contrepartie.
+      if ((row.status !== 'transfer' && row.status !== 'matched') || row.transferToAccountId === null) continue;
       const target = previews.find((p) => p.accountId === row.transferToAccountId);
       const counterpart = target?.rows.find(
         (r) => !claimed.has(r) && r.status === 'new' && r.signedAmount === -row.signedAmount && Math.abs(daysBetween(row.date, r.date)) <= TRANSFER_TOLERANCE_DAYS,
@@ -191,18 +192,29 @@ export function buildPreview(db: Db, source: Source, accountId: number | null): 
     markInternalCredits(db, accountId, rows);
   }
 
-  const fresh = rows.filter((r) => r.status === 'new');
-  const matches = matchPlanned(fresh, planned);
   const plannedById = new Map(planned.map((p) => [p.id, p]));
-  for (const row of fresh) {
-    const plannedId = matches.get(row.index);
-    if (plannedId === undefined) continue;
-    const p = plannedById.get(plannedId)!;
-    row.status = 'matched';
-    row.plannedId = plannedId;
-    row.plannedLabel = p.label;
-    row.envelopeId = p.envelopeId;
+  const used = new Set<number>();
+  const applyMatches = (candidates: ImportPreviewRow[], pool: typeof planned) => {
+    const matches = matchPlanned(candidates, pool);
+    for (const row of candidates) {
+      const plannedId = matches.get(row.index);
+      if (plannedId === undefined) continue;
+      const p = plannedById.get(plannedId)!;
+      used.add(plannedId);
+      row.status = 'matched';
+      row.plannedId = plannedId;
+      row.plannedLabel = p.label;
+      row.envelopeId = p.envelopeId;
+    }
+  };
+  // Virements internes d'abord, vers les seuls transferts prévus de ce compte vers la même cible :
+  // une dépense ordinaire du même montant ne doit pas leur prendre la prévue. La cible est conservée.
+  const transfers = rows.filter((r) => r.status === 'transfer');
+  for (const target of new Set(transfers.map((r) => r.transferToAccountId))) {
+    const pool = planned.filter((p) => p.kind === 'transfer' && p.accountId === accountId && p.toAccountId === target);
+    applyMatches(transfers.filter((r) => r.transferToAccountId === target), pool);
   }
+  applyMatches(rows.filter((r) => r.status === 'new'), planned.filter((p) => !used.has(p.id)));
 
   const count = (status: ImportPreviewRow['status']) => rows.filter((r) => r.status === status).length;
   return {

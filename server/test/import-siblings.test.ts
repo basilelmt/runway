@@ -70,6 +70,15 @@ describe('virements internes entre comptes du même lot', () => {
     expect(credit.rows[0]!.status).toBe('internal');
   });
 
+  it('un virement interne prévu est rapproché : statut matched, cible conservée', () => {
+    const planned = createTransaction(ctx.db, { kind: 'transfer', date: '2026-10-07', amount: 200_00, label: 'Épargne', accountId: ctx.courant.id, toAccountId: ctx.livret.id, status: 'planned' });
+    // Une dépense ordinaire du même montant ne doit pas prendre la prévue au virement.
+    const rows = [row('2026-10-04', 'CARTE MAGASIN', -200_00), row('2026-10-04', 'VIREMENT EPARGNE', -200_00)];
+    const preview = buildPreview(ctx.db, source(rows, [livret]), ctx.courant.id);
+    expect(preview.rows[0]).toMatchObject({ status: 'new', plannedId: null });
+    expect(preview.rows[1]).toMatchObject({ status: 'matched', plannedId: planned.id, plannedLabel: 'Épargne', transferToAccountId: ctx.livret.id, envelopeId: null });
+  });
+
   it('un mot qui commence par VIR n’est pas un virement', () => {
     const preview = buildPreview(ctx.db, source([row('2026-10-04', 'CARTE VIRGIN MOBILE', -200_00)], [livret]), ctx.courant.id);
     expect(preview.rows[0]).toMatchObject({ status: 'new', transferToAccountId: null });
@@ -96,5 +105,12 @@ describe('markClaimedCounterparts', () => {
     const livret = { accountId: 2, rows: [previewRow(0, '2026-10-10', 100_00, 'new'), previewRow(1, '2026-10-02', 100_00, 'duplicate'), previewRow(2, '2026-10-03', 100_00, 'new')] };
     markClaimedCounterparts([livret, courant]);
     expect(livret.rows.map((r) => r.status)).toEqual(['new', 'duplicate', 'internal']);
+  });
+
+  it('un virement rapproché d’une prévue réclame aussi sa contrepartie', () => {
+    const courant = { accountId: 1, rows: [previewRow(0, '2026-10-01', -100_00, 'matched', 2)] };
+    const livret = { accountId: 2, rows: [previewRow(0, '2026-10-02', 100_00, 'new')] };
+    markClaimedCounterparts([livret, courant]);
+    expect(livret.rows[0]!.status).toBe('internal');
   });
 });

@@ -87,7 +87,7 @@ Un compte renvoyé par l'API, lié ou non à un compte Runway.
 | account_id | integer nullable | FK `accounts` ; null = ignoré |
 | sync_from | text nullable | date de départ ISO, fixée au moment de la liaison |
 | linked_at | text nullable | jour de la liaison ISO ; borne la fenêtre de jonction ; null si le compte est ignoré |
-| last_synced_date | text nullable | `booking_date` la plus récente enregistrée |
+| last_synced_date | text nullable | jour de la dernière lecture réussie (ou `booking_date` reçue plus récente) |
 
 ### `settings`
 
@@ -142,10 +142,14 @@ Quand le libellé cite un IBAN, il désigne la cible (cas des relevés PDF) ; sa
   2. Si `onlyIfStaleMinutes` est fourni et que `last_sync_at` est plus récent, ne fait rien.
   3. Pour chaque connexion `active` : vérifie `GET /sessions/{id}` ; statut autre que `AUTHORIZED` ou `valid_until` dépassé → statut `expired`, on passe à la suivante.
   4. Pour chaque `bank_accounts` lié à un compte Runway non archivé : `date_from` = max(`sync_from`, `last_synced_date` moins 7 jours), `date_to` = aujourd'hui, statut `BOOK`, toutes les pages.
+     Hors première synchro (`last_synced_date` déjà renseigné), `date_from` ne remonte jamais avant aujourd'hui moins 89 jours : passé l'autorisation, beaucoup de banques refusent un historique plus long.
   5. Construit une `Source` par compte avec les autres comptes du lot en `siblings`, appelle `buildPreview`, puis applique la déduplication de jonction : une ligne `new` datée au plus tard 10 jours après `linked_at` et qui a une opération confirmée existante de même compte, même date et même montant signé devient `duplicate`.
      Les opérations antérieures à `sync_from` ne sont jamais demandées.
   6. Une fois toutes les prévisualisations construites, et avant toute écriture, `markClaimedCounterparts` marque `internal` le crédit qui sert de contrepartie à chaque ligne `transfer` d'un autre compte du lot (même montant opposé, ±4 jours, chaque crédit une seule fois), quel que soit l'ordre des comptes.
-  7. Appelle `commitImport` avec les lignes `new`, `matched` et `transfer` ; met à jour `last_synced_date`.
+     `buildPreview` rapproche d'abord chaque ligne `transfer` d'un transfert prévu du même compte vers la même cible (même montant, ±5 jours) : la ligne passe `matched` en gardant sa cible, et la prévue est confirmée au lieu d'un nouveau transfert.
+     `markClaimedCounterparts` traite ces lignes comme les `transfer`.
+  7. Appelle `commitImport` avec les lignes `new`, `matched` et `transfer`.
+     Si la lecture et l'écriture du compte ont réussi, `last_synced_date` = max(date de la dernière opération reçue, aujourd'hui), même sans opération : la synchro suivante repart d'aujourd'hui moins 7 jours.
   8. Met à jour `last_sync_at`, efface ou renseigne `last_error`.
   Renvoie un résumé `{ reason: 'ok' | 'fresh' | 'not_configured' | 'no_connection', connections: { connectionId, status, created, matched, duplicates, skipped, error }[] }`.
 - `disconnect(db, provider, connectionId)` : `DELETE /sessions/{id}` (erreur ignorée si déjà expirée), statut `revoked`, les `bank_accounts` restent pour l'historique.
@@ -166,7 +170,7 @@ En test, un faux `BankProvider` en mémoire.
 | `DELETE /api/bank-sync/connections/:id` | Déconnecte. |
 
 Hors `GET /api/bank-sync`, `POST /api/bank-sync/run` (qui répond `{ reason: 'not_configured' }`) et `DELETE /api/bank-sync/connections/:id` (qui marque la connexion `revoked` sans appeler la banque), toutes les routes répondent 400 avec un message explicite si les identifiants ne sont pas configurés.
-Une erreur renvoyée par Enable Banking devient une 502 avec son message.
+Une erreur 4xx renvoyée par Enable Banking (ou une clé privée illisible, 400) garde son statut et son message ; toute autre erreur devient une 502.
 
 ## Interface
 
