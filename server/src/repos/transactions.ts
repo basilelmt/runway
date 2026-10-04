@@ -131,3 +131,34 @@ export function existsForRuleAndDate(db: Db, ruleId: number, date: string): bool
     .get();
   return row !== undefined;
 }
+
+/** Date de la dernière opération confirmée touchant un compte (débitée ou créditée), ou null. */
+export function lastConfirmedDate(db: Db, accountId: number): string | null {
+  const row = db
+    .select({ date: transactions.date })
+    .from(transactions)
+    .where(and(eq(transactions.status, 'confirmed'), or(eq(transactions.accountId, accountId), eq(transactions.toAccountId, accountId))))
+    .orderBy(desc(transactions.date))
+    .limit(1)
+    .get();
+  return row?.date ?? null;
+}
+
+/**
+ * Une opération confirmée existe-t-elle sur ce compte, ce jour, pour ce montant signé ?
+ * Sert à la jonction entre l'historique importé des relevés et la synchronisation API,
+ * dont les libellés diffèrent (l'empreinte ne suffit pas).
+ */
+export function hasConfirmedOn(db: Db, accountId: number, date: string, signedAmount: number): boolean {
+  const side =
+    signedAmount < 0
+      ? and(eq(transactions.accountId, accountId), inArray(transactions.kind, ['expense', 'transfer']))
+      : or(and(eq(transactions.accountId, accountId), eq(transactions.kind, 'income')), and(eq(transactions.toAccountId, accountId), eq(transactions.kind, 'transfer')));
+  const row = db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.status, 'confirmed'), eq(transactions.date, date), eq(transactions.amount, Math.abs(signedAmount)), side))
+    .limit(1)
+    .get();
+  return row !== undefined;
+}
