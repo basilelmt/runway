@@ -1,0 +1,85 @@
+/* Le chiffre est le héros */
+.amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--s-1);
+  padding: var(--s-3) 0 0;
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.income {
+  color: var(--positive);
+}
+
+.sign,
+.currency {
+  color: var(--ink-mute);
+  font-weight: 400;
+  transition: color var(--dur) var(--ease-out);
+}
+
+.income .sign,
+.income .currency {
+  color: color-mix(in oklab, var(--positive) 60%, var(--ink-mute));
+}
+
+.currency {
+  font-size: 0.55em;
+  margin-left: var(--s-1);
+}
+
+.input {
+  field-sizing: content;
+  min-width: 1ch;
+  max-width: 8ch;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: center;
+  caret-color: var(--marking);
+}
+
+.input::placeholder {
+  color: var(--rule-strong);
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.invalid {
+  animation: shake 320ms var(--ease-out);
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+
+@media (max-width: 767px) {
+  .amount {
+    font-size: 3.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .invalid {
+    animation: none;
+  }
+}

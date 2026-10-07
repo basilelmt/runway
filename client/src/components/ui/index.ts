@@ -1,8 +1,10 @@
 export { Amount } from './Amount';
+export { AmountHero } from './AmountHero';
 export { Badge, Dot } from './Badge';
 export { Button, ButtonLink, type ButtonProps } from './Button';
 export { Card } from './Card';
 export { Checkbox } from './Checkbox';
+export { ChipPicker, type ChipOption } from './ChipPicker';
 export { Dialog } from './Dialog';
 export { DateField, DateRangeField } from './DateField';
 export { EmptyState } from './EmptyState';
