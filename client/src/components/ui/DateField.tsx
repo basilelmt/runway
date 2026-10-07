@@ -110,9 +110,7 @@ function PopoverField({ id, placeholder, variant = 'line', className, filled, te
         role="dialog"
         aria-label="Calendrier"
         className={styles.popover}
-        /* `display` explicite : certains environnements (dont jsdom) n'implémentent pas le
-           rendu natif associé à `:popover-open`, qui masquerait sinon le contenu. */
-        style={{ ...anchor(`--${popoverId}`, 'positionAnchor'), display: open ? 'block' : 'none' }}
+        style={anchor(`--${popoverId}`, 'positionAnchor')}
         onToggle={(e: ToggleEvent<HTMLDivElement>) => setOpen(e.newState === 'open')}
       >
         {open ? children(close) : null}

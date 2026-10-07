@@ -36,6 +36,10 @@ if (!('showPopover' in HTMLElement.prototype)) {
       return next;
     },
   });
+  // jsdom masque tout `[popover]` : on rend visible celui que le polyfill a ouvert.
+  const style = document.createElement('style');
+  style.textContent = '[popover][data-popover-open] { display: block !important; }';
+  document.head.appendChild(style);
   // Un bouton `popovertarget` ouvre ou ferme sa cible, Échap ferme la dernière ouverte et rend le focus.
   document.addEventListener('click', (e) => {
     const invoker = (e.target as Element | null)?.closest?.('[popovertarget]');
