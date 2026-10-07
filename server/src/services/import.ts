@@ -13,6 +13,7 @@ import { findAccountByBankNumber, getAccount, updateAccount } from '../repos/acc
 import { createImport } from '../repos/imports';
 import { listSortingRules } from '../repos/sorting-rules';
 import { createTransaction, findByFingerprints, findTransfersTo, getTransaction, listPlanned, updateTransaction } from '../repos/transactions';
+import { autoFund } from './auto-funding';
 
 export type ImportDeps = { extractPdfText?: (buffer: Buffer) => Promise<string> };
 
@@ -249,6 +250,7 @@ export function commitImport(db: Db, input: ImportCommitInput & { bankAccountNum
     const t = tx as unknown as Db;
     let matched = 0;
     let created = 0;
+    const confirmed: number[] = [];
     for (const row of input.rows) {
       if (row.plannedId != null) {
         const planned = getTransaction(t, row.plannedId);
@@ -262,6 +264,7 @@ export function commitImport(db: Db, input: ImportCommitInput & { bankAccountNum
           fingerprint: row.fingerprint,
           envelopeId: row.envelopeId ?? planned.envelopeId,
         });
+        confirmed.push(row.plannedId);
         matched++;
         continue;
       }
@@ -296,6 +299,8 @@ export function commitImport(db: Db, input: ImportCommitInput & { bankAccountNum
     if (input.bankAccountNumber && !account.bankAccountNumber) {
       updateAccount(t, account.id, { bankAccountNumber: input.bankAccountNumber });
     }
+    // Après toutes les lignes : le disponible tient compte de tout le relevé, pas seulement de ce qui précède le salaire.
+    for (const id of confirmed) autoFund(t, id);
     const record = createImport(t, {
       fileName: input.fileName,
       accountId: input.accountId,

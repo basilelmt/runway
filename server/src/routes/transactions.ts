@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { transactionFilterSchema, transactionInputSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
+import type { Db } from '../db/client';
 import { createTransaction, deleteTransaction, getTransaction, listTransactions, updateTransaction } from '../repos/transactions';
+import { autoFund } from '../services/auto-funding';
 import { validate } from '../validate';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
@@ -24,7 +26,14 @@ export const transactionRoutes = new Hono<AppEnv>()
     const db = c.get('db');
     const { id } = c.req.valid('param');
     getTransaction(db, id);
-    return c.json(updateTransaction(db, id, { status: 'confirmed' }));
+    return c.json(
+      db.transaction((tx) => {
+        const t = tx as unknown as Db;
+        const confirmed = updateTransaction(t, id, { status: 'confirmed' });
+        autoFund(t, id);
+        return confirmed;
+      }),
+    );
   })
   .delete('/:id', validate('param', idParam), (c) => {
     deleteTransaction(c.get('db'), c.req.valid('param').id);
