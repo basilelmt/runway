@@ -31,6 +31,29 @@ export function remainingToFund(envelope: Pick<Envelope, 'monthlyTarget'>, alloc
   return envelope.monthlyTarget ? Math.max(0, envelope.monthlyTarget - allocatedThisMonth) : 0;
 }
 
+export type FundingPlan = { items: { envelopeId: number; amount: number }[]; shortfallCount: number };
+
+/**
+ * Répartition automatique : chaque enveloppe active qui a un budget reçoit ce qui lui manque pour le mois,
+ * dans l'ordre de la page Budget, tant qu'il reste de l'argent. Le surplus reste à répartir.
+ */
+export function planAutoFunding(envelopes: Envelope[], allocated: Map<number, number>, available: number): FundingPlan {
+  const ordered = envelopes.filter((e) => !e.archived && e.monthlyTarget).sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+  const items: FundingPlan['items'] = [];
+  let left = Math.max(0, available);
+  let shortfallCount = 0;
+  for (const env of ordered) {
+    const missing = remainingToFund(env, allocated.get(env.id) ?? 0);
+    if (missing === 0) continue;
+    const amount = Math.min(missing, left);
+    if (amount < missing) shortfallCount++;
+    if (amount === 0) continue;
+    items.push({ envelopeId: env.id, amount });
+    left -= amount;
+  }
+  return { items, shortfallCount };
+}
+
 /**
  * Argent mis de côté sur le mois de `date` : virements nets des comptes budget vers les comptes d'épargne,
  * plus les dépenses rangées dans une enveloppe d'épargne (versement vers un courtier, par exemple).

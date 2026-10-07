@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { monthActivity, remainingToFund, savedInMonth } from './budget';
+import { monthActivity, planAutoFunding, remainingToFund, savedInMonth } from './budget';
 import { account, envelope, resetIds, tx } from './test-fixtures';
 
 describe('budget', () => {
@@ -48,5 +48,37 @@ describe('budget', () => {
       '2026-03-15',
     );
     expect(saved).toBe(250_00);
+  });
+});
+
+describe('planAutoFunding', () => {
+  beforeEach(resetIds);
+
+  it('complète chaque enveloppe jusqu’à son budget, le surplus reste', () => {
+    const courses = envelope({ name: 'Courses', monthlyTarget: 300_00, sortOrder: 0 });
+    const loisirs = envelope({ name: 'Loisirs', monthlyTarget: 100_00, sortOrder: 1 });
+    const plan = planAutoFunding([courses, loisirs], new Map([[courses.id, 50_00]]), 2000_00);
+    expect(plan).toEqual({ items: [{ envelopeId: courses.id, amount: 250_00 }, { envelopeId: loisirs.id, amount: 100_00 }], shortfallCount: 0 });
+  });
+
+  it('en cas de manque, suit l’ordre de la page Budget et compte les incomplètes', () => {
+    const a = envelope({ name: 'A', monthlyTarget: 100_00, sortOrder: 2 });
+    const b = envelope({ name: 'B', monthlyTarget: 100_00, sortOrder: 0 });
+    const c = envelope({ name: 'C', monthlyTarget: 100_00, sortOrder: 1 });
+    const plan = planAutoFunding([a, b, c], new Map(), 150_00);
+    expect(plan).toEqual({ items: [{ envelopeId: b.id, amount: 100_00 }, { envelopeId: c.id, amount: 50_00 }], shortfallCount: 2 });
+  });
+
+  it('ignore les enveloppes archivées, sans budget ou déjà complètes', () => {
+    const archived = envelope({ name: 'Vieux', monthlyTarget: 100_00, archived: true });
+    const free = envelope({ name: 'Libre', monthlyTarget: null });
+    const full = envelope({ name: 'Pleine', monthlyTarget: 100_00 });
+    expect(planAutoFunding([archived, free, full], new Map([[full.id, 100_00]]), 1000_00)).toEqual({ items: [], shortfallCount: 0 });
+  });
+
+  it('sans argent disponible, ne crée rien et signale les manques', () => {
+    const courses = envelope({ name: 'Courses', monthlyTarget: 300_00 });
+    expect(planAutoFunding([courses], new Map(), 0)).toEqual({ items: [], shortfallCount: 1 });
+    expect(planAutoFunding([courses], new Map(), -50_00)).toEqual({ items: [], shortfallCount: 1 });
   });
 });
