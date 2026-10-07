@@ -5,6 +5,9 @@
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--ink-soft);
+}
+
+.check label {
   cursor: pointer;
 }
 

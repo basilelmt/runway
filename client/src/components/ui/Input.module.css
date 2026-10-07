@@ -37,6 +37,12 @@
     0 2px 0 var(--line-accent, var(--marking));
 }
 
+.input[aria-invalid='true']:focus,
+.input[aria-invalid='true']:focus-visible {
+  border-bottom-color: var(--negative);
+  box-shadow: inset 0 -1px 0 var(--negative);
+}
+
 .input:disabled {
   opacity: 0.5;
   border-bottom-style: dashed;
