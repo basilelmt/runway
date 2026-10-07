@@ -240,6 +240,12 @@
     margin-left: auto;
   }
 
+  /* Les actions secondaires partagent une ligne : rembourrage réduit */
+  .footer .start > *,
+  .footer .end > :not(:last-child) {
+    padding-inline: var(--s-2);
+  }
+
   @keyframes sheet-up {
     from {
       transform: translateY(100%);

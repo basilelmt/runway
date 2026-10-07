@@ -2,7 +2,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 34px;
+  height: 38px;
   border-radius: var(--radius-pill);
   background: var(--paper-sunken);
   color: var(--ink-soft);

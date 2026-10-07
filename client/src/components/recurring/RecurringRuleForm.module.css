@@ -11,6 +11,27 @@
   gap: var(--s-2);
 }
 
+.top > :first-child {
+  align-self: center;
+}
+
+/* Répéter, intervalle et jour sur une ligne */
+.schedule {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: var(--s-5);
+}
+
+@media (max-width: 479px) {
+  .schedule {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .schedule > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

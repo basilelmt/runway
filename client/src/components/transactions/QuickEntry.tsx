@@ -292,7 +292,7 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
             Hier
           </button>
           <DateField
-            variant="pill"
+            variant="chip"
             aria-label="Autre date"
             value={otherDate ? date : null}
             placeholder="Autre date"

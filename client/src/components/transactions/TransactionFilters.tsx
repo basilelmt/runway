@@ -120,7 +120,7 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
       </div>
 
       <div className={styles.line}>
-        <FilterPill aria-label="Compte" value={value.account ? String(value.account) : ''} resetValue="" onChange={(v) => onChange({ ...value, account: v ? Number(v) : undefined })}>
+        <FilterPill className={styles.grow} aria-label="Compte" value={value.account ? String(value.account) : ''} resetValue="" onChange={(v) => onChange({ ...value, account: v ? Number(v) : undefined })}>
           <option value="">Tous les comptes</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
@@ -128,7 +128,7 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
             </option>
           ))}
         </FilterPill>
-        <FilterPill aria-label="Enveloppe" value={value.envelope ? String(value.envelope) : ''} resetValue="" onChange={(v) => onChange({ ...value, envelope: v ? Number(v) : undefined })}>
+        <FilterPill className={styles.grow} aria-label="Enveloppe" value={value.envelope ? String(value.envelope) : ''} resetValue="" onChange={(v) => onChange({ ...value, envelope: v ? Number(v) : undefined })}>
           <option value="">Toutes les enveloppes</option>
           {envelopes.map((env) => (
             <option key={env.id} value={env.id}>

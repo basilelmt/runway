@@ -43,7 +43,7 @@
 }
 
 .pill {
-  height: 34px;
+  height: 38px;
   padding: 0 var(--s-3) 0 var(--s-4);
   border-radius: var(--radius-pill);
   background: var(--paper-sunken);
@@ -51,16 +51,37 @@
   font-size: var(--text-sm);
 }
 
-.pill:hover {
+.chip {
+  height: 32px;
+  padding: 0 var(--s-2) 0 var(--s-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.pill:hover,
+.chip:hover {
   color: var(--ink);
 }
 
-.pill.filled {
+.chip:hover {
+  border-color: var(--rule-strong);
+}
+
+.pill.filled,
+.chip.filled {
+  border-color: var(--ink);
   background: var(--ink);
   color: var(--paper);
 }
 
-.pill:focus-visible {
+.chip.filled {
+  font-weight: 500;
+}
+
+.pill:focus-visible,
+.chip:focus-visible {
   box-shadow:
     0 0 0 2px var(--paper),
     0 0 0 4px var(--marking);
@@ -75,7 +96,8 @@
   color: var(--ink-mute);
 }
 
-.pill .placeholder {
+.pill .placeholder,
+.chip .placeholder {
   color: inherit;
 }
 
@@ -87,7 +109,8 @@
   transition: transform var(--dur) var(--ease-out);
 }
 
-.pill.filled .caret {
+.pill.filled .caret,
+.chip.filled .caret {
   color: var(--rule-strong);
 }
 
@@ -274,4 +297,9 @@
   margin-left: auto;
   border-color: transparent;
   color: var(--ink-mute);
+}
+
+/* Place réservée pendant le chargement du calendrier */
+.loading {
+  height: 292px;
 }

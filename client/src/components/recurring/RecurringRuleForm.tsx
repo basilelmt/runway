@@ -190,7 +190,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
       ) : null}
 
       <FormSection title="Quand">
-        <div className={styles.grid}>
+        <div className={styles.schedule}>
           <Field label="Répéter" error={errors.frequency}>
             {(id, by) => (
               <Select id={id} aria-describedby={by} value={values.frequency} onChange={(e) => set('frequency', e.target.value as Frequency)}>

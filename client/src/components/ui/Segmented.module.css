@@ -3,7 +3,7 @@
   align-self: flex-start;
   padding: 3px;
   gap: 2px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   background: var(--paper-sunken);
   max-width: 100%;
   overflow-x: auto;
@@ -13,7 +13,7 @@
   border: none;
   background: transparent;
   color: var(--ink-soft);
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   font-weight: 500;
   white-space: nowrap;
   transition: background var(--dur) var(--ease-out);
