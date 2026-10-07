@@ -42,20 +42,13 @@
 
 .input {
   width: 128px;
-  text-align: right;
 }
 
-.footer {
-  position: sticky;
-  bottom: calc(-1 * var(--s-5));
+.info {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
-  margin: 0 calc(-1 * var(--s-5)) calc(-1 * var(--s-5));
-  padding: var(--s-4) var(--s-5) var(--s-5);
-  border-top: 1px solid var(--rule);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  background: var(--paper-raised);
+  gap: var(--s-3);
+  padding-bottom: var(--s-1);
 }
 
 .summary {
@@ -94,8 +87,3 @@
   color: var(--negative);
 }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--s-2);
-}
