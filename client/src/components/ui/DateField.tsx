@@ -1,12 +1,11 @@
-import { DayPicker, type ClassNames, type DateRange } from '@daypicker/react';
-import { fr } from '@daypicker/react/locale/fr';
 import { ChevronDown } from 'lucide-react';
-import { useId, useState, type CSSProperties, type ReactNode, type ToggleEvent } from 'react';
-import { addDays, formatDateWithWeekday, parts, today, toISODate } from '@shared/dates';
+import { lazy, Suspense, useId, useState, type CSSProperties, type ReactNode, type ToggleEvent } from 'react';
+import { addDays, formatDateWithWeekday, today } from '@shared/dates';
 import { formatDateCompact } from '@/lib/format';
 import styles from './DateField.module.css';
 
-type Variant = 'line' | 'pill';
+/** `line` dans un formulaire, `pill` dans une barre d'outils, `chip` à côté de puces à contour. */
+type Variant = 'line' | 'pill' | 'chip';
 
 type CommonProps = {
   id?: string;
@@ -34,40 +33,7 @@ export type DateRangeFieldProps = CommonProps & {
   onChange: (range: { from: string | null; to: string | null }) => void;
 };
 
-const CALENDAR_CLASSES: Partial<ClassNames> = {
-  root: styles.calendar,
-  months: styles.months,
-  month: styles.month,
-  month_caption: styles.caption,
-  caption_label: styles.captionLabel,
-  nav: styles.nav,
-  button_previous: styles.navButton,
-  button_next: styles.navButton,
-  chevron: styles.chevron,
-  month_grid: styles.grid,
-  weekdays: styles.weekdays,
-  weekday: styles.weekday,
-  week: styles.week,
-  day: styles.day,
-  day_button: styles.dayButton,
-  today: styles.today,
-  selected: styles.selected,
-  outside: styles.outside,
-  disabled: styles.disabled,
-  hidden: styles.hidden,
-  range_start: styles.rangeStart,
-  range_middle: styles.rangeMiddle,
-  range_end: styles.rangeEnd,
-};
-
-function toDate(iso: string): Date {
-  const { year, month, day } = parts(iso);
-  return new Date(year, month - 1, day);
-}
-
-function bounds(min?: string, max?: string) {
-  return [...(min ? [{ before: toDate(min) }] : []), ...(max ? [{ after: toDate(max) }] : [])];
-}
+const Calendar = lazy(() => import('./Calendar'));
 
 /** Ancre CSS propre à chaque champ : le calendrier se place sous son bouton. */
 function anchor(name: string, property: 'anchorName' | 'positionAnchor'): CSSProperties {
@@ -113,7 +79,7 @@ function PopoverField({ id, placeholder, variant = 'line', className, filled, te
         style={anchor(`--${popoverId}`, 'positionAnchor')}
         onToggle={(e: ToggleEvent<HTMLDivElement>) => setOpen(e.newState === 'open')}
       >
-        {open ? children(close) : null}
+        {open ? <Suspense fallback={<div className={styles.loading} />}>{children(close)}</Suspense> : null}
       </div>
     </>
   );
@@ -132,19 +98,7 @@ export function DateField({ value, onChange, clearable = false, shortcuts = true
         };
         return (
           <>
-            <DayPicker
-              mode="single"
-              locale={fr}
-              weekStartsOn={1}
-              navLayout="around"
-              showOutsideDays
-              autoFocus
-              selected={value ? toDate(value) : undefined}
-              defaultMonth={value ? toDate(value) : new Date()}
-              disabled={bounds(min, max)}
-              onSelect={(d) => d && pick(toISODate(d))}
-              classNames={CALENDAR_CLASSES}
-            />
+            <Calendar mode="single" value={value} min={min} max={max} onPick={pick} />
             {shortcuts || clearable ? (
               <div className={styles.shortcuts}>
                 {shortcuts && inBounds(today()) ? (
@@ -182,22 +136,16 @@ export function DateRangeField({ from, to, onChange, placeholder = 'Choisir des 
   return (
     <PopoverField {...rest} placeholder={placeholder} filled={from !== null} text={rangeText(from, to)}>
       {(close) => (
-        <DayPicker
+        <Calendar
           mode="range"
-          locale={fr}
-          weekStartsOn={1}
-          navLayout="around"
-          showOutsideDays
-          autoFocus
-          selected={from ? { from: toDate(from), to: to ? toDate(to) : undefined } : undefined}
-          defaultMonth={from ? toDate(from) : new Date()}
-          disabled={bounds(min, max)}
-          onSelect={(range: DateRange | undefined) => {
-            const next = { from: range?.from ? toISODate(range.from) : null, to: range?.to ? toISODate(range.to) : null };
+          from={from}
+          to={to}
+          min={min}
+          max={max}
+          onRange={(next) => {
             onChange(next);
             if (next.from && next.to && next.from !== next.to) close();
           }}
-          classNames={CALENDAR_CLASSES}
         />
       )}
     </PopoverField>

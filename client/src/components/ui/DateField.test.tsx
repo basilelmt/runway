@@ -40,7 +40,7 @@ describe('DateField', () => {
     const onChange = vi.fn();
     render(<SingleHarness initial="2026-10-01" onChange={onChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Date' }));
-    await userEvent.click(screen.getByRole('button', { name: dayName('2026-10-15') }));
+    await userEvent.click(await screen.findByRole('button', { name: dayName('2026-10-15') }));
     expect(onChange).toHaveBeenLastCalledWith('2026-10-15');
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Date' })).toHaveTextContent('jeu. 15 oct. 2026');
@@ -50,10 +50,10 @@ describe('DateField', () => {
     const onChange = vi.fn();
     render(<SingleHarness initial="2026-10-01" onChange={onChange} clearable placeholder="Sans fin" />);
     await userEvent.click(screen.getByRole('button', { name: 'Date' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Aujourd’hui' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Aujourd’hui' }));
     expect(onChange).toHaveBeenLastCalledWith(today());
     await userEvent.click(screen.getByRole('button', { name: 'Date' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Effacer' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Effacer' }));
     expect(onChange).toHaveBeenLastCalledWith(null);
     expect(screen.getByRole('button', { name: 'Date' })).toHaveTextContent('Sans fin');
   });
@@ -63,7 +63,7 @@ describe('DateField', () => {
     render(<SingleHarness initial="2026-10-01" onChange={onChange} />);
     const trigger = screen.getByRole('button', { name: 'Date' });
     await userEvent.click(trigger);
-    expect(screen.getByRole('grid')).toBeInTheDocument();
+    expect(await screen.findByRole('grid')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
@@ -93,7 +93,7 @@ describe('DateRangeField', () => {
     const start = fromParts(year, month, 10);
     const end = fromParts(year, month, 12);
     await userEvent.click(screen.getByRole('button', { name: 'Période' }));
-    const grid = screen.getByRole('grid');
+    const grid = await screen.findByRole('grid');
     await userEvent.click(within(grid).getByRole('button', { name: dayName(start) }));
     await userEvent.click(within(grid).getByRole('button', { name: dayName(end) }));
     expect(onChange).toHaveBeenLastCalledWith({ from: start, to: end });
