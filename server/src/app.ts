@@ -31,7 +31,7 @@ export type AppOptions = {
   /** Fournisseur bancaire et horloge, injectables pour les tests. */
   bankDeps?: BankDeps;
   /** Réseau (Yahoo, Binance) et horloge de l'écran Investir, injectables pour les tests. */
-  investDeps?: PricesDeps;
+  investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void };
 };
 
 export function createApp({ db, now = today, exec, importDeps, bankDeps, investDeps = {} }: AppOptions) {
@@ -80,7 +80,7 @@ export function createApp({ db, now = today, exec, importDeps, bankDeps, investD
   app.route('/api/reports', reportRoutes);
   app.route('/api/imports', importRoutes(importDeps));
   app.route('/api/bank-sync', bankSyncRoutes(bankDeps));
-  app.route('/api/invest', investRoutes({ prices, ...investDeps }));
+  app.route('/api/invest', investRoutes({ prices, exec, ...investDeps }));
   app.route('/api', exportRoutes);
 
   return app;

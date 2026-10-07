@@ -112,12 +112,12 @@ Consignes :
 - Réponds uniquement avec le JSON demandé.`;
 }
 
-async function runBatch(batch: ClaudeSortInput, exec: Exec): Promise<SuggestionResult> {
-  const args = ['-p', '--tools', '', '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];
-  if (batch.model) args.push('--model', batch.model);
-  args.push(buildPrompt(batch));
-
-  const result = await exec(args, TIMEOUT_MS);
+/**
+ * Lance `claude -p` avec les arguments donnés et renvoie la sortie structurée (`structured_output`).
+ * Traduit les échecs connus (absent, non connecté, délai dépassé, réponse illisible) en `ClaudeError`.
+ */
+export async function runClaude(args: string[], timeoutMs: number, exec: Exec): Promise<unknown> {
+  const result = await exec(args, timeoutMs);
   if (result.exitCode === 127) throw new ClaudeError("Claude Code n'est pas installé (binaire `claude` introuvable)", 'claude_not_installed', 503);
   if (result.exitCode === 124) throw new ClaudeError('Claude a mis trop de temps à répondre', 'claude_timeout', 504);
 
@@ -132,8 +132,15 @@ async function runBatch(batch: ClaudeSortInput, exec: Exec): Promise<SuggestionR
     throw new ClaudeError('Claude Code n\'est pas connecté : lance `claude` dans un terminal et fais /login', 'claude_not_logged_in', 503);
   }
   if (envelope.is_error) throw new ClaudeError(`Claude a renvoyé une erreur : ${envelope.result ?? 'inconnue'}`, 'claude_error');
+  return envelope.structured_output;
+}
 
-  const validated = suggestionResultSchema.safeParse(envelope.structured_output);
+async function runBatch(batch: ClaudeSortInput, exec: Exec): Promise<SuggestionResult> {
+  const args = ['-p', '--tools', '', '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];
+  if (batch.model) args.push('--model', batch.model);
+  args.push(buildPrompt(batch));
+
+  const validated = suggestionResultSchema.safeParse(await runClaude(args, TIMEOUT_MS, exec));
   if (!validated.success) throw new ClaudeError('Réponse de Claude invalide (format inattendu)', 'claude_invalid_output');
   return validated.data;
 }

@@ -1,16 +1,27 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { binanceKeysSchema, binanceSyncSchema, holdingInputSchema, tradeInputSchema, tradePatchSchema } from '@shared/schemas';
+import { binanceKeysSchema, binanceSyncSchema, holdingInputSchema, ideaRunStartSchema, tradeInputSchema, tradePatchSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import type { Db } from '../db/client';
 import { AppError } from '../errors';
 import { addTrade, createHolding, deleteHolding, deleteTrade, getHolding, getTrade, listTrades, updateTrade } from '../repos/invest';
+import { getRun } from '../repos/ideas';
+import { getSettings } from '../repos/settings';
 import { disconnectBinance, saveBinanceKeys, syncBinance } from '../services/binance-sync';
+import type { Exec } from '../services/claude';
+import { buildIdeasView, startIdeaRun, toRunView } from '../services/ideas';
 import { assertNoOversell, binanceState, buildPortfolio } from '../services/portfolio';
 import type { HttpFetch, Prices } from '../services/prices';
 import { validate } from '../validate';
 
-export type InvestDeps = { prices: Prices; fetch?: HttpFetch; now?: () => Date };
+export type InvestDeps = {
+  prices: Prices;
+  fetch?: HttpFetch;
+  now?: () => Date;
+  exec?: Exec;
+  /** Reçoit la promesse de fin d'une fournée lancée (tests). */
+  onRunStarted?: (done: Promise<void>) => void;
+};
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const portfolioQuery = z.object({ range: z.enum(['1m', '6m', '1y', 'all']).default('6m') });
@@ -19,7 +30,7 @@ const searchQuery = z.object({ q: z.string().trim().min(1, 'Recherche vide').max
 const syncedHolding = () => new AppError('Position synchronisée avec Binance', 400, 'synced_holding');
 const syncedTrade = () => new AppError('Mouvement importé de Binance', 400, 'synced_trade');
 
-export function investRoutes({ prices, ...net }: InvestDeps) {
+export function investRoutes({ prices, exec, onRunStarted, ...net }: InvestDeps) {
   return new Hono<AppEnv>()
     .get('/portfolio', validate('query', portfolioQuery), async (c) => {
       return c.json(await buildPortfolio(c.get('db'), prices, c.get('today'), c.req.valid('query').range));
@@ -76,5 +87,14 @@ export function investRoutes({ prices, ...net }: InvestDeps) {
     })
     .post('/binance/sync', validate('json', binanceSyncSchema), async (c) => {
       return c.json(await syncBinance(c.get('db'), prices, net, c.req.valid('json')));
-    });
+    })
+    .get('/ideas', async (c) => c.json(await buildIdeasView(c.get('db'), prices, c.get('today'))))
+    .post('/ideas/runs', validate('json', ideaRunStartSchema), (c) => {
+      const db = c.get('db');
+      const model = getSettings(db).claudeModel || undefined;
+      const { start, done } = startIdeaRun(db, { prices, exec, now: net.now, model }, c.req.valid('json').trigger);
+      if (start.started) onRunStarted?.(done);
+      return c.json(start, start.started ? 202 : 200);
+    })
+    .get('/ideas/runs/:id', validate('param', idParam), (c) => c.json(toRunView(getRun(c.get('db'), c.req.valid('param').id))));
 }

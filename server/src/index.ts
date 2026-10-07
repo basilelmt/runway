@@ -6,6 +6,7 @@ import { relative } from 'node:path';
 import { today } from '@shared/dates';
 import { createApp } from './app';
 import { openDb } from './db/client';
+import { failInterruptedRuns } from './repos/ideas';
 import { materializeDue } from './services/materialize';
 
 const port = Number(process.env.PORT ?? 3000);
@@ -14,6 +15,8 @@ const clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url));
 const dbPath = process.env.RUNWAY_DB ?? fileURLToPath(new URL('../../data/runway.db', import.meta.url));
 
 const db = openDb(dbPath);
+// Une fournée d'idées ne survit pas à un redémarrage du serveur.
+failInterruptedRuns(db, new Date().toISOString());
 const created = materializeDue(db, today());
 if (created > 0) console.log(`${created} occurrence(s) récurrente(s) créée(s)`);
 
