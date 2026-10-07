@@ -5,6 +5,8 @@ import {
   daysBetween,
   daysInMonth,
   endOfMonth,
+  formatDateMedium,
+  formatDateWithWeekday,
   isValidISODate,
   monthKey,
   startOfMonth,
@@ -46,5 +48,15 @@ describe('dates', () => {
     expect(isValidISODate('2026-02-29')).toBe(false);
     expect(isValidISODate('2024-02-29')).toBe(true);
     expect(isValidISODate('26-02-01')).toBe(false);
+  });
+});
+
+describe('formats de date des champs', () => {
+  it('affiche le jour de la semaine en français', () => {
+    expect(formatDateWithWeekday('2026-10-01')).toBe('jeu. 1 oct. 2026');
+  });
+
+  it('affiche une date moyenne avec l’année', () => {
+    expect(formatDateMedium('2026-10-01')).toBe('1 oct. 2026');
   });
 });

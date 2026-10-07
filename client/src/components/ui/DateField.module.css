@@ -1,0 +1,277 @@
+/* Bouton : même trait que les champs, ou pastille dans les barres d'outils */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    background var(--dur) var(--ease-out);
+}
+
+.trigger:focus-visible {
+  outline: none;
+}
+
+.line {
+  width: 100%;
+  height: 38px;
+  padding: 0;
+  border-bottom: 1px solid var(--line, var(--rule-strong));
+  border-radius: 0;
+  font-size: 1rem;
+}
+
+.line:hover {
+  border-bottom-color: var(--line-hover, var(--ink-mute));
+}
+
+.line:focus-visible,
+.line[aria-expanded='true'] {
+  border-bottom-color: var(--line-focus, var(--ink));
+  box-shadow:
+    inset 0 -1px 0 var(--line-focus, var(--ink)),
+    0 2px 0 var(--line-accent, var(--marking));
+}
+
+.pill {
+  height: 34px;
+  padding: 0 var(--s-3) 0 var(--s-4);
+  border-radius: var(--radius-pill);
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.pill:hover {
+  color: var(--ink);
+}
+
+.pill.filled {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pill:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--paper),
+    0 0 0 4px var(--marking);
+}
+
+.value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeholder {
+  color: var(--ink-mute);
+}
+
+.pill .placeholder {
+  color: inherit;
+}
+
+.caret {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ink-mute);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.pill.filled .caret {
+  color: var(--rule-strong);
+}
+
+.trigger[aria-expanded='true'] .caret {
+  transform: rotate(180deg);
+}
+
+/* Calendrier en popover, placé sous son bouton (au-dessus s'il manque de place) */
+.popover {
+  inset: auto;
+  top: anchor(bottom);
+  left: anchor(left);
+  margin: var(--s-2) 0;
+  position-try-fallbacks: flip-block, flip-inline;
+  width: 280px;
+  padding: var(--s-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-pop);
+}
+
+.calendar {
+  font-size: var(--text-sm);
+}
+
+.month {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  row-gap: var(--s-2);
+}
+
+.caption {
+  display: flex;
+  justify-content: center;
+}
+
+.captionLabel {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.nav {
+  display: contents;
+}
+
+.navButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--ink-soft);
+}
+
+.navButton:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.grid {
+  grid-column: 1 / -1;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.weekday {
+  height: 24px;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+}
+
+.day {
+  padding: 1px;
+  text-align: center;
+}
+
+.dayButton {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayButton:hover {
+  background: var(--paper-sunken);
+}
+
+.dayButton:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.today .dayButton {
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+}
+
+.outside {
+  color: var(--rule-strong);
+}
+
+.disabled .dayButton {
+  color: var(--rule-strong);
+  cursor: not-allowed;
+}
+
+.disabled .dayButton:hover {
+  background: none;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.rangeMiddle {
+  background: var(--paper-sunken);
+}
+
+.rangeMiddle .dayButton {
+  border-radius: 0;
+}
+
+.rangeStart {
+  background: linear-gradient(90deg, transparent 50%, var(--paper-sunken) 50%);
+}
+
+.rangeEnd {
+  background: linear-gradient(90deg, var(--paper-sunken) 50%, transparent 50%);
+}
+
+.rangeStart.rangeEnd {
+  background: none;
+}
+
+.selected:not(.rangeMiddle) .dayButton {
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 500;
+}
+
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--rule);
+}
+
+.shortcut {
+  height: 28px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.shortcut:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.clear {
+  margin-left: auto;
+  border-color: transparent;
+  color: var(--ink-mute);
+}

@@ -4,6 +4,7 @@ export { Button, ButtonLink, type ButtonProps } from './Button';
 export { Card } from './Card';
 export { Checkbox } from './Checkbox';
 export { Dialog } from './Dialog';
+export { DateField, DateRangeField } from './DateField';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
 export { FormSection } from './FormSection';
