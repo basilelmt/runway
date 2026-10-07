@@ -40,12 +40,6 @@ describe('MoneyInput', () => {
 
 describe('Dialog', () => {
   it('appelle onClose sur Échap', async () => {
-    HTMLDialogElement.prototype.showModal ??= function () {
-      this.setAttribute('open', '');
-    };
-    HTMLDialogElement.prototype.close ??= function () {
-      this.removeAttribute('open');
-    };
     const onClose = vi.fn();
     render(
       <Dialog open onClose={onClose} title="Test">
