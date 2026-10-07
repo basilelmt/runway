@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { bankConnectionStatuses } from '@shared/schemas';
+import { platforms } from '@shared/invest';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
 
@@ -132,4 +133,101 @@ export const bankAccounts = sqliteTable(
     lastSyncedDate: text('last_synced_date'),
   },
   (t) => [index('bank_accounts_connection_idx').on(t.connectionId)],
+);
+
+export const holdings = sqliteTable(
+  'holdings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    platform: text('platform', { enum: platforms }).notNull(),
+    /** Ticker Yahoo (`SXR8.DE`, `BTC-EUR`). */
+    ticker: text('ticker').notNull(),
+    name: text('name').notNull(),
+    source: text('source', { enum: ['manual', 'binance'] }).notNull().default('manual'),
+    /** Actif Binance (`BTC`) pour une position synchronisée. */
+    externalAsset: text('external_asset'),
+    /** Dernier solde lu chez Binance, en texte décimal. */
+    syncedQuantity: text('synced_quantity'),
+    createdAt: text('created_at').notNull().default(now),
+  },
+  (t) => [uniqueIndex('holdings_external_idx').on(t.source, t.externalAsset)],
+);
+
+export const holdingTrades = sqliteTable(
+  'holding_trades',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    holdingId: integer('holding_id')
+      .notNull()
+      .references(() => holdings.id, { onDelete: 'cascade' }),
+    side: text('side', { enum: ['buy', 'sell'] }).notNull(),
+    date: text('date').notNull(),
+    quantity: text('quantity').notNull(),
+    /** Montant total en centimes d'euro, frais exclus. */
+    amount: integer('amount').notNull(),
+    fees: integer('fees').notNull().default(0),
+    source: text('source', { enum: ['manual', 'binance'] }).notNull().default('manual'),
+    externalId: text('external_id'),
+  },
+  (t) => [index('holding_trades_holding_idx').on(t.holdingId), uniqueIndex('holding_trades_external_idx').on(t.externalId)],
+);
+
+export const prices = sqliteTable(
+  'prices',
+  {
+    ticker: text('ticker').notNull(),
+    date: text('date').notNull(),
+    close: real('close').notNull(),
+    currency: text('currency').notNull(),
+    fetchedAt: text('fetched_at').notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.ticker, t.date] })],
+);
+
+export const priceTickers = sqliteTable('price_tickers', {
+  ticker: text('ticker').primaryKey(),
+  name: text('name').notNull(),
+  currency: text('currency').notNull(),
+  /** Plus ancienne date demandée à Yahoo : l'historique en base est complet à partir d'ici. */
+  historyFrom: text('history_from').notNull(),
+  refreshedAt: text('refreshed_at').notNull(),
+});
+
+export const ideaRuns = sqliteTable('idea_runs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  trigger: text('trigger', { enum: ['manual', 'weekly'] }).notNull(),
+  status: text('status', { enum: ['running', 'done', 'failed'] }).notNull().default('running'),
+  startedAt: text('started_at').notNull(),
+  finishedAt: text('finished_at'),
+  acceptedCount: integer('accepted_count').notNull().default(0),
+  /** JSON : `[{ ticker, reason }]`. */
+  rejected: text('rejected').notNull().default('[]'),
+  error: text('error'),
+});
+
+export const ideas = sqliteTable(
+  'ideas',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    runId: integer('run_id')
+      .notNull()
+      .references(() => ideaRuns.id, { onDelete: 'cascade' }),
+    createdOn: text('created_on').notNull(),
+    title: text('title').notNull(),
+    event: text('event').notNull(),
+    sourceUrl: text('source_url').notNull(),
+    /** JSON : étapes de la déduction. */
+    reasoning: text('reasoning').notNull(),
+    pricedIn: text('priced_in').notNull(),
+    ticker: text('ticker').notNull(),
+    assetName: text('asset_name').notNull(),
+    whereToBuy: text('where_to_buy', { enum: platforms }).notNull(),
+    horizon: text('horizon').notNull(),
+    startPriceEur: real('start_price_eur').notNull(),
+    benchStartPriceEur: real('bench_start_price_eur').notNull(),
+    status: text('status', { enum: ['open', 'closed'] }).notNull().default('open'),
+    finalReturn: real('final_return'),
+    benchFinalReturn: real('bench_final_return'),
+  },
+  (t) => [index('ideas_status_idx').on(t.status)],
 );
