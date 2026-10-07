@@ -1,5 +1,6 @@
 import type { Account, Envelope } from '@shared/schemas';
 import { createApp } from '../src/app';
+import type { PricesDeps } from '../src/services/prices';
 import type { BankProvider } from '../src/bank/provider';
 import { openDb, type Db } from '../src/db/client';
 import { createAccount } from '../src/repos/accounts';
@@ -32,7 +33,7 @@ export type TestApp = TestContext & {
   call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
 };
 
-export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider } = {}): TestApp {
+export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps } = {}): TestApp {
   const ctx = createTestDb();
   let today = initialToday;
   const app = createApp({
@@ -42,6 +43,8 @@ export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?
       provider: opts.bankProvider ? () => opts.bankProvider! : undefined,
       now: () => new Date(`${today}T10:00:00Z`),
     },
+    // Jamais de réseau en test : Yahoo et Binance répondent 404 sauf faux `fetch` fourni.
+    investDeps: opts.investDeps ?? { fetch: async () => new Response('{}', { status: 404 }) },
   });
   return {
     ...ctx,

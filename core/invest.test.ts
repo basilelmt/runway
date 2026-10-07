@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addQty, cmpQty, fromUnits, ideasSummary, isZeroQty, portfolioSeries, position, priceOn, qtyToNumber,
+  addQty, cmpQty, hasOversell, fromUnits, ideasSummary, isZeroQty, portfolioSeries, position, priceOn, qtyToNumber,
   simpleReturn, subQty, toEur, toUnits, valueCents, type Trade,
 } from './invest';
 
@@ -100,5 +100,13 @@ describe('rendements des idées', () => {
   });
   it('bilan vide', () => {
     expect(ideasSummary([])).toEqual({ closedCount: 0, beatCount: 0, avgExcess: null, hundredEach: { invested: 0, ideas: 0, bench: 0 } });
+  });
+});
+
+describe('hasOversell', () => {
+  it('détecte une vente supérieure à la quantité détenue à sa date', () => {
+    expect(hasOversell([buy('2025-10-01', '2', 100_00), sell('2025-10-02', '2', 120_00)])).toBe(false);
+    expect(hasOversell([sell('2025-09-30', '1', 50_00), buy('2025-10-01', '2', 100_00)])).toBe(true);
+    expect(hasOversell([buy('2025-10-01', '1', 100_00), sell('2025-10-02', '1.5', 120_00)])).toBe(true);
   });
 });

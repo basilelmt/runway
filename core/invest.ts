@@ -137,3 +137,16 @@ export function ideasSummary(closed: ClosedIdea[]): IdeasSummaryResult {
     },
   };
 }
+
+/** Vrai si une vente dépasse, à sa date, la quantité détenue (mouvements pris dans l'ordre chronologique). */
+export function hasOversell(trades: Trade[]): boolean {
+  const sorted = trades.map((t, i) => ({ t, i })).sort((a, b) => compareISODate(a.t.date, b.t.date) || a.i - b.i);
+  let qty = 0n;
+  for (const { t } of sorted) {
+    const q = toUnits(t.quantity);
+    if (t.side === 'buy') qty += q;
+    else if (q > qty) return true;
+    else qty -= q;
+  }
+  return false;
+}

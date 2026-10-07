@@ -6,6 +6,7 @@ import { accountRoutes } from './routes/accounts';
 import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
 import { envelopeRoutes } from './routes/envelopes';
 import { importRoutes } from './routes/imports';
+import { investRoutes } from './routes/invest';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
 import { recurringRuleRoutes } from './routes/recurring-rules';
 import { settingsRoutes } from './routes/settings';
@@ -15,6 +16,7 @@ import { transactionRoutes } from './routes/transactions';
 import type { Exec } from './services/claude';
 import type { ImportDeps } from './services/import';
 import { materializeDue } from './services/materialize';
+import { createPrices, type PricesDeps } from './services/prices';
 
 export type AppEnv = { Variables: { db: Db; today: string } };
 
@@ -28,10 +30,13 @@ export type AppOptions = {
   importDeps?: ImportDeps;
   /** Fournisseur bancaire et horloge, injectables pour les tests. */
   bankDeps?: BankDeps;
+  /** Réseau (Yahoo, Binance) et horloge de l'écran Investir, injectables pour les tests. */
+  investDeps?: PricesDeps;
 };
 
-export function createApp({ db, now = today, exec, importDeps, bankDeps }: AppOptions) {
+export function createApp({ db, now = today, exec, importDeps, bankDeps, investDeps = {} }: AppOptions) {
   const app = new Hono<AppEnv>();
+  const prices = createPrices(db, investDeps);
 
   app.use('*', async (c, next) => {
     c.set('db', db);
@@ -75,6 +80,7 @@ export function createApp({ db, now = today, exec, importDeps, bankDeps }: AppOp
   app.route('/api/reports', reportRoutes);
   app.route('/api/imports', importRoutes(importDeps));
   app.route('/api/bank-sync', bankSyncRoutes(bankDeps));
+  app.route('/api/invest', investRoutes({ prices }));
   app.route('/api', exportRoutes);
 
   return app;
