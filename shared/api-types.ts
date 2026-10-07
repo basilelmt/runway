@@ -1,6 +1,7 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
 import type { Account, BankConnectionStatus, Envelope, ImportRecord, SortingRule, Transaction } from './schemas';
+import type { Platform } from './invest';
 
 export type Balances = {
   accounts: Record<number, Cents>;
@@ -235,3 +236,98 @@ export type BankSyncRunResult = {
 };
 
 export type { Account, Envelope, ImportRecord, SortingRule, Transaction };
+
+export type PortfolioRange = '1m' | '6m' | '1y' | 'all';
+
+export type PriceInfo = { eur: number; date: ISODate; stale: boolean };
+
+export type TradeView = {
+  id: number;
+  side: 'buy' | 'sell';
+  date: ISODate;
+  quantity: string;
+  amount: Cents;
+  fees: Cents;
+  source: 'manual' | 'binance';
+};
+
+export type HoldingView = {
+  id: number;
+  platform: Platform;
+  ticker: string;
+  name: string;
+  source: 'manual' | 'binance';
+  /** Quantité détenue : solde Binance pour une position synchronisée, sinon somme des mouvements. */
+  quantity: string;
+  /** Coût de revient (PMP) de la quantité couverte par des mouvements. */
+  costBasis: Cents;
+  realized: Cents;
+  price: PriceInfo | null;
+  value: Cents | null;
+  gain: Cents | null;
+  gainPct: number | null;
+  dayChangePct: number | null;
+  /** Quantité synchronisée sans mouvement d'achat connu (« 0,002 BTC sans prix d'achat »), sinon null. */
+  unpricedQuantity: string | null;
+  trades: TradeView[];
+};
+
+export type BinanceState = { configured: boolean; apiKeyHint: string | null; lastSyncAt: string | null; lastError: string | null };
+
+export type PortfolioView = {
+  today: ISODate;
+  totals: { value: Cents; invested: Cents; gain: Cents; gainPct: number | null; realized: Cents };
+  holdings: HoldingView[];
+  series: { date: ISODate; value: Cents; invested: Cents }[];
+  /** Vrai si au moins un cours affiché n'a pas pu être rafraîchi. */
+  stale: boolean;
+  binance: BinanceState;
+};
+
+export type BinanceSyncResult = { skipped: boolean; holdings: number; newTrades: number; warnings: string[] };
+
+export type AssetSearchResult = { ticker: string; name: string; exchange: string; type: string };
+
+export type IdeaRunView = {
+  id: number;
+  trigger: 'manual' | 'weekly';
+  status: 'running' | 'done' | 'failed';
+  startedAt: string;
+  finishedAt: string | null;
+  acceptedCount: number;
+  rejected: { ticker: string; reason: string }[];
+  error: string | null;
+};
+
+export type IdeaView = {
+  id: number;
+  createdOn: ISODate;
+  title: string;
+  event: string;
+  sourceUrl: string;
+  reasoning: string[];
+  pricedIn: string;
+  ticker: string;
+  assetName: string;
+  whereToBuy: Platform;
+  horizon: ISODate;
+  startPriceEur: number;
+  status: 'open' | 'closed';
+  /** Rendement depuis l'idée (fraction : 0.05 = +5 %), figé à la clôture ; null si aucun cours. */
+  return: number | null;
+  benchReturn: number | null;
+  /** Date du cours utilisé pour `return`. */
+  priceDate: ISODate | null;
+};
+
+export type IdeasSummary = {
+  closedCount: number;
+  beatCount: number;
+  /** Écart moyen idée - référence, en fraction. */
+  avgExcess: number | null;
+  hundredEach: { invested: Cents; ideas: Cents; bench: Cents };
+};
+
+export type IdeasView = { open: IdeaView[]; closed: IdeaView[]; summary: IdeasSummary; lastRun: IdeaRunView | null };
+
+export type IdeaRunStart = { run: IdeaRunView | null; started: boolean };

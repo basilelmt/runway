@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidISODate } from './dates';
+import { platforms } from './invest';
 
 export const isoDateSchema = z
   .string()
@@ -286,3 +287,58 @@ export const sortingApplySchema = z.object({
   rules: z.array(sortingRuleInputSchema).default([]),
 });
 export type SortingApply = z.infer<typeof sortingApplySchema>;
+
+/** Quantité décimale exacte, transportée en texte (« 0.04512 »). */
+export const decimalSchema = z
+  .string()
+  .trim()
+  .transform((s) => s.replace(',', '.'))
+  .pipe(z.string().regex(/^\d+(\.\d{1,18})?$/, 'Quantité invalide'))
+  .refine((s) => /[1-9]/.test(s), 'La quantité doit être positive');
+
+export const tradeInputSchema = z.object({
+  side: z.enum(['buy', 'sell']),
+  date: isoDateSchema,
+  quantity: decimalSchema,
+  amount: positiveCentsSchema,
+  fees: centsSchema.min(0, 'Frais négatifs').default(0),
+});
+export type TradeInput = z.infer<typeof tradeInputSchema>;
+
+export const tradePatchSchema = tradeInputSchema.partial();
+export type TradePatch = z.infer<typeof tradePatchSchema>;
+
+export const holdingInputSchema = z.object({
+  platform: z.enum(platforms),
+  ticker: z.string().trim().min(1, 'Ticker manquant').max(32),
+  name: z.string().trim().min(1, 'Nom manquant').max(120),
+  firstTrade: tradeInputSchema,
+});
+export type HoldingInput = z.infer<typeof holdingInputSchema>;
+
+export const binanceKeysSchema = z.object({
+  apiKey: z.string().trim().min(16, 'Clé API trop courte').max(200),
+  apiSecret: z.string().trim().min(16, 'Clé secrète trop courte').max(200),
+});
+export type BinanceKeys = z.infer<typeof binanceKeysSchema>;
+
+export const binanceSyncSchema = z.object({ onlyIfStaleMinutes: z.number().int().min(1).max(10_080).optional() });
+
+export const ideaRunStartSchema = z.object({ trigger: z.enum(['manual', 'weekly']) });
+
+/** Une idée telle que Claude la propose, avant vérification du ticker. */
+export const ideaCandidateSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  event: z.string().trim().min(1).max(1000),
+  sourceUrl: z.url(),
+  reasoning: z.array(z.string().trim().min(1).max(400)).min(1).max(5),
+  pricedIn: z.string().trim().min(1).max(600),
+  ticker: z.string().trim().min(1).max(32),
+  assetName: z.string().trim().min(1).max(120),
+  whereToBuy: z.enum(platforms),
+  horizon: isoDateSchema,
+});
+export type IdeaCandidate = z.infer<typeof ideaCandidateSchema>;
+
+/** Sortie brute de Claude : chaque idée est validée séparément pour ne pas tout rejeter pour une seule. */
+export const ideaBatchSchema = z.object({ ideas: z.array(z.unknown()) });
