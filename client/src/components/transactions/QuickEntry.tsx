@@ -86,7 +86,8 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
 
   // Suggestions : opérations passées dont le libellé contient la saisie (création seulement).
   const query = useDebounced(editing ? '' : label.trim(), 200);
-  const history = useTransactions({ q: query, kind, limit: 40 });
+  // Pas de requête tant que la saisie est trop courte pour suggérer quoi que ce soit (ni en modification).
+  const history = useTransactions({ q: query, kind, limit: 40 }, { enabled: query.length >= 2 });
   const suggestions = useMemo(() => {
     if (query.length < 2) return [];
     const seen = new Set<string>();
@@ -157,7 +158,8 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLFormElement>) {
-    if (e.key === 'Enter' && e.shiftKey && !editing) {
+    // Un bouton (même téléporté dans le pied du dialogue) garde son propre comportement.
+    if (e.key === 'Enter' && e.shiftKey && !editing && !submitting && !(e.target instanceof HTMLButtonElement)) {
       e.preventDefault();
       submit(true);
     }
@@ -191,7 +193,7 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
               type="button"
               role="radio"
               aria-checked={kind === k.value}
-              className={[styles.kind, kind === k.value ? styles.kindActive : '', styles[k.value]].join(' ')}
+              className={[styles.kind, kind === k.value ? styles.kindActive : '', k.value === 'income' ? styles.income : ''].join(' ')}
               onClick={() => {
                 setKind(k.value);
                 setErrors({});

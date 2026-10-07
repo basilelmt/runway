@@ -1,9 +1,14 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { fromParts, parts, today } from '@shared/dates';
 import { DateField, DateRangeField } from './DateField';
+
+// Le calendrier est chargé à la demande : on le charge une fois ici pour que chaque test n'attende pas sa transformation.
+beforeAll(async () => {
+  await import('./Calendar');
+});
 
 const longDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
@@ -31,7 +36,7 @@ function SingleHarness({ initial, onChange, ...rest }: { initial: string | null;
 describe('DateField', () => {
   it('affiche la date en français, ou le texte de remplacement', () => {
     const { rerender } = render(<DateField aria-label="Date" value="2026-10-01" onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Date' })).toHaveTextContent('jeu. 1 oct. 2026');
+    expect(screen.getByRole('button', { name: 'Date' })).toHaveAccessibleDescription('jeu. 1 oct. 2026');
     rerender(<DateField aria-label="Date" value={null} placeholder="Sans fin" onChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Date' })).toHaveTextContent('Sans fin');
   });
@@ -71,31 +76,48 @@ describe('DateField', () => {
   });
 });
 
+function RangeHarness({ initial, onChange }: { initial: { from: string | null; to: string | null }; onChange: (r: { from: string | null; to: string | null }) => void }) {
+  const [range, setRange] = useState(initial);
+  return (
+    <DateRangeField
+      aria-label="Période"
+      from={range.from}
+      to={range.to}
+      onChange={(r) => {
+        setRange(r);
+        onChange(r);
+      }}
+    />
+  );
+}
+
 describe('DateRangeField', () => {
-  it('choisit une période en deux clics', async () => {
+  it('choisit une période en deux clics, sans rien transmettre au premier', async () => {
     const onChange = vi.fn();
-    function Harness() {
-      const [range, setRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
-      return (
-        <DateRangeField
-          aria-label="Période"
-          from={range.from}
-          to={range.to}
-          onChange={(r) => {
-            setRange(r);
-            onChange(r);
-          }}
-        />
-      );
-    }
-    render(<Harness />);
+    render(<RangeHarness initial={{ from: null, to: null }} onChange={onChange} />);
     const { year, month } = parts(today());
     const start = fromParts(year, month, 10);
     const end = fromParts(year, month, 12);
     await userEvent.click(screen.getByRole('button', { name: 'Période' }));
     const grid = await screen.findByRole('grid');
     await userEvent.click(within(grid).getByRole('button', { name: dayName(start) }));
+    expect(onChange).not.toHaveBeenCalled();
     await userEvent.click(within(grid).getByRole('button', { name: dayName(end) }));
     expect(onChange).toHaveBeenLastCalledWith({ from: start, to: end });
+    expect(screen.queryByRole('grid')).not.toBeInTheDocument();
+  });
+
+  it('remplace une période existante, dans n’importe quel ordre', async () => {
+    const onChange = vi.fn();
+    const { year } = parts(today());
+    const day = (d: number) => fromParts(year, 10, d);
+    render(<RangeHarness initial={{ from: day(1), to: day(5) }} onChange={onChange} />);
+    expect(screen.getByRole('button', { name: 'Période' })).toHaveAccessibleDescription('Du 1 oct. au 5 oct.');
+    await userEvent.click(screen.getByRole('button', { name: 'Période' }));
+    const grid = await screen.findByRole('grid');
+    await userEvent.click(within(grid).getByRole('button', { name: dayName(day(25)) }));
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.click(within(grid).getByRole('button', { name: dayName(day(20)) }));
+    expect(onChange).toHaveBeenLastCalledWith({ from: day(20), to: day(25) });
   });
 });

@@ -36,6 +36,12 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
     onError: (e) => toast.error(errorMessage(e)),
   });
 
+  // Une erreur d'enregistrement ne doit pas réapparaître à l'ouverture d'une autre opération.
+  const close = () => {
+    update.reset();
+    onClose();
+  };
+
   const t = transaction;
   const serverError = update.error ? errorMessage(update.error) : null;
   const deleteButton = (
@@ -48,7 +54,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
     <>
       <Dialog
         open={t !== null && !confirmDelete}
-        onClose={onClose}
+        onClose={close}
         title={t ? `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}` : ''}
         description={t?.status === 'planned' ? 'Opération prévue par une règle récurrente, pas encore passée en banque.' : undefined}
         size={t?.kind === 'allocation' ? 'md' : 'lg'}
@@ -62,7 +68,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
               submitting={update.isPending}
               serverError={serverError}
               onSubmit={(input) => update.mutate({ id: t.id, ...input })}
-              onCancel={onClose}
+              onCancel={close}
               footerStart={deleteButton}
             />
           ) : (

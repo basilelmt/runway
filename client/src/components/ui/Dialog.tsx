@@ -27,19 +27,22 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   const bodyRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const descriptionId = useId();
+  // Un clic qui commence dans le panneau (sélection de texte glissée) ne ferme pas le dialogue.
+  const pressedOnBackdrop = useRef(false);
   const [footerEl, setFooterEl] = useState<HTMLElement | null>(null);
   const [edges, setEdges] = useState({ top: false, bottom: false });
   // Le contenu reste affiché pendant l'animation de sortie, puis le dialogue se ferme vraiment.
   const [rendered, setRendered] = useState(open);
   const [closing, setClosing] = useState(false);
-  const [content, setContent] = useState({ title, description, children, footer });
+  const [content, setContent] = useState({ title, description, children, footer, size });
 
   if (open && !rendered) setRendered(true);
   if (open && closing) setClosing(false);
   if (!open && rendered && !closing) setClosing(true);
   // Pendant la sortie, on garde le dernier contenu : le parent l'a souvent déjà vidé.
-  if (open && (content.title !== title || content.description !== description || content.children !== children || content.footer !== footer)) {
-    setContent({ title, description, children, footer });
+  if (open && (content.title !== title || content.description !== description || content.children !== children || content.footer !== footer || content.size !== size)) {
+    setContent({ title, description, children, footer, size });
   }
 
   useEffect(() => {
@@ -47,8 +50,8 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     if (!el) return;
     if (open && !el.open) {
       el.showModal();
-      // Le focus va d'abord au champ marqué autofocus, sinon au premier champ, jamais au bouton Fermer.
-      const target = el.querySelector<HTMLElement>('[autofocus], input, select, textarea');
+      // Le focus va d'abord au champ marqué `data-autofocus`, sinon au premier champ, jamais au bouton Fermer.
+      const target = el.querySelector<HTMLElement>('[data-autofocus], input, select, textarea');
       target?.focus();
     }
   }, [open, rendered]);
@@ -87,19 +90,23 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     return () => observer.disconnect();
   }, [rendered, measure]);
 
-  const shown = open ? { title, description, children, footer } : content;
+  const shown = open ? { title, description, children, footer, size } : content;
 
   return (
     <dialog
       ref={ref}
-      className={[styles.dialog, styles[size], closing ? styles.closing : ''].join(' ')}
+      className={[styles.dialog, styles[shown.size], closing ? styles.closing : ''].join(' ')}
       aria-labelledby={titleId}
+      aria-describedby={shown.description ? descriptionId : undefined}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
       }}
+      onPointerDown={(e) => {
+        pressedOnBackdrop.current = e.target === ref.current;
+      }}
       onClick={(e) => {
-        if (e.target === ref.current) onClose();
+        if (e.target === ref.current && pressedOnBackdrop.current) onClose();
       }}
     >
       {rendered ? (
@@ -109,7 +116,9 @@ export function Dialog({ open, onClose, title, description, children, footer, si
               <h2 id={titleId} className={styles.title}>
                 {shown.title}
               </h2>
-              {shown.description ? <p className={styles.description}>{shown.description}</p> : null}
+              {shown.description ? <p id={descriptionId} className={styles.description}>
+                  {shown.description}
+                </p> : null}
             </div>
             <button type="button" className={styles.close} onClick={onClose} aria-label="Fermer">
               <X aria-hidden />

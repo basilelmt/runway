@@ -92,7 +92,11 @@ describe('QuickEntry', () => {
     await screen.findByRole('option', { name: 'Courant' });
     await userEvent.clear(screen.getByLabelText('Libellé'));
     await userEvent.type(screen.getByLabelText('Libellé'), 'Carrefour');
+    // Au-delà du délai de saisie (200 ms) : en création, la règle serait déjà interrogée.
     await new Promise((r) => setTimeout(r, 300));
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls.some((u) => u.startsWith('/api/sorting-rules/test'))).toBe(false);
+    expect(urls.some((u) => u.startsWith('/api/transactions'))).toBe(false);
     expect(screen.queryByText('proposée par tes règles')).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Restos' })).toHaveAttribute('aria-checked', 'true');
   });

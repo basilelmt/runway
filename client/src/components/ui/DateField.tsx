@@ -3,6 +3,7 @@ import { lazy, Suspense, useId, useState, type CSSProperties, type ReactNode, ty
 import { addDays, formatDateWithWeekday, today } from '@shared/dates';
 import { formatDateCompact } from '@/lib/format';
 import styles from './DateField.module.css';
+import { LoadBoundary } from './LoadBoundary';
 
 /** `line` dans un formulaire, `pill` dans une barre d'outils, `chip` à côté de puces à contour. */
 type Variant = 'line' | 'pill' | 'chip';
@@ -44,16 +45,19 @@ type PopoverFieldProps = CommonProps & {
   filled: boolean;
   text: string;
   children: (close: () => void) => ReactNode;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** Bouton qui ouvre un calendrier en popover natif, au-dessus du dialogue qui le contient. */
-function PopoverField({ id, placeholder, variant = 'line', className, filled, text, children, ...aria }: PopoverFieldProps) {
+function PopoverField({ id, placeholder, variant = 'line', className, filled, text, children, onOpenChange, 'aria-describedby': describedBy, ...aria }: PopoverFieldProps) {
   const reactId = useId();
   const popoverId = `date-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const [open, setOpen] = useState(false);
   // Fermeture par id plutôt que par ref : `close` est transmis à `children` pendant le rendu,
   // et un ref ne doit jamais être lu à ce moment-là.
   const close = () => document.getElementById(popoverId)?.hidePopover();
+  // Le nom vient du label ; la date choisie est annoncée en description.
+  const valueId = `${popoverId}-value`;
 
   return (
     <>
@@ -65,9 +69,10 @@ function PopoverField({ id, placeholder, variant = 'line', className, filled, te
         aria-haspopup="dialog"
         aria-expanded={open}
         style={anchor(`--${popoverId}`, 'anchorName')}
+        aria-describedby={[valueId, describedBy].filter(Boolean).join(' ')}
         {...aria}
       >
-        <span className={filled ? styles.value : styles.placeholder}>{filled ? text : placeholder}</span>
+        <span id={valueId} className={filled ? styles.value : styles.placeholder}>{filled ? text : placeholder}</span>
         <ChevronDown aria-hidden className={styles.caret} />
       </button>
       <div
@@ -77,9 +82,16 @@ function PopoverField({ id, placeholder, variant = 'line', className, filled, te
         aria-label="Calendrier"
         className={styles.popover}
         style={anchor(`--${popoverId}`, 'positionAnchor')}
-        onToggle={(e: ToggleEvent<HTMLDivElement>) => setOpen(e.newState === 'open')}
+        onToggle={(e: ToggleEvent<HTMLDivElement>) => {
+          setOpen(e.newState === 'open');
+          onOpenChange?.(e.newState === 'open');
+        }}
       >
-        {open ? <Suspense fallback={<div className={styles.loading} />}>{children(close)}</Suspense> : null}
+        {open ? (
+          <LoadBoundary fallback={<p className={styles.loadError}>Calendrier indisponible. Recharge la page.</p>}>
+            <Suspense fallback={<div className={styles.loading} />}>{children(close)}</Suspense>
+          </LoadBoundary>
+        ) : null}
       </div>
     </>
   );
@@ -131,20 +143,27 @@ function rangeText(from: string | null, to: string | null): string {
   return '';
 }
 
-/** Période en deux clics dans un même calendrier. */
+/** Période en deux clics : le premier choisit le début, le second la fin, dans n'importe quel ordre. */
 export function DateRangeField({ from, to, onChange, placeholder = 'Choisir des dates', min, max, ...rest }: DateRangeFieldProps) {
+  // Début en cours de choix : rien n'est transmis tant que la période n'est pas complète.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
-    <PopoverField {...rest} placeholder={placeholder} filled={from !== null} text={rangeText(from, to)}>
+    <PopoverField {...rest} placeholder={placeholder} filled={from !== null} text={rangeText(from, to)} onOpenChange={(open) => !open && setDraft(null)}>
       {(close) => (
         <Calendar
           mode="range"
-          from={from}
-          to={to}
+          from={draft ?? from}
+          to={draft ? null : to}
           min={min}
           max={max}
-          onRange={(next) => {
-            onChange(next);
-            if (next.from && next.to && next.from !== next.to) close();
+          onDay={(day) => {
+            if (draft === null) {
+              setDraft(day);
+              return;
+            }
+            onChange(day < draft ? { from: day, to: draft } : { from: draft, to: day });
+            setDraft(null);
+            close();
           }}
         />
       )}

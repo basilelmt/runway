@@ -146,7 +146,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
 
       <div className={styles.grid}>
         <Field label="Nom" error={errors.name}>
-          {(id, by) => <Input id={id} aria-describedby={by} value={values.name} onChange={(e) => set('name', e.target.value)} placeholder="Loyer" autoFocus />}
+          {(id, by) => <Input id={id} aria-describedby={by} value={values.name} onChange={(e) => set('name', e.target.value)} placeholder="Loyer" />}
         </Field>
         <Field label="Libellé des opérations" hint="Par défaut, le nom de la règle" error={errors.label}>
           {(id, by) => <Input id={id} aria-describedby={by} value={values.label} onChange={(e) => set('label', e.target.value)} placeholder={values.name || 'Loyer'} />}

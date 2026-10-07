@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Dialog, DialogFooter } from './Dialog';
 
@@ -34,6 +34,45 @@ describe('Dialog', () => {
     const button = await within(footer).findByText('Valider');
     expect(within(footer).getByText('gauche')).toBeInTheDocument();
     expect(dialog.querySelector('form')!.contains(button)).toBe(false);
+  });
+
+  it('garde sa taille et son contenu pendant la sortie', () => {
+    // Animations actives : la sortie dure le temps de l'animation au lieu d'être immédiate.
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    const { rerender } = render(
+      <Dialog open onClose={vi.fn()} title="Répartition" description="Aucun compte ne bouge." size="md">
+        <p>formulaire</p>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Répartition', hidden: true });
+    expect(dialog).toHaveAccessibleDescription('Aucun compte ne bouge.');
+    const sizeClass = dialog.className;
+    rerender(
+      <Dialog open={false} onClose={vi.fn()} title="" size="lg">
+        {null}
+      </Dialog>,
+    );
+    expect(dialog.className.replace(/\S*closing\S*/, '').trim()).toBe(sizeClass.trim());
+    expect(screen.getByText('formulaire')).toBeInTheDocument();
+  });
+
+  it('ne se ferme pas quand un clic commence dans le panneau et finit sur le fond', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Titre">
+        <p>contenu</p>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Titre', hidden: true });
+    fireEvent.pointerDown(screen.getByText('contenu'));
+    fireEvent.click(dialog);
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.pointerDown(dialog);
+    fireEvent.click(dialog);
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('rend le pied sur place hors dialogue', () => {

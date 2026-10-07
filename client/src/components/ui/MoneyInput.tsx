@@ -1,6 +1,6 @@
-import { useState, type InputHTMLAttributes } from 'react';
-import { parseEuros } from '@shared/money';
+import type { InputHTMLAttributes } from 'react';
 import styles from './Input.module.css';
+import { useMoneyText } from './useMoneyText';
 
 type MoneyInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
   /** Valeur en centimes, null si vide ou invalide. */
@@ -9,21 +9,9 @@ type MoneyInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'on
   allowNegative?: boolean;
 };
 
-function toText(cents: number | null): string {
-  if (cents === null) return '';
-  return (cents / 100).toFixed(2).replace('.', ',');
-}
-
 /** Saisie d'un montant en euros, valeur exposée en centimes entiers. */
 export function MoneyInput({ value, onChange, allowNegative = false, className, onBlur, ...rest }: MoneyInputProps) {
-  const [text, setText] = useState(() => toText(value));
-  const [lastValue, setLastValue] = useState(value);
-
-  // Resynchronise le texte quand la valeur change de l'extérieur (reset de formulaire), pendant le rendu.
-  if (value !== lastValue) {
-    setLastValue(value);
-    if (parseEuros(text) !== value) setText(toText(value));
-  }
+  const money = useMoneyText({ value, onChange, allowNegative });
 
   return (
     <span className={styles.moneyWrap}>
@@ -32,16 +20,10 @@ export function MoneyInput({ value, onChange, allowNegative = false, className, 
         inputMode="decimal"
         autoComplete="off"
         className={[styles.input, styles.money, className ?? ''].join(' ')}
-        value={text}
-        onChange={(e) => {
-          const next = e.target.value;
-          setText(next);
-          const cents = parseEuros(next);
-          onChange(cents === null ? null : allowNegative ? cents : Math.abs(cents));
-        }}
+        value={money.text}
+        onChange={(e) => money.change(e.target.value)}
         onBlur={(e) => {
-          const cents = parseEuros(text);
-          if (cents !== null) setText(toText(allowNegative ? cents : Math.abs(cents)));
+          money.blur();
           onBlur?.(e);
         }}
         {...rest}

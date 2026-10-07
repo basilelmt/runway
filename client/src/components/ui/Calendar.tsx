@@ -1,4 +1,4 @@
-import { DayPicker, type ClassNames, type DateRange } from '@daypicker/react';
+import { DayPicker, type ClassNames } from '@daypicker/react';
 import { fr } from '@daypicker/react/locale/fr';
 import { parts, toISODate } from '@shared/dates';
 import styles from './DateField.module.css';
@@ -10,7 +10,6 @@ import styles from './DateField.module.css';
 
 const CALENDAR_CLASSES: Partial<ClassNames> = {
   root: styles.calendar,
-  months: styles.months,
   month: styles.month,
   month_caption: styles.caption,
   caption_label: styles.captionLabel,
@@ -19,9 +18,7 @@ const CALENDAR_CLASSES: Partial<ClassNames> = {
   button_next: styles.navButton,
   chevron: styles.chevron,
   month_grid: styles.grid,
-  weekdays: styles.weekdays,
   weekday: styles.weekday,
-  week: styles.week,
   day: styles.day,
   day_button: styles.dayButton,
   today: styles.today,
@@ -48,7 +45,7 @@ function disabled({ min, max }: Bounds) {
 export type CalendarProps = Bounds &
   (
     | { mode: 'single'; value: string | null; onPick: (iso: string) => void }
-    | { mode: 'range'; from: string | null; to: string | null; onRange: (range: { from: string | null; to: string | null }) => void }
+    | { mode: 'range'; from: string | null; to: string | null; onDay: (iso: string) => void }
   );
 
 export default function Calendar(props: CalendarProps) {
@@ -67,20 +64,22 @@ export default function Calendar(props: CalendarProps) {
       <DayPicker
         {...common}
         mode="single"
+        required
         selected={props.value ? toDate(props.value) : undefined}
         defaultMonth={props.value ? toDate(props.value) : new Date()}
-        onSelect={(d) => d && props.onPick(toISODate(d))}
+        onSelect={(d) => props.onPick(toISODate(d))}
       />
     );
   }
 
+  // La période est pilotée par `DateRangeField` : on ne transmet que le jour cliqué.
   return (
     <DayPicker
       {...common}
       mode="range"
       selected={props.from ? { from: toDate(props.from), to: props.to ? toDate(props.to) : undefined } : undefined}
       defaultMonth={props.from ? toDate(props.from) : new Date()}
-      onSelect={(range: DateRange | undefined) => props.onRange({ from: range?.from ? toISODate(range.from) : null, to: range?.to ? toISODate(range.to) : null })}
+      onSelect={(_range, day) => props.onDay(toISODate(day))}
     />
   );
 }
