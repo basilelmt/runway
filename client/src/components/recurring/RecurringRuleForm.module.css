@@ -52,3 +52,9 @@
   color: var(--negative);
   font-size: var(--text-sm);
 }
+
+.funding {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}

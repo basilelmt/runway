@@ -67,4 +67,27 @@ describe('RecurringRuleForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Loyer', amount: 98600, envelopeId: 11, accountId: 1, dayOfMonth: 1, endDate: null }));
   });
+
+  it('un revenu peut déclencher la répartition, versé pour le mois suivant', async () => {
+    const onSubmit = renderForm();
+    await screen.findByRole('option', { name: 'Courant' });
+    expect(screen.queryByLabelText('Déclenche la répartition')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'Revenu' }));
+    expect(screen.queryByLabelText('Versé pour le mois suivant')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText('Déclenche la répartition'));
+    await userEvent.click(screen.getByLabelText('Versé pour le mois suivant'));
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ kind: 'income', triggersFunding: true, fundsNextMonth: true }));
+  });
+
+  it('repasser en dépense retire le déclenchement', async () => {
+    const onSubmit = renderForm();
+    await screen.findByRole('option', { name: 'Courant' });
+    await userEvent.click(screen.getByRole('radio', { name: 'Revenu' }));
+    await userEvent.click(screen.getByLabelText('Déclenche la répartition'));
+    await userEvent.click(screen.getByRole('radio', { name: 'Dépense' }));
+    expect(screen.queryByLabelText('Déclenche la répartition')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ kind: 'expense', triggersFunding: false, fundsNextMonth: false }));
+  });
 });

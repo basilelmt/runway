@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { formatDateMedium, today } from '@shared/dates';
 import { recurringRuleInputSchema, type Frequency, type RecurringRule, type RecurringRuleInput, type TransactionKind } from '@shared/schemas';
 import { useAccounts, useEnvelopes } from '@/api/hooks';
-import { AmountHero, Button, ChipPicker, DateField, DialogFooter, Field, FormSection, Input, Segmented, Select } from '@/components/ui';
+import { AmountHero, Button, Checkbox, ChipPicker, DateField, DialogFooter, Field, FormSection, Input, Segmented, Select } from '@/components/ui';
 import { FREQUENCY_LABELS, KIND_LABELS } from '@/lib/format';
 import { describeFrequency } from './frequency';
 import styles from './RecurringRuleForm.module.css';
@@ -24,6 +24,8 @@ type Values = {
   dayOfMonth: string;
   startDate: string;
   endDate: string | null;
+  triggersFunding: boolean;
+  fundsNextMonth: boolean;
 };
 
 type Props = {
@@ -54,6 +56,8 @@ function initialValues(initial?: RecurringRule): Values {
     dayOfMonth: String(initial?.dayOfMonth ?? Number(start.slice(8, 10))),
     startDate: start,
     endDate: initial?.endDate ?? null,
+    triggersFunding: initial?.triggersFunding ?? false,
+    fundsNextMonth: initial?.fundsNextMonth ?? false,
   };
 }
 
@@ -74,6 +78,8 @@ function toInput(v: Values, active: boolean): unknown {
     startDate: v.startDate,
     endDate: v.endDate,
     active,
+    triggersFunding: v.kind === 'income' && v.triggersFunding,
+    fundsNextMonth: v.kind === 'income' && v.triggersFunding && v.fundsNextMonth,
   };
 }
 
@@ -187,6 +193,25 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
             />
           )}
         </Field>
+      ) : null}
+
+      {values.kind === 'income' ? (
+        <div className={styles.funding}>
+          <Checkbox
+            label="Déclenche la répartition"
+            hint="Remplit les enveloppes jusqu’à leur budget quand ce revenu arrive"
+            checked={values.triggersFunding}
+            onChange={(e) => set('triggersFunding', e.target.checked)}
+          />
+          {values.triggersFunding ? (
+            <Checkbox
+              label="Versé pour le mois suivant"
+              hint="Un salaire reçu fin septembre remplit le budget d’octobre"
+              checked={values.fundsNextMonth}
+              onChange={(e) => set('fundsNextMonth', e.target.checked)}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       <FormSection title="Quand">
