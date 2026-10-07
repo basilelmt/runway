@@ -24,7 +24,8 @@ Point de départ de l'utilisateur : un ETF S&P 500 sur Trade Republic (3 000 €
   Une idée est comparée à la référence sur la même période, en euros.
 - Coût de revient : prix moyen pondéré (PMP), la méthode fiscale française.
   Une vente sort au PMP et dégage une plus-value réalisée.
-- Les secrets Binance vivent dans la table `settings`, comme ceux d'Enable Banking (local, mono-utilisateur, sans chiffrement).
+- Les secrets Binance vivent dans la table `settings` (local, mono-utilisateur, sans chiffrement), sous une clé `binance` hors du schéma des réglages.
+  Ils ne sont jamais renvoyés au navigateur : l'API n'expose que les 4 derniers caractères de la clé.
 
 ## Hors périmètre
 
@@ -107,6 +108,16 @@ Les calculs se font en nombres flottants et sont arrondis au centime à la sorti
 | currency | text | `EUR`, `USD`, `KRW`... |
 | fetched_at | text | |
 
+### `price_tickers`
+
+| Champ | Type | Note |
+|---|---|---|
+| ticker | text | clé primaire |
+| name | text | |
+| currency | text | |
+| history_from | text | plus ancienne date demandée à Yahoo |
+| refreshed_at | text | dernier appel réussi |
+
 Les taux de change sont des tickers comme les autres (`EURUSD=X`).
 Une valeur en devise est convertie en euros avec le taux du même jour (à défaut, le dernier connu avant).
 
@@ -159,7 +170,7 @@ Au démarrage du serveur, une fournée restée `running` passe en `failed` (« I
 - Enregistrement de la clé : `GET /sapi/v1/account/apiRestrictions` doit montrer `enableReading` et aucun droit de trading, de retrait ou de transfert, sinon refus avec un message clair.
 - Soldes : compte spot (`/api/v3/account`), compte Funding (`/sapi/v1/asset/get-funding-asset`) et Simple Earn flexible (`/sapi/v1/simple-earn/flexible/position`), additionnés par actif.
 - Mouvements, importés depuis la dernière synchro (première synchro : depuis 3 ans) :
-  - échanges spot sur les paires `{actif}EUR`, `{actif}USDT`, `{actif}USDC` qui existent (`/api/v3/myTrades`) ;
+  - échanges spot sur les paires `{actif}EUR`, `{actif}USDT`, `{actif}USDC` qui existent (`/api/v3/myTrades`), pour les actifs détenus ou vus dans les conversions et achats par carte ;
   - conversions (`/sapi/v1/convert/tradeFlow`) ;
   - achats par carte (`/sapi/v1/fiat/payments`).
 - Un montant en USDT ou USDC est converti en euros au taux `EURUSD=X` du jour du mouvement.
