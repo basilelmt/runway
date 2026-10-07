@@ -29,6 +29,8 @@ export function fakeFetch(routes: Record<string, unknown>) {
     const hit = Object.entries(routes).find(([k]) => url.includes(k));
     if (!hit) return new Response('{}', { status: 404 });
     if (hit[1] instanceof Error) throw hit[1];
+    // Une `Response` explicite (p. ex. un code HTTP d'erreur) est renvoyée telle quelle.
+    if (hit[1] instanceof Response) return hit[1];
     return new Response(JSON.stringify(hit[1]), { status: 200 });
   };
   return Object.assign(fn, { calls });

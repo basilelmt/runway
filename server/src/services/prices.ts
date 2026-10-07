@@ -1,4 +1,5 @@
 import { and, desc, eq, gte } from 'drizzle-orm';
+import { z } from 'zod';
 import { majorCurrency, priceOn, toEur, type DatedPrice } from '@core/invest';
 import type { AssetSearchResult } from '@shared/api-types';
 import { addDays, compareISODate, toISODate, type ISODate } from '@shared/dates';
@@ -26,10 +27,50 @@ export const REFRESH_MINUTES = 15;
 const LOOKBACK_DAYS = 10;
 /** Chevauchement sur les derniers jours en base : absorbe les corrections de clôture publiées après coup. */
 const OVERLAP_DAYS = 7;
+/** Après une panne réseau confirmée, on n'interroge plus Yahoo pour ce ticker pendant ce délai. */
+const ERROR_BACKOFF_MINUTES = 5;
 const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) Runway';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type JsonValue = any;
+const chartMetaSchema = z.object({
+  currency: z.string(),
+  longName: z.string().optional(),
+  shortName: z.string().optional(),
+  regularMarketPrice: z.number().optional(),
+  regularMarketTime: z.number().optional(),
+  gmtoffset: z.number(),
+});
+
+const chartResultSchema = z.object({
+  meta: chartMetaSchema,
+  timestamp: z.array(z.unknown()).optional(),
+  indicators: z
+    .object({
+      quote: z.array(z.object({ close: z.array(z.unknown()).optional() })).optional(),
+    })
+    .optional(),
+});
+
+const chartBodySchema = z.object({
+  chart: z.object({
+    result: z.array(z.unknown()).nullable().optional(),
+    error: z.unknown().optional(),
+  }),
+});
+
+const searchQuoteSchema = z.object({
+  symbol: z.string(),
+  longname: z.string().optional(),
+  shortname: z.string().optional(),
+  exchDisp: z.string().optional(),
+  exchange: z.string().optional(),
+  typeDisp: z.string().optional(),
+  quoteType: z.string().optional(),
+  isYahooFinance: z.boolean().optional(),
+});
+
+const searchBodySchema = z.object({
+  quotes: z.array(z.unknown()).optional(),
+});
 
 function unixSeconds(iso: ISODate): number {
   return Math.floor(Date.parse(`${iso}T00:00:00Z`) / 1000);
@@ -42,7 +83,7 @@ function exchangeDate(timestamp: number, gmtoffset: number): ISODate {
 
 type ChartResult = { name: string; currency: string; closes: DatedPrice[] };
 
-/** Appel réseau et analyse de la réponse `/v8/finance/chart`. Ne lève jamais : `'unknown'` ou `'error'` en cas d'échec. */
+/** Appel réseau et analyse de la réponse `/v8/finance/chart`. Ne lève jamais : `'unknown'` ou `'error'` en cas d'échec ou de réponse inattendue. */
 async function fetchChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to: ISODate): Promise<ChartResult | 'unknown' | 'error'> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${unixSeconds(from)}&period2=${unixSeconds(to)}&interval=1d`;
   let res: Response;
@@ -51,46 +92,60 @@ async function fetchChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to:
   } catch {
     return 'error';
   }
-  let body: JsonValue;
+  let json: unknown;
   try {
-    body = await res.json();
+    json = await res.json();
   } catch {
     return 'error';
   }
-  const chart = body?.chart;
-  const result = chart?.result;
+
+  const bodyParsed = chartBodySchema.safeParse(json);
+  if (!bodyParsed.success) return 'error';
+  const { result, error } = bodyParsed.data.chart;
   // Ticker inconnu : Yahoo renvoie `result: null` et `error` renseigné (vu en HTTP 404).
-  if (!result || result.length === 0 || chart?.error) return 'unknown';
+  if (!result || result.length === 0 || error) return 'unknown';
   if (!res.ok) return 'error';
 
-  const r = result[0];
-  const meta = r?.meta;
-  if (!meta || typeof meta.currency !== 'string') return 'error';
-  const timestamps: number[] = r.timestamp ?? [];
-  const rawCloses: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
-  const byDate = new Map<ISODate, number>();
-  for (let i = 0; i < timestamps.length; i++) {
-    const close = rawCloses[i];
-    if (close === null || close === undefined) continue;
-    byDate.set(exchangeDate(timestamps[i]!, meta.gmtoffset), close);
+  try {
+    const resultParsed = chartResultSchema.safeParse(result[0]);
+    if (!resultParsed.success) return 'error';
+    const { meta, timestamp, indicators } = resultParsed.data;
+    const timestamps = timestamp ?? [];
+    const rawCloses = indicators?.quote?.[0]?.close ?? [];
+    const byDate = new Map<ISODate, number>();
+    for (let i = 0; i < timestamps.length; i++) {
+      const ts = timestamps[i];
+      const close = rawCloses[i];
+      if (typeof ts !== 'number' || !Number.isFinite(ts)) continue;
+      if (typeof close !== 'number' || !Number.isFinite(close)) continue;
+      byDate.set(exchangeDate(ts, meta.gmtoffset), close);
+    }
+    // Le cours courant écrase (ou ajoute) la clôture du jour.
+    if (typeof meta.regularMarketPrice === 'number' && typeof meta.regularMarketTime === 'number') {
+      byDate.set(exchangeDate(meta.regularMarketTime, meta.gmtoffset), meta.regularMarketPrice);
+    }
+    const closes = [...byDate.entries()]
+      .map(([date, close]) => ({ date, close }))
+      .sort((a, b) => compareISODate(a.date, b.date));
+    return { name: meta.longName ?? meta.shortName ?? ticker, currency: meta.currency, closes };
+  } catch {
+    // Filet de sécurité : un horodatage hors des bornes gérées par `Date` ne doit jamais faire planter l'appelant.
+    return 'error';
   }
-  // Le cours courant écrase (ou ajoute) la clôture du jour.
-  if (typeof meta.regularMarketPrice === 'number' && typeof meta.regularMarketTime === 'number') {
-    byDate.set(exchangeDate(meta.regularMarketTime, meta.gmtoffset), meta.regularMarketPrice);
-  }
-  const closes = [...byDate.entries()]
-    .map(([date, close]) => ({ date, close }))
-    .sort((a, b) => compareISODate(a.date, b.date));
-  return { name: meta.longName ?? meta.shortName ?? ticker, currency: meta.currency, closes };
 }
 
-function readStored(db: Db, ticker: string, from: ISODate, stale: boolean): TickerHistory | null {
+/**
+ * Lit le cache. `from === null` : ignore la borne de date et renvoie tout l'historique connu, pour
+ * le repli en cas de panne (le dernier cours connu peut être plus ancien que la fenêtre demandée).
+ */
+function readStored(db: Db, ticker: string, from: ISODate | null, stale: boolean): TickerHistory | null {
   const t = db.select().from(priceTickers).where(eq(priceTickers.ticker, ticker)).get();
   if (!t) return null;
+  const where = from !== null ? and(eq(prices.ticker, ticker), gte(prices.date, from)) : eq(prices.ticker, ticker);
   const closes = db
     .select({ date: prices.date, close: prices.close })
     .from(prices)
-    .where(and(eq(prices.ticker, ticker), gte(prices.date, from)))
+    .where(where)
     .orderBy(prices.date)
     .all();
   return { ticker, name: t.name, currency: t.currency, closes, stale };
@@ -123,6 +178,8 @@ function storeChart(db: Db, ticker: string, data: ChartResult, requestedFrom: IS
 export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
   const fetchFn = deps.fetch ?? fetch;
   const now = deps.now ?? (() => new Date());
+  /** Horodatage (ms) jusqu'auquel on n'appelle plus Yahoo pour un ticker, après une panne confirmée. */
+  const errorBackoff = new Map<string, number>();
 
   async function history(ticker: string, from: ISODate): Promise<TickerHistory | null> {
     const existing = db.select().from(priceTickers).where(eq(priceTickers.ticker, ticker)).get();
@@ -140,9 +197,18 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     }
     const today = toISODate(now());
     const to = addDays(today, 1);
-    const result = await fetchChart(fetchFn, ticker, start, to);
-    if (result === 'unknown' || result === 'error') return readStored(db, ticker, from, true);
 
+    const blockedUntil = errorBackoff.get(ticker);
+    const stillBlocked = blockedUntil !== undefined && now().getTime() < blockedUntil;
+    const result = stillBlocked ? ('error' as const) : await fetchChart(fetchFn, ticker, start, to);
+
+    if (result === 'error') {
+      errorBackoff.set(ticker, now().getTime() + ERROR_BACKOFF_MINUTES * 60_000);
+      return readStored(db, ticker, null, true);
+    }
+    if (result === 'unknown') return readStored(db, ticker, null, true);
+
+    errorBackoff.delete(ticker);
     storeChart(db, ticker, result, from, now());
     return readStored(db, ticker, from, false);
   }
@@ -163,7 +229,8 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     const h = await history(ticker, from);
     if (!h) return null;
     const major = majorCurrency(h.currency);
-    const fx = major === 'EUR' ? null : await history(`EUR${major}=X`, from);
+    // Marge avant `from` : le taux du premier jour demandé peut être celui du dernier jour ouvré précédent.
+    const fx = major === 'EUR' ? null : await history(`EUR${major}=X`, addDays(from, -LOOKBACK_DAYS));
     return { ...h, ...convert(h, fx) };
   }
 
@@ -185,23 +252,28 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
 
   async function search(query: string): Promise<AssetSearchResult[]> {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0`;
-    let body: JsonValue;
+    let json: unknown;
     try {
       const res = await fetchFn(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      body = await res.json();
+      json = await res.json();
     } catch {
       throw new AppError('Recherche Yahoo indisponible', 502, 'yahoo_unavailable');
     }
-    const quotes: JsonValue[] = Array.isArray(body?.quotes) ? body.quotes : [];
-    return quotes
-      .filter((q) => typeof q?.symbol === 'string' && q.isYahooFinance !== false)
-      .map((q) => ({
-        ticker: q.symbol as string,
-        name: (q.longname ?? q.shortname ?? q.symbol) as string,
-        exchange: (q.exchDisp ?? q.exchange ?? '') as string,
-        type: (q.typeDisp ?? q.quoteType ?? '') as string,
-      }));
+    const bodyParsed = searchBodySchema.safeParse(json);
+    if (!bodyParsed.success) throw new AppError('Recherche Yahoo indisponible', 502, 'yahoo_unavailable');
+    const out: AssetSearchResult[] = [];
+    for (const raw of bodyParsed.data.quotes ?? []) {
+      const q = searchQuoteSchema.safeParse(raw);
+      if (!q.success || q.data.isYahooFinance === false) continue;
+      out.push({
+        ticker: q.data.symbol,
+        name: q.data.longname ?? q.data.shortname ?? q.data.symbol,
+        exchange: q.data.exchDisp ?? q.data.exchange ?? '',
+        type: q.data.typeDisp ?? q.data.quoteType ?? '',
+      });
+    }
+    return out;
   }
 
   return { search, history, historyEur, closeEurOn, quoteEur };
