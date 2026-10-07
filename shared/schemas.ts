@@ -146,6 +146,7 @@ export const transactionSchema = z.object({
   recurringRuleId: idSchema.nullable(),
   importId: idSchema.nullable(),
   fingerprint: z.string().nullable(),
+  fundingId: idSchema.nullable(),
   createdAt: z.string(),
 });
 export type Transaction = z.infer<typeof transactionSchema>;
@@ -172,6 +173,20 @@ export const transactionFilterSchema = z.object({
 });
 export type TransactionFilter = z.infer<typeof transactionFilterSchema>;
 
+export const fundingStatuses = ['applied', 'undone'] as const;
+
+/** Répartition automatique déclenchée par un revenu confirmé. */
+export const fundingSchema = z.object({
+  id: idSchema,
+  sourceTransactionId: idSchema,
+  month: z.string(),
+  status: z.enum(fundingStatuses),
+  shortfallCount: z.number().int().nonnegative(),
+  dismissedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type Funding = z.infer<typeof fundingSchema>;
+
 export const recurringRuleSchema = z.object({
   id: idSchema,
   name: z.string(),
@@ -181,6 +196,8 @@ export const recurringRuleSchema = z.object({
   dayOfMonth: z.number().int().min(1).max(31).nullable(),
   startDate: isoDateSchema,
   endDate: isoDateSchema.nullable(),
+  triggersFunding: z.boolean(),
+  fundsNextMonth: z.boolean(),
   lastGeneratedDate: isoDateSchema.nullable(),
   active: z.boolean(),
 });
@@ -196,6 +213,8 @@ export const recurringRuleInputSchema = z
     startDate: isoDateSchema,
     endDate: isoDateSchema.nullable().optional(),
     active: z.boolean().default(true),
+    triggersFunding: z.boolean().default(false),
+    fundsNextMonth: z.boolean().default(false),
   })
   .superRefine((rule, ctx) => {
     if (rule.kind === 'allocation') {
@@ -208,6 +227,12 @@ export const recurringRuleInputSchema = z
     }
     if (rule.endDate && rule.endDate < rule.startDate) {
       ctx.addIssue({ code: 'custom', message: 'La fin doit être après le début', path: ['endDate'] });
+    }
+    if (rule.triggersFunding && rule.kind !== 'income') {
+      ctx.addIssue({ code: 'custom', message: 'Seul un revenu peut déclencher la répartition', path: ['triggersFunding'] });
+    }
+    if (rule.fundsNextMonth && !rule.triggersFunding) {
+      ctx.addIssue({ code: 'custom', message: 'Le mois suivant ne vaut que pour un revenu qui déclenche la répartition', path: ['fundsNextMonth'] });
     }
   });
 export type RecurringRuleInput = z.infer<typeof recurringRuleInputSchema>;

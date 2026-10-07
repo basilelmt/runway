@@ -12,7 +12,7 @@ beforeEach(() => {
 const loyer = (ctx: TestContext) =>
   createRule(ctx.db, {
     name: 'Loyer', kind: 'expense', amount: 800_00, label: 'Loyer', accountId: ctx.courant.id, envelopeId: ctx.courses.id,
-    frequency: 'monthly', interval: 1, dayOfMonth: 5, startDate: '2026-01-01', active: true,
+    frequency: 'monthly', interval: 1, dayOfMonth: 5, startDate: '2026-01-01', active: true, triggersFunding: false, fundsNextMonth: false,
   });
 
 describe('materializeDue', () => {
@@ -29,11 +29,11 @@ describe('materializeDue', () => {
   it('respecte la date de fin et l’inactivité', () => {
     createRule(ctx.db, {
       name: 'Fini', kind: 'expense', amount: 1, label: 'Fini', accountId: ctx.courant.id,
-      frequency: 'monthly', interval: 1, dayOfMonth: 1, startDate: '2026-01-01', endDate: '2026-02-15', active: true,
+      frequency: 'monthly', interval: 1, dayOfMonth: 1, startDate: '2026-01-01', endDate: '2026-02-15', active: true, triggersFunding: false, fundsNextMonth: false,
     });
     createRule(ctx.db, {
       name: 'Pause', kind: 'expense', amount: 1, label: 'Pause', accountId: ctx.courant.id,
-      frequency: 'daily', interval: 1, startDate: '2026-01-01', active: false,
+      frequency: 'daily', interval: 1, startDate: '2026-01-01', active: false, triggersFunding: false, fundsNextMonth: false,
     });
     expect(materializeDue(ctx.db, '2026-03-10')).toBe(2);
   });

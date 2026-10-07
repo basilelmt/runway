@@ -43,6 +43,13 @@
       "when": 1791387584610,
       "tag": "0005_invest",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791411184264,
+      "tag": "0006_auto_funding",
+      "breakpoints": true
     }
   ]
 }

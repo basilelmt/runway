@@ -9,6 +9,7 @@ export type TransactionInsert = TransactionInput & {
   recurringRuleId?: number | null;
   importId?: number | null;
   fingerprint?: string | null;
+  fundingId?: number | null;
 };
 
 function toRow(input: TransactionInsert): typeof transactions.$inferInsert {
@@ -26,6 +27,7 @@ function toRow(input: TransactionInsert): typeof transactions.$inferInsert {
     recurringRuleId: input.recurringRuleId ?? null,
     importId: input.importId ?? null,
     fingerprint: input.fingerprint ?? null,
+    fundingId: input.fundingId ?? null,
   };
 }
 

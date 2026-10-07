@@ -20,6 +20,8 @@ function toRow(input: RecurringRuleInput): typeof recurringRules.$inferInsert {
     startDate: input.startDate,
     endDate: input.endDate ?? null,
     active: input.active,
+    triggersFunding: input.triggersFunding,
+    fundsNextMonth: input.fundsNextMonth,
   };
 }
 

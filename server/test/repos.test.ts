@@ -7,10 +7,12 @@ import {
   createTransaction,
   deleteTransaction,
   findByFingerprints,
+  getTransaction,
   listPlanned,
   listTransactions,
   updateTransaction,
 } from '../src/repos/transactions';
+import { createFunding, findFundingBySource } from '../src/repos/fundings';
 import { createRule, deleteRule, listRules, setLastGenerated } from '../src/repos/recurring-rules';
 import { createSortingRule, deleteSortingRule, listSortingRules, reorderSortingRules } from '../src/repos/sorting-rules';
 import { getSettings, saveSettings } from '../src/repos/settings';
@@ -110,7 +112,7 @@ describe('recurring rules', () => {
   it('crée, marque et supprime', () => {
     const r = createRule(ctx.db, {
       name: 'Loyer', kind: 'expense', amount: 800_00, label: 'Loyer', accountId: ctx.courant.id, envelopeId: ctx.courses.id,
-      frequency: 'monthly', interval: 1, dayOfMonth: 5, startDate: '2026-01-01', active: true,
+      frequency: 'monthly', interval: 1, dayOfMonth: 5, startDate: '2026-01-01', active: true, triggersFunding: false, fundsNextMonth: false,
     });
     setLastGenerated(ctx.db, r.id, '2026-03-05');
     expect(listRules(ctx.db)[0]?.lastGeneratedDate).toBe('2026-03-05');
@@ -118,6 +120,20 @@ describe('recurring rules', () => {
     deleteRule(ctx.db, r.id);
     expect(listRules(ctx.db)).toHaveLength(0);
     expect(listTransactions(ctx.db)[0]?.recurringRuleId).toBeNull();
+  });
+});
+
+describe('fundings', () => {
+  it('unicité par salaire et cascade à la suppression du salaire', () => {
+    const { db, courant, courses } = ctx;
+    const salary = createTransaction(db, { kind: 'income', date: '2026-03-28', amount: 2000_00, label: 'Salaire', accountId: courant.id });
+    const funding = createFunding(db, { sourceTransactionId: salary.id, month: '2026-04', shortfallCount: 0 });
+    const alloc = createTransaction(db, { kind: 'allocation', date: '2026-04-01', amount: 300_00, label: 'Budget avril 2026', envelopeId: courses.id, fundingId: funding.id });
+    expect(findFundingBySource(db, salary.id)?.id).toBe(funding.id);
+    expect(() => createFunding(db, { sourceTransactionId: salary.id, month: '2026-04', shortfallCount: 0 })).toThrow();
+    deleteTransaction(db, salary.id);
+    expect(findFundingBySource(db, salary.id)).toBeUndefined();
+    expect(() => getTransaction(db, alloc.id)).toThrow('Opération introuvable');
   });
 });
 

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import { bankConnectionStatuses } from '@shared/schemas';
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import { bankConnectionStatuses, fundingStatuses } from '@shared/schemas';
 import { platforms } from '@shared/invest';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -43,6 +43,10 @@ export const recurringRules = sqliteTable('recurring_rules', {
   endDate: text('end_date'),
   lastGeneratedDate: text('last_generated_date'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  /** Revenu dont la confirmation remplit les enveloppes jusqu'à leur budget. */
+  triggersFunding: integer('triggers_funding', { mode: 'boolean' }).notNull().default(false),
+  /** Versé en fin de mois pour vivre le mois suivant : finance le budget du mois d'après. */
+  fundsNextMonth: integer('funds_next_month', { mode: 'boolean' }).notNull().default(false),
 });
 
 export const imports = sqliteTable('imports', {
@@ -75,6 +79,8 @@ export const transactions = sqliteTable(
     recurringRuleId: integer('recurring_rule_id').references(() => recurringRules.id, { onDelete: 'set null' }),
     importId: integer('import_id').references(() => imports.id, { onDelete: 'set null' }),
     fingerprint: text('fingerprint'),
+    /** Répartition automatique qui a créé cette allocation. */
+    fundingId: integer('funding_id').references((): AnySQLiteColumn => fundings.id, { onDelete: 'cascade' }),
     createdAt: text('created_at').notNull().default(now),
   },
   (t) => [
@@ -84,6 +90,20 @@ export const transactions = sqliteTable(
     uniqueIndex('transactions_fingerprint_idx').on(t.fingerprint),
   ],
 );
+
+export const fundings = sqliteTable('fundings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  sourceTransactionId: integer('source_transaction_id')
+    .notNull()
+    .unique()
+    .references((): AnySQLiteColumn => transactions.id, { onDelete: 'cascade' }),
+  /** Mois financé, `YYYY-MM`. */
+  month: text('month').notNull(),
+  status: text('status', { enum: fundingStatuses }).notNull().default('applied'),
+  shortfallCount: integer('shortfall_count').notNull().default(0),
+  dismissedAt: text('dismissed_at'),
+  createdAt: text('created_at').notNull().default(now),
+});
 
 export const sortingRules = sqliteTable('sorting_rules', {
   id: integer('id').primaryKey({ autoIncrement: true }),

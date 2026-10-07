@@ -44,6 +44,7 @@ export function tx(partial: Partial<Transaction> & { kind: Transaction['kind']; 
     recurringRuleId: null,
     importId: null,
     fingerprint: null,
+    fundingId: null,
     createdAt: '2026-03-01T00:00:00.000Z',
     ...partial,
   };
@@ -65,6 +66,8 @@ export function rule(partial: Partial<RecurringRule> & { kind: RecurringRule['ki
     endDate: null,
     lastGeneratedDate: null,
     active: true,
+    triggersFunding: false,
+    fundsNextMonth: false,
     ...partial,
   };
 }

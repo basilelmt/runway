@@ -109,6 +109,26 @@ describe('recurring rules', () => {
     expect((await t.call('GET', '/api/recurring-rules')).body).toEqual([]);
   });
 
+  const salaire = (over: Record<string, unknown> = {}) => ({
+    name: 'Salaire', kind: 'income', amount: 2000_00, label: 'VIR SALAIRE', accountId: t.courant.id,
+    frequency: 'monthly', dayOfMonth: 28, startDate: '2026-03-01', ...over,
+  });
+
+  it('mémorise le déclenchement de la répartition sur un revenu', async () => {
+    const r = await t.call('POST', '/api/recurring-rules', salaire({ triggersFunding: true, fundsNextMonth: true }));
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ triggersFunding: true, fundsNextMonth: true });
+    const plain = await t.call('POST', '/api/recurring-rules', salaire({ name: 'Prime' }));
+    expect(plain.body).toMatchObject({ triggersFunding: false, fundsNextMonth: false });
+  });
+
+  it('refuse le déclenchement hors revenu ou le mois suivant sans déclenchement', async () => {
+    const expense = await t.call('POST', '/api/recurring-rules', salaire({ kind: 'expense', triggersFunding: true }));
+    expect(expense.status).toBe(400);
+    const orphan = await t.call('POST', '/api/recurring-rules', salaire({ fundsNextMonth: true }));
+    expect(orphan.status).toBe(400);
+  });
+
   it('exige un jour du mois pour une règle mensuelle', async () => {
     const r = await t.call('POST', '/api/recurring-rules', { ...loyer(), dayOfMonth: undefined });
     expect(r.status).toBe(400);

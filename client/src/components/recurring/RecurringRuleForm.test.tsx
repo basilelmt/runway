@@ -27,6 +27,8 @@ const rule: RecurringRule = {
   endDate: null,
   lastGeneratedDate: null,
   active: true,
+  triggersFunding: false,
+  fundsNextMonth: false,
 };
 
 beforeEach(() => {

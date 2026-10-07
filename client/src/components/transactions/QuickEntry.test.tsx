@@ -53,6 +53,7 @@ const planned: Transaction = {
   recurringRuleId: 3,
   importId: null,
   fingerprint: null,
+  fundingId: null,
   createdAt: '',
 };
 
