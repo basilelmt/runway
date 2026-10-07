@@ -12,9 +12,18 @@
     color var(--dur) var(--ease-out);
 }
 
+.tip path {
+  transition: stroke-width 420ms var(--ease-out);
+}
+
 :global(a:hover) > .arrow .tip {
   color: var(--positive);
-  transform: scale(2.1);
+  transform: scale(3.2);
+}
+
+/* Le trait ne grossit pas avec l'échelle (vector-effect) : on l'épaissit à part, en pixels d'écran */
+:global(a:hover) > .arrow .tip path {
+  stroke-width: 3.5px;
 }
 
 @media (prefers-reduced-motion: reduce) {
