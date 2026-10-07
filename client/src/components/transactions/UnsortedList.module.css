@@ -182,11 +182,6 @@
   height: 16px;
 }
 
-.suggested {
-  border-color: var(--marking);
-  background: var(--marking-soft);
-}
-
 @media (max-width: 767px) {
   .row {
     grid-template-columns: 1fr auto;

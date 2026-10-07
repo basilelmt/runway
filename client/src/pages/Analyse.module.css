@@ -29,16 +29,6 @@
   font-size: var(--text-sm);
 }
 
-.customRange {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-
-.customRange input {
-  width: auto;
-}
-
 /* Chiffre de tête et comparaison au budget */
 .headline {
   display: flex;

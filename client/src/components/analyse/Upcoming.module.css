@@ -100,11 +100,6 @@ button.tr:hover {
   gap: var(--s-3);
 }
 
-.select {
-  width: auto;
-  min-width: 200px;
-}
-
 .events {
   margin-top: var(--s-3);
 }

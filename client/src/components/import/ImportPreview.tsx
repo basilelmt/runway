@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { ImportPreviewRow } from '@shared/api-types';
 import type { Account, Envelope } from '@shared/schemas';
-import { Amount, Badge, Button, Select } from '@/components/ui';
+import { Amount, Badge, Button, InlinePill } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import styles from './ImportPreview.module.css';
 
@@ -49,19 +49,13 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
     row.status === 'transfer' && row.transferToAccountId !== null ? (
       <Badge tone="info">Virement vers {accountName(row.transferToAccountId)}</Badge>
     ) : row.signedAmount < 0 ? (
-      <Select
+      <InlinePill
         aria-label={`Enveloppe pour ${row.label}`}
-        value={row.envelopeId ?? ''}
-        onChange={(e) => update(row.index, { envelopeId: e.target.value ? Number(e.target.value) : null })}
-        className={styles.select}
-      >
-        <option value="">À ranger</option>
-        {envelopes.map((env) => (
-          <option key={env.id} value={env.id}>
-            {env.name}
-          </option>
-        ))}
-      </Select>
+        value={row.envelopeId}
+        placeholder="À ranger"
+        options={envelopes.map((env) => ({ value: env.id, label: env.name, color: env.color }))}
+        onChange={(v) => update(row.index, { envelopeId: v })}
+      />
     ) : (
       <span className={styles.income}>Revenu</span>
     );
