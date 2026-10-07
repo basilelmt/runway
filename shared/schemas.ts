@@ -368,3 +368,27 @@ export type IdeaCandidate = z.infer<typeof ideaCandidateSchema>;
 
 /** Sortie brute de Claude : chaque idée est validée séparément pour ne pas tout rejeter pour une seule. */
 export const ideaBatchSchema = z.object({ ideas: z.array(z.unknown()) });
+
+export const askRequestSchema = z.object({
+  question: z.string().trim().min(1, 'Question vide').max(500, 'Question trop longue'),
+  sessionId: z.string().uuid().nullable(),
+});
+export type AskRequest = z.infer<typeof askRequestSchema>;
+
+/** Actions que Claude peut proposer depuis Demander ; rien n'est appliqué sans un clic. */
+export const askActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('sort'), transactionIds: z.array(idSchema).min(1).max(500), envelopeId: idSchema, rulePattern: z.string().trim().min(2).max(100).nullable() }),
+  z.object({ type: z.literal('move'), fromEnvelopeId: idSchema.nullable(), toEnvelopeId: idSchema, amount: positiveCentsSchema }),
+  z.object({ type: z.literal('budget'), envelopeId: idSchema, monthlyTarget: positiveCentsSchema.nullable() }),
+  z.object({ type: z.literal('recurring'), rule: recurringRuleInputSchema }),
+]);
+export type AskAction = z.infer<typeof askActionSchema>;
+
+/** Réponse structurée de Claude ; les actions sont validées une par une ensuite. */
+export const askAnswerSchema = z.object({
+  answer: z.string().trim().min(1),
+  highlight: z.object({ label: z.string(), amount: z.number().int() }).nullable(),
+  chart: z.object({ kind: z.enum(['bar', 'line']), title: z.string(), sql: z.string() }).nullable(),
+  actions: z.array(z.unknown()).max(5),
+});
+export type AskAnswer = z.infer<typeof askAnswerSchema>;

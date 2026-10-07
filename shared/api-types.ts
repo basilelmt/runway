@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, BankConnectionStatus, Envelope, ImportRecord, SortingRule, Transaction } from './schemas';
+import type { Account, BankConnectionStatus, Envelope, ImportRecord, RecurringRuleInput, SortingRule, Transaction } from './schemas';
 import type { Platform } from './invest';
 
 export type Balances = {
@@ -345,3 +345,27 @@ export type IdeasSummary = {
 export type IdeasView = { open: IdeaView[]; closed: IdeaView[]; summary: IdeasSummary; lastRun: IdeaRunView | null };
 
 export type IdeaRunStart = { run: IdeaRunView | null; started: boolean };
+
+/** Action proposée par Claude, validée et enrichie pour l'affichage. */
+export type AskActionView =
+  | { type: 'sort'; transactionIds: number[]; envelopeId: number; envelopeName: string; rulePattern: string | null; count: number; total: Cents }
+  | { type: 'move'; fromEnvelopeId: number | null; fromName: string; toEnvelopeId: number; toName: string; amount: Cents }
+  | { type: 'budget'; envelopeId: number; envelopeName: string; monthlyTarget: Cents | null; current: Cents | null }
+  | { type: 'recurring'; rule: RecurringRuleInput; accountName: string };
+
+/** Graphique d'une réponse : les valeurs viennent de la requête exécutée par le serveur, pas de Claude. */
+export type AskChart = { kind: 'bar' | 'line'; title: string; rows: { label: string; value: Cents }[] };
+
+export type AskAnswerEvent = {
+  sessionId: string;
+  answer: string;
+  highlight: { label: string; amount: Cents } | null;
+  chart: AskChart | null;
+  actions: AskActionView[];
+};
+
+/** Événements SSE de `POST /api/ask`. */
+export type AskStreamEvent =
+  | { event: 'step'; data: { text: string } }
+  | { event: 'answer'; data: AskAnswerEvent }
+  | { event: 'error'; data: { message: string; code: string } };
