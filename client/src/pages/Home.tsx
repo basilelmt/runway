@@ -9,6 +9,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { keys, useBankSync, useOverview } from '@/api/hooks';
 import { EnvelopeDetailDialog } from '@/components/budget/EnvelopeDetailDialog';
 import { EnvelopeRow, EnvelopeRowHeader } from '@/components/budget/EnvelopeRow';
+import { FundingBanner } from '@/components/budget/FundingBanner';
 import { Amount, Button, ButtonLink, EmptyState, ProgressBar, Skeleton } from '@/components/ui';
 import { bankSyncTodo } from '@/lib/bank';
 import { budgetOverIncome, monthProgress } from '@/lib/budget';
@@ -63,6 +64,7 @@ export function HomePage() {
         <p className={styles.daysLeft}>{daysLeft === 0 ? 'Dernier jour du mois' : `Encore ${plural(daysLeft, 'jour')} ce mois-ci`}</p>
       </header>
 
+      {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
       <EnvelopesPreview data={data} />

@@ -152,6 +152,16 @@ export function useFundEnvelopes(opts?: MutOpts<Transaction[], EnvelopeFund>) {
   return useMutation({ ...opts, mutationFn: (input) => api.post<Transaction[]>('/api/envelopes/fund', input), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
 }
 
+export function useUndoFunding(opts?: MutOpts<void, number>) {
+  const invalidate = useInvalidate();
+  return useMutation({ ...opts, mutationFn: (id) => api.post<void>(`/api/fundings/${id}/undo`), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });
+}
+
+export function useDismissFunding(opts?: MutOpts<void, number>) {
+  const invalidate = useInvalidate();
+  return useMutation({ ...opts, mutationFn: (id) => api.post<void>(`/api/fundings/${id}/dismiss`), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
+}
+
 export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (ids) => api.put<Envelope[]>('/api/envelopes/reorder', { ids }), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });

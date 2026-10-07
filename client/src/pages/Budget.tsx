@@ -9,6 +9,7 @@ import { EnvelopeDetailDialog } from '@/components/budget/EnvelopeDetailDialog';
 import { EnvelopeRow, EnvelopeRowHeader } from '@/components/budget/EnvelopeRow';
 import { FixedCharges } from '@/components/budget/FixedCharges';
 import { FundDialog } from '@/components/budget/FundDialog';
+import { FundingBanner } from '@/components/budget/FundingBanner';
 import { AllocateDialog } from '@/components/envelopes/AllocateDialog';
 import { EnvelopeFormDialog } from '@/components/envelopes/EnvelopeFormDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -151,6 +152,8 @@ export function BudgetPage() {
           </Button>
         }
       />
+
+      {data?.latestFunding ? <FundingBanner funding={data.latestFunding} /> : null}
 
       <section className={styles.unallocated} aria-label="Pas encore réparti">
         <div className={styles.unallocatedFigure}>
