@@ -21,6 +21,7 @@
     "@daypicker/react": "^10.0.2",
     "@hono/node-server": "^2.1.3",
     "@hono/zod-validator": "^0.9.1",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@tanstack/react-query": "^5.104.1",
     "ascii.rest": "github:bas3line/ascii#ba25785",
     "better-sqlite3": "^13.0.3",
