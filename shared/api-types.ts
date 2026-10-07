@@ -82,6 +82,16 @@ export type MonthSummary = {
   planned: Cents;
 };
 
+/** Dernière répartition automatique à annoncer : total réparti, enveloppes servies, enveloppes restées incomplètes. */
+export type FundingView = {
+  id: number;
+  month: string;
+  total: Cents;
+  envelopeCount: number;
+  shortfallCount: number;
+  sourceLabel: string;
+};
+
 export type Overview = {
   today: ISODate;
   toAllocate: Cents;
@@ -93,6 +103,8 @@ export type Overview = {
   unsortedCount: number;
   /** Opérations prévues que le relevé n'a pas confirmées dans la fenêtre de rapprochement : à vérifier. */
   latePlanned: Transaction[];
+  /** Dernière répartition automatique, tant qu'elle n'est ni annulée ni fermée. */
+  latestFunding: FundingView | null;
 };
 
 export type SpendingReport = {

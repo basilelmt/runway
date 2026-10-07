@@ -1,4 +1,5 @@
 import type { Db } from '../db/client';
+import { listFundings } from '../repos/fundings';
 import { listImports } from '../repos/imports';
 import { listSortingRules } from '../repos/sorting-rules';
 import { getSettings } from '../repos/settings';
@@ -15,6 +16,7 @@ export function exportJson(db: Db) {
     recurringRules: state.rules,
     sortingRules: listSortingRules(db),
     imports: listImports(db),
+    fundings: listFundings(db),
     // La clé privée Enable Banking ne sort jamais de la base : l'utilisateur garde le fichier .pem.
     settings: { ...getSettings(db), enableBankingPrivateKey: '' },
   };

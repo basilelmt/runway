@@ -5,6 +5,7 @@ import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
 import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
 import { envelopeRoutes } from './routes/envelopes';
+import { fundingRoutes } from './routes/fundings';
 import { importRoutes } from './routes/imports';
 import { investRoutes } from './routes/invest';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
@@ -70,6 +71,7 @@ export function createApp({ db, now = today, exec, importDeps, bankDeps, investD
   app.get('/api/health', (c) => c.json({ ok: true }));
   app.route('/api/accounts', accountRoutes);
   app.route('/api/envelopes', envelopeRoutes);
+  app.route('/api/fundings', fundingRoutes);
   app.route('/api/transactions', transactionRoutes);
   app.route('/api/recurring-rules', recurringRuleRoutes);
   app.route('/api/sorting-rules', sortingRuleRoutes);

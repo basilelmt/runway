@@ -6,6 +6,7 @@ import { monthlyEquivalent } from '@core/recurrence';
 import type { Overview } from '@shared/api-types';
 import { addDays, endOfMonth, startOfMonth, type ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
+import { latestFundingView } from '../repos/fundings';
 import { lastImportForAccount } from '../repos/imports';
 import { getSettings } from '../repos/settings';
 import { countUnsorted } from '../repos/transactions';
@@ -76,5 +77,6 @@ export function buildOverview(db: Db, today: ISODate): Overview {
     latePlanned: state.transactions
       .filter((t) => t.status === 'planned' && t.date < addDays(today, -MATCH_TOLERANCE_DAYS))
       .sort((a, b) => (a.date < b.date ? -1 : 1)),
+    latestFunding: latestFundingView(db),
   };
 }

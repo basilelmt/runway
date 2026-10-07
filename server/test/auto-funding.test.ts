@@ -100,4 +100,31 @@ describe('répartition automatique', () => {
     expect(await allocations()).toHaveLength(0);
     expect((await t.call('GET', '/api/overview')).body.latestFunding).toBeNull();
   });
+
+  it('annuler rend l’argent et ne répartit plus jamais ce salaire', async () => {
+    const salary = await confirmSalary();
+    const funding = (await t.call('GET', '/api/overview')).body.latestFunding;
+    expect((await t.call('POST', `/api/fundings/${funding.id}/undo`)).status).toBe(204);
+    expect(await allocations()).toHaveLength(0);
+    const overview = (await t.call('GET', '/api/overview')).body;
+    expect(overview.latestFunding).toBeNull();
+    expect(overview.toAllocate).toBe(3000_00);
+    await t.call('POST', `/api/transactions/${salary.id}/confirm`);
+    expect(await allocations()).toHaveLength(0);
+    expect((await t.call('POST', `/api/fundings/${funding.id}/undo`)).status).toBe(400);
+  });
+
+  it('fermer le bandeau garde les allocations', async () => {
+    await confirmSalary();
+    const funding = (await t.call('GET', '/api/overview')).body.latestFunding;
+    expect((await t.call('POST', `/api/fundings/${funding.id}/dismiss`)).status).toBe(204);
+    expect((await t.call('GET', '/api/overview')).body.latestFunding).toBeNull();
+    expect(await allocations()).toHaveLength(2);
+  });
+
+  it('l’export JSON contient les répartitions', async () => {
+    await confirmSalary();
+    const exported = await t.call('GET', '/api/export.json');
+    expect(exported.body.fundings).toHaveLength(1);
+  });
 });
