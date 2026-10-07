@@ -40,10 +40,10 @@ describe('Textarea', () => {
 describe('Checkbox', () => {
   it('se coche en cliquant sur son libellé et décrit son aide', async () => {
     render(<Checkbox label="Compte d’épargne" hint="Hors budget" />);
-    const box = screen.getByRole('checkbox', { name: /Compte d’épargne/ });
+    const box = screen.getByRole('checkbox', { name: 'Compte d’épargne' });
     await userEvent.click(screen.getByText('Compte d’épargne'));
     expect(box).toBeChecked();
-    expect(screen.getByText('Hors budget')).toBeInTheDocument();
+    expect(box).toHaveAccessibleDescription('Hors budget');
   });
 });
 
