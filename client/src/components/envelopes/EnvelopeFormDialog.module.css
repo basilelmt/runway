@@ -1,23 +1,26 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-5);
 }
 
 .colors {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-2);
+  gap: var(--s-3);
   align-items: center;
+  padding-top: var(--s-2);
 }
 
 .swatch {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: none;
   padding: 0;
-  transition: transform var(--dur) var(--ease-out);
+  transition:
+    transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .swatch:hover {
@@ -25,14 +28,16 @@
 }
 
 .swatchActive {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 2px var(--paper-raised) inset;
+  box-shadow:
+    0 0 0 2px var(--paper-raised),
+    0 0 0 4px var(--ink);
 }
 
 .custom {
   position: relative;
   width: 28px;
   height: 28px;
+  border-radius: 50%;
   cursor: pointer;
 }
 
@@ -63,35 +68,4 @@
 .error {
   color: var(--negative);
   font-size: var(--text-sm);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--s-2);
-  margin-top: var(--s-2);
-}
-
-.check {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.check input {
-  margin-top: 3px;
-  accent-color: var(--ink);
-  width: 16px;
-  height: 16px;
-}
-
-.checkHint {
-  display: block;
-  font-weight: 400;
-  color: var(--ink-mute);
-  font-size: var(--text-xs);
 }

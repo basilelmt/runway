@@ -119,12 +119,11 @@
   opacity: 1;
 }
 
-.dialogName {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-weight: 500;
-  margin-bottom: var(--s-2);
+.archiveBalance {
+  flex-basis: 100%;
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
 }
 
 .archived {

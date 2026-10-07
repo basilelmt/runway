@@ -159,8 +159,8 @@ export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
 
 // Transactions
 
-export const useTransactions = (filter: Partial<TransactionFilter> = {}) =>
-  useQuery({ queryKey: keys.transactions(filter), queryFn: () => api.get<Transaction[]>(`/api/transactions${toQuery(filter)}`) });
+export const useTransactions = (filter: Partial<TransactionFilter> = {}, options: { enabled?: boolean } = {}) =>
+  useQuery({ queryKey: keys.transactions(filter), queryFn: () => api.get<Transaction[]>(`/api/transactions${toQuery(filter)}`), enabled: options.enabled });
 
 export function useCreateTransaction(opts?: MutOpts<Transaction, TransactionInput>) {
   const invalidate = useInvalidate();

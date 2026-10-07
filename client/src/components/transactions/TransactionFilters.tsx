@@ -1,8 +1,8 @@
-import { Search, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { addDays, addMonths, endOfMonth, startOfMonth, today } from '@shared/dates';
 import type { Account, Envelope, TransactionFilter, TransactionStatus } from '@shared/schemas';
-import { Button, DateInput, Input, Segmented, Select } from '@/components/ui';
+import { Button, DateRangeField, FilterPill, SearchPill, Segmented } from '@/components/ui';
 import styles from './TransactionFilters.module.css';
 
 export type Period = 'month' | 'last-month' | '30d' | 'all' | 'custom';
@@ -104,10 +104,7 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
   return (
     <div className={styles.filters}>
       <div className={styles.line}>
-        <div className={styles.search}>
-          <Search className={styles.searchIcon} aria-hidden />
-          <Input type="search" placeholder="Rechercher un libellé (/)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" className={styles.searchInput} />
-        </div>
+        <SearchPill placeholder="Rechercher un libellé (/)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" />
         <Segmented
           label="Période"
           value={value.period}
@@ -122,31 +119,32 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
         />
       </div>
 
-      {value.period === 'custom' ? (
-        <div className={styles.dates}>
-          <DateInput aria-label="Du" value={value.from ?? ''} onChange={(e) => onChange({ ...value, from: e.target.value || undefined })} />
-          <span className="muted">au</span>
-          <DateInput aria-label="Au" value={value.to ?? ''} onChange={(e) => onChange({ ...value, to: e.target.value || undefined })} />
-        </div>
-      ) : null}
-
       <div className={styles.line}>
-        <Select aria-label="Compte" value={value.account ?? ''} onChange={(e) => onChange({ ...value, account: e.target.value ? Number(e.target.value) : undefined })} className={styles.select}>
+        <FilterPill className={styles.grow} aria-label="Compte" value={value.account ? String(value.account) : ''} resetValue="" onChange={(v) => onChange({ ...value, account: v ? Number(v) : undefined })}>
           <option value="">Tous les comptes</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
             </option>
           ))}
-        </Select>
-        <Select aria-label="Enveloppe" value={value.envelope ?? ''} onChange={(e) => onChange({ ...value, envelope: e.target.value ? Number(e.target.value) : undefined })} className={styles.select}>
+        </FilterPill>
+        <FilterPill className={styles.grow} aria-label="Enveloppe" value={value.envelope ? String(value.envelope) : ''} resetValue="" onChange={(v) => onChange({ ...value, envelope: v ? Number(v) : undefined })}>
           <option value="">Toutes les enveloppes</option>
           {envelopes.map((env) => (
             <option key={env.id} value={env.id}>
               {env.name}
             </option>
           ))}
-        </Select>
+        </FilterPill>
+        {value.period === 'custom' ? (
+          <DateRangeField
+            variant="pill"
+            aria-label="Période personnalisée"
+            from={value.from ?? null}
+            to={value.to ?? null}
+            onChange={({ from, to }) => onChange({ ...value, from: from ?? undefined, to: to ?? undefined })}
+          />
+        ) : null}
         <Segmented
           label="Statut"
           value={value.status ?? 'all'}

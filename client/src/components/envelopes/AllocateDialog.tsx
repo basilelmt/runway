@@ -1,7 +1,7 @@
 import { errorMessage } from '@/api/client';
 import { useCreateTransaction } from '@/api/hooks';
-import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { Dialog, useToast } from '@/components/ui';
+import { AllocationForm } from './AllocationForm';
 
 type AllocateDialogProps = {
   open: boolean;
@@ -27,9 +27,8 @@ export function AllocateDialog({ open, onClose, envelopeId = null, fromEnvelopeI
   return (
     <Dialog open={open} onClose={onClose} title={title} description={moving ? 'Choisis l’enveloppe qui reçoit l’argent.' : 'L’argent vient de « Pas encore réparti ». Aucun compte ne bouge.'}>
       {open ? (
-        <TransactionForm
-          kinds={['allocation']}
-          initial={{ kind: 'allocation', envelopeId: moving ? null : envelopeId, fromEnvelopeId, label: moving ? 'Déplacement' : 'Répartition' }}
+        <AllocationForm
+          initial={{ envelopeId: moving ? null : envelopeId, fromEnvelopeId, label: moving ? 'Déplacement' : 'Répartition' }}
           submitLabel={moving ? 'Déplacer' : 'Ajouter'}
           submitting={create.isPending}
           serverError={create.error ? errorMessage(create.error) : null}

@@ -23,7 +23,7 @@
 }
 
 .sm {
-  width: 400px;
+  width: 420px;
 }
 
 .md {
@@ -46,36 +46,118 @@
   animation: pop 220ms var(--ease-out);
 }
 
+/* En-tête : titre en police d'affichage, bouton fermer discret */
 .header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--s-3);
-  padding: var(--s-5) var(--s-5) var(--s-3);
+  padding: var(--s-6) var(--s-6) var(--s-2);
+  transition: box-shadow var(--dur) var(--ease-out);
+}
+
+.edgeBelow {
+  box-shadow: 0 1px 0 var(--rule);
+}
+
+.heading {
+  min-width: 0;
 }
 
 .title {
-  font-size: var(--text-lg);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 1.3125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 
 .description {
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
   margin-top: var(--s-1);
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
+}
+
+.close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--paper-sunken);
+  color: var(--ink-mute);
+  transition:
+    background var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
+}
+
+.close:hover {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+.close :global(svg) {
+  width: 14px;
+  height: 14px;
 }
 
 .body {
-  padding: 0 var(--s-5) var(--s-5);
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  padding: var(--s-4) var(--s-6);
 }
 
+.panel:has(> .footer:empty) .body {
+  padding-bottom: var(--s-6);
+}
+
+/* Pied : action destructive à gauche, actions à droite, la principale en dernier */
 .footer {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-2);
+  padding: var(--s-4) var(--s-6) var(--s-5);
+  transition: box-shadow var(--dur) var(--ease-out);
+}
+
+.footer:empty {
+  display: none;
+}
+
+.edgeAbove {
+  box-shadow: 0 -1px 0 var(--rule);
+}
+
+.info {
+  flex: 1 0 100%;
+}
+
+.start {
+  display: flex;
+  align-items: center;
   gap: var(--s-2);
-  padding: var(--s-3) var(--s-5);
-  border-top: 1px solid var(--rule);
+  margin-right: auto;
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+
+.inlineFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-2);
 }
 
 @keyframes pop {
@@ -125,6 +207,43 @@
 
   .closing .panel {
     animation-name: sheet-down;
+  }
+
+  .header,
+  .body,
+  .footer {
+    padding-left: var(--s-5);
+    padding-right: var(--s-5);
+  }
+
+  .footer {
+    padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom));
+  }
+
+  /* Action principale en pleine largeur, les autres sur une ligne en dessous */
+  .footer .start,
+  .footer .end {
+    display: contents;
+  }
+
+  .footer .end > :last-child {
+    order: -1;
+    flex: 1 0 100%;
+    height: 44px;
+  }
+
+  .footer .info {
+    order: -2;
+  }
+
+  .footer .end > :first-child:not(:last-child) {
+    margin-left: auto;
+  }
+
+  /* Les actions secondaires partagent une ligne : rembourrage réduit */
+  .footer .start > *,
+  .footer .end > :not(:last-child) {
+    padding-inline: var(--s-2);
   }
 
   @keyframes sheet-up {

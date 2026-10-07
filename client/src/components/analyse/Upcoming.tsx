@@ -4,7 +4,7 @@ import { errorMessage } from '@/api/client';
 import { useForecast, useSettings } from '@/api/hooks';
 import { BalanceAreaChart } from '@/components/charts/BalanceAreaChart';
 import { RunwayStrip } from '@/components/dashboard/RunwayStrip';
-import { Amount, Badge, ButtonLink, EmptyState, Select, Skeleton, SkeletonRows } from '@/components/ui';
+import { Amount, Badge, ButtonLink, EmptyState, FilterPill, Skeleton, SkeletonRows } from '@/components/ui';
 import { formatDateShort, inDays, KIND_LABELS } from '@/lib/format';
 import styles from './Upcoming.module.css';
 
@@ -108,7 +108,7 @@ export function Upcoming() {
             <section className={styles.chartSection}>
               <div className="section-title">
                 <h2>Solde projeté</h2>
-                <Select value={series ?? ''} onChange={(e) => setSeries(e.target.value as Series)} aria-label="Compte ou enveloppe à tracer" className={styles.select}>
+                <FilterPill value={series ?? ''} onChange={(v) => setSeries(v as Series)} aria-label="Compte ou enveloppe à tracer">
                   <optgroup label="Comptes">
                     {data!.accounts.map((a) => (
                       <option key={a.id} value={`account-${a.id}`}>
@@ -123,7 +123,7 @@ export function Upcoming() {
                       </option>
                     ))}
                   </optgroup>
-                </Select>
+                </FilterPill>
               </div>
               {selected ? (
                 <div className={styles.chart}>

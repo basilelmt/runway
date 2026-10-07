@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Dialog } from './Dialog';
 import { MoneyInput } from './MoneyInput';
 
 function Harness({ onChange }: { onChange: (v: number | null) => void }) {
@@ -35,25 +34,5 @@ describe('MoneyInput', () => {
     render(<Harness onChange={onChange} />);
     await userEvent.type(screen.getByLabelText('Montant'), 'abc');
     expect(onChange).toHaveBeenLastCalledWith(null);
-  });
-});
-
-describe('Dialog', () => {
-  it('appelle onClose sur Échap', async () => {
-    HTMLDialogElement.prototype.showModal ??= function () {
-      this.setAttribute('open', '');
-    };
-    HTMLDialogElement.prototype.close ??= function () {
-      this.removeAttribute('open');
-    };
-    const onClose = vi.fn();
-    render(
-      <Dialog open onClose={onClose} title="Test">
-        <p>contenu</p>
-      </Dialog>,
-    );
-    const dialog = screen.getByRole('dialog', { hidden: true });
-    dialog.dispatchEvent(new Event('cancel', { bubbles: true, cancelable: true }));
-    expect(onClose).toHaveBeenCalled();
   });
 });

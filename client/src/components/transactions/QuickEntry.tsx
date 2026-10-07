@@ -1,10 +1,10 @@
 import { ArrowLeftRight, Check, Minus, Plus, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { addDays, today } from '@shared/dates';
-import { formatEuros, parseEuros } from '@shared/money';
+import { formatEuros } from '@shared/money';
 import { transactionInputSchema, type Transaction, type TransactionInput } from '@shared/schemas';
 import { testSortingRule, useAccounts, useEnvelopes, useTransactions } from '@/api/hooks';
-import { Button, DateInput, Dot, Select } from '@/components/ui';
+import { AmountHero, Button, ChipPicker, DateField, DialogFooter, Dot, Select, Textarea } from '@/components/ui';
 import styles from './QuickEntry.module.css';
 
 type Kind = 'expense' | 'income' | 'transfer';
@@ -21,12 +21,19 @@ const SUBMIT_LABEL: Record<Kind, string> = { expense: 'la dépense', income: 'le
 type EnvelopeSource = 'user' | 'rule' | 'history' | null;
 
 type QuickEntryProps = {
+  mode?: 'create' | 'edit';
+  /** Opération modifiée en mode `edit` ; jamais une répartition (voir AllocationForm). */
+  initial?: Transaction;
   submitting?: boolean;
   serverError?: string | null;
   /** `again` : l'utilisateur veut saisir une autre opération juste après. */
   onSubmit: (input: TransactionInput, again: boolean) => void;
   /** Change à chaque enregistrement réussi en mode « une autre » : le formulaire se vide. */
   resetKey?: number;
+  /** Action à gauche du pied (Supprimer). */
+  footerStart?: ReactNode;
+  /** Action avant le bouton principal (Confirmer sans modifier). */
+  footerExtra?: ReactNode;
 };
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -38,45 +45,49 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced;
 }
 
-/** Saisie rapide d'une opération : le montant d'abord, puis le libellé qui propose l'enveloppe. */
-export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: QuickEntryProps) {
+/** Saisie d'une opération : le montant d'abord, puis le libellé qui propose l'enveloppe. Sert aussi à la modifier. */
+export function QuickEntry({ mode = 'create', initial, submitting, serverError, onSubmit, resetKey = 0, footerStart, footerExtra }: QuickEntryProps) {
   const accounts = useAccounts();
   const envelopes = useEnvelopes();
   const amountRef = useRef<HTMLInputElement>(null);
+  const formId = useId();
+  const editing = mode === 'edit';
 
-  const [kind, setKind] = useState<Kind>('expense');
-  const [amountText, setAmountText] = useState('');
-  const [label, setLabel] = useState('');
-  const [date, setDate] = useState(today());
-  const [accountId, setAccountId] = useState<number | null>(null);
-  const [toAccountId, setToAccountId] = useState<number | null>(null);
-  const [envelopeId, setEnvelopeId] = useState<number | null>(null);
-  const [envelopeSource, setEnvelopeSource] = useState<EnvelopeSource>(null);
-  const [note, setNote] = useState('');
-  const [showNote, setShowNote] = useState(false);
+  const [kind, setKind] = useState<Kind>(initial && initial.kind !== 'allocation' ? initial.kind : 'expense');
+  const [amount, setAmount] = useState<number | null>(initial?.amount ?? null);
+  const [label, setLabel] = useState(initial?.label ?? '');
+  const [date, setDate] = useState(initial?.date ?? today());
+  const [accountId, setAccountId] = useState<number | null>(initial?.accountId ?? null);
+  const [toAccountId, setToAccountId] = useState<number | null>(initial?.toAccountId ?? null);
+  const [envelopeId, setEnvelopeId] = useState<number | null>(initial?.envelopeId ?? null);
+  const [envelopeSource, setEnvelopeSource] = useState<EnvelopeSource>(initial ? 'user' : null);
+  const [note, setNote] = useState(initial?.note ?? '');
+  const [showNote, setShowNote] = useState(Boolean(initial?.note));
+  const [focusNote, setFocusNote] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [lastReset, setLastReset] = useState(resetKey);
 
   // Après « Enregistrer et en saisir une autre » : on garde type, date et compte, on vide le reste.
   if (resetKey !== lastReset) {
     setLastReset(resetKey);
-    setAmountText('');
+    setAmount(null);
     setLabel('');
     setEnvelopeId(null);
     setEnvelopeSource(null);
     setNote('');
     setShowNote(false);
+    setFocusNote(false);
     setErrors({});
   }
   useEffect(() => amountRef.current?.focus(), [resetKey]);
 
-  const amount = parseEuros(amountText);
   const effectiveAccount = accountId ?? accounts.data?.[0]?.id ?? null;
   const yesterday = addDays(today(), -1);
 
-  // Suggestions : opérations passées dont le libellé contient la saisie.
-  const query = useDebounced(label.trim(), 200);
-  const history = useTransactions({ q: query, kind, limit: 40 });
+  // Suggestions : opérations passées dont le libellé contient la saisie (création seulement).
+  const query = useDebounced(editing ? '' : label.trim(), 200);
+  // Pas de requête tant que la saisie est trop courte pour suggérer quoi que ce soit (ni en modification).
+  const history = useTransactions({ q: query, kind, limit: 40 }, { enabled: query.length >= 2 });
   const suggestions = useMemo(() => {
     if (query.length < 2) return [];
     const seen = new Set<string>();
@@ -93,7 +104,7 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
 
   // Tant que l'utilisateur n'a pas choisi, les règles de tri proposent l'enveloppe.
   useEffect(() => {
-    if (kind !== 'expense' || envelopeSource === 'user' || envelopeSource === 'history' || query.length < 2) return;
+    if (editing || kind !== 'expense' || envelopeSource === 'user' || envelopeSource === 'history' || query.length < 2) return;
     let cancelled = false;
     testSortingRule(query)
       .then(({ envelopeId: found }) => {
@@ -105,7 +116,7 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
     return () => {
       cancelled = true;
     };
-  }, [query, kind, envelopeSource]);
+  }, [query, kind, envelopeSource, editing]);
 
   function pickSuggestion(t: Transaction) {
     setLabel(t.label);
@@ -114,7 +125,7 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
       setEnvelopeSource('history');
     }
     if (t.accountId) setAccountId(t.accountId);
-    if (amount === null) setAmountText((t.amount / 100).toFixed(2).replace('.', ','));
+    if (amount === null) setAmount(t.amount);
   }
 
   function chooseEnvelope(id: number | null) {
@@ -147,21 +158,25 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLFormElement>) {
-    if (e.key === 'Enter' && e.shiftKey) {
+    // Un bouton (même téléporté dans le pied du dialogue) garde son propre comportement.
+    if (e.key === 'Enter' && e.shiftKey && !editing && !submitting && !(e.target instanceof HTMLButtonElement)) {
       e.preventDefault();
       submit(true);
     }
   }
 
-  const sign = kind === 'expense' ? '−' : kind === 'income' ? '+' : '';
+  const sign: '−' | '+' | '' = kind === 'expense' ? '−' : kind === 'income' ? '+' : '';
+  const otherDate = date !== today() && date !== yesterday;
   const accountOptions = (accounts.data ?? []).map((a) => (
     <option key={a.id} value={a.id}>
       {a.name}
     </option>
   ));
+  const submitText = editing ? 'Enregistrer' : amount ? `Enregistrer ${SUBMIT_LABEL[kind]} de ${formatEuros(Math.abs(amount))}` : 'Enregistrer';
 
   return (
     <form
+      id={formId}
       className={styles.form}
       onSubmit={(e) => {
         e.preventDefault();
@@ -170,70 +185,53 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
       onKeyDown={onKeyDown}
       noValidate
     >
-      <div className={styles.kinds} role="radiogroup" aria-label="Type d’opération">
-        {KINDS.map((k) => (
-          <button
-            key={k.value}
-            type="button"
-            role="radio"
-            aria-checked={kind === k.value}
-            className={[styles.kind, kind === k.value ? styles.kindActive : '', styles[k.value]].join(' ')}
-            onClick={() => {
-              setKind(k.value);
-              setErrors({});
-            }}
-          >
-            <k.icon aria-hidden />
-            {k.label}
-          </button>
-        ))}
-      </div>
+      {editing ? null : (
+        <div className={styles.kinds} role="radiogroup" aria-label="Type d’opération">
+          {KINDS.map((k) => (
+            <button
+              key={k.value}
+              type="button"
+              role="radio"
+              aria-checked={kind === k.value}
+              className={[styles.kind, kind === k.value ? styles.kindActive : '', k.value === 'income' ? styles.income : ''].join(' ')}
+              onClick={() => {
+                setKind(k.value);
+                setErrors({});
+              }}
+            >
+              <k.icon aria-hidden />
+              {k.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className={[styles.amount, errors.amount ? styles.amountError : '', styles[kind]].join(' ')}>
-        <label htmlFor="quick-amount" className="visually-hidden">
-          Montant
-        </label>
-        {sign ? (
-          <span className={styles.sign} aria-hidden>
-            {sign}
-          </span>
-        ) : null}
-        <input
-          ref={amountRef}
-          id="quick-amount"
-          className={['num', styles.amountInput].join(' ')}
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="0"
-          value={amountText}
-          size={Math.max(1, amountText.length || 1)}
-          onChange={(e) => {
-            setAmountText(e.target.value.replace(/[^\d,.\s]/g, ''));
-            setErrors((x) => ({ ...x, amount: '' }));
-          }}
-          onBlur={() => {
-            if (amount !== null) setAmountText((Math.abs(amount) / 100).toFixed(2).replace('.', ','));
-          }}
-          aria-invalid={errors.amount ? true : undefined}
-          aria-describedby={errors.amount ? 'quick-amount-error' : undefined}
-          autoFocus
-        />
-        <span className={styles.currency} aria-hidden>
-          €
-        </span>
-      </div>
+      <AmountHero
+        ref={amountRef}
+        id={`${formId}-amount`}
+        value={amount}
+        onChange={(cents) => {
+          setAmount(cents);
+          setErrors((x) => ({ ...x, amount: '' }));
+        }}
+        sign={sign}
+        tone={kind === 'income' ? 'income' : 'neutral'}
+        invalid={Boolean(errors.amount)}
+        describedBy={errors.amount ? `${formId}-amount-error` : undefined}
+        autoFocus
+      />
       {errors.amount ? (
-        <p id="quick-amount-error" className={styles.error} role="alert">
+        <p id={`${formId}-amount-error`} className={styles.error} role="alert">
           {errors.amount}
         </p>
       ) : null}
 
       <div className={styles.labelBlock}>
-        <label htmlFor="quick-label" className="visually-hidden">
+        <label htmlFor={`${formId}-label`} className="visually-hidden">
           Libellé
         </label>
         <input
-          id="quick-label"
+          id={`${formId}-label`}
           className={styles.labelInput}
           value={label}
           onChange={(e) => {
@@ -270,7 +268,7 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
 
       {kind === 'expense' ? (
         <fieldset className={styles.group}>
-          <legend className={styles.legend}>
+          <legend id={`${formId}-envelope`} className={styles.legend}>
             Enveloppe
             {envelopeSource === 'rule' || envelopeSource === 'history' ? (
               <span className={styles.auto}>
@@ -278,24 +276,12 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
               </span>
             ) : null}
           </legend>
-          <div className={styles.chips}>
-            <button type="button" className={[styles.chip, envelopeId === null ? styles.chipActive : ''].join(' ')} onClick={() => chooseEnvelope(null)} aria-pressed={envelopeId === null}>
-              À ranger plus tard
-            </button>
-            {(envelopes.data ?? []).map((env) => (
-              <button
-                key={env.id}
-                type="button"
-                className={[styles.chip, envelopeId === env.id ? styles.chipActive : ''].join(' ')}
-                onClick={() => chooseEnvelope(env.id)}
-                aria-pressed={envelopeId === env.id}
-                style={{ '--chip': env.color } as CSSProperties}
-              >
-                <Dot color={env.color} size={8} />
-                {env.name}
-              </button>
-            ))}
-          </div>
+          <ChipPicker
+            aria-labelledby={`${formId}-envelope`}
+            value={envelopeId}
+            onChange={chooseEnvelope}
+            options={[{ value: null, label: 'À ranger plus tard' }, ...(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))]}
+          />
         </fieldset>
       ) : null}
 
@@ -307,7 +293,15 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
           <button type="button" className={[styles.chip, date === yesterday ? styles.chipActive : ''].join(' ')} onClick={() => setDate(yesterday)} aria-pressed={date === yesterday}>
             Hier
           </button>
-          <DateInput aria-label="Autre date" value={date} max={today()} onChange={(e) => e.target.value && setDate(e.target.value)} className={[styles.dateInput, date !== today() && date !== yesterday ? styles.dateActive : ''].join(' ')} />
+          <DateField
+            variant="chip"
+            aria-label="Autre date"
+            value={otherDate ? date : null}
+            placeholder="Autre date"
+            shortcuts={false}
+            max={editing ? undefined : today()}
+            onChange={(v) => v && setDate(v)}
+          />
         </div>
 
         <div className={styles.accounts}>
@@ -331,9 +325,16 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
       </div>
 
       {showNote ? (
-        <textarea className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Une note pour plus tard" aria-label="Note" rows={2} autoFocus />
+        <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Une note pour plus tard" aria-label="Note" autoFocus={focusNote} />
       ) : (
-        <button type="button" className={styles.addNote} onClick={() => setShowNote(true)}>
+        <button
+          type="button"
+          className={styles.addNote}
+          onClick={() => {
+            setShowNote(true);
+            setFocusNote(true);
+          }}
+        >
           + Ajouter une note
         </button>
       )}
@@ -344,15 +345,23 @@ export function QuickEntry({ submitting, serverError, onSubmit, resetKey = 0 }: 
         </p>
       ) : null}
 
-      <div className={styles.actions}>
-        <button type="button" className={styles.again} onClick={() => submit(true)} disabled={submitting}>
-          Enregistrer et en saisir une autre <kbd>⇧</kbd>
-          <kbd>↵</kbd>
-        </button>
-        <Button type="submit" variant="primary" loading={submitting} icon={<Check />} className={styles.submit}>
-          {amount ? `Enregistrer ${SUBMIT_LABEL[kind]} de ${formatEuros(Math.abs(amount))}` : 'Enregistrer'}
+      <DialogFooter
+        start={
+          editing ? (
+            footerStart
+          ) : (
+            <button type="button" className={styles.again} onClick={() => submit(true)} disabled={submitting}>
+              Enregistrer et en saisir une autre <kbd>⇧</kbd>
+              <kbd>↵</kbd>
+            </button>
+          )
+        }
+      >
+        {footerExtra}
+        <Button type="submit" form={formId} variant="primary" loading={submitting} icon={<Check />} className={editing ? undefined : styles.submit}>
+          {submitText}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

@@ -1,0 +1,33 @@
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.check label {
+  cursor: pointer;
+}
+
+.box {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hint {
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+}

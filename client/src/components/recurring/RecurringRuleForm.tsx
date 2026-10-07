@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { today } from '@shared/dates';
+import { useId, useState } from 'react';
+import { formatDateMedium, today } from '@shared/dates';
 import { recurringRuleInputSchema, type Frequency, type RecurringRule, type RecurringRuleInput, type TransactionKind } from '@shared/schemas';
 import { useAccounts, useEnvelopes } from '@/api/hooks';
-import { Button, DateInput, Field, Input, MoneyInput, Segmented, Select } from '@/components/ui';
+import { AmountHero, Button, ChipPicker, DateField, DialogFooter, Field, FormSection, Input, Segmented, Select } from '@/components/ui';
 import { FREQUENCY_LABELS, KIND_LABELS } from '@/lib/format';
+import { describeFrequency } from './frequency';
 import styles from './RecurringRuleForm.module.css';
 
 /** Le budget mensuel des enveloppes remplace les règles d'allocation. */
@@ -22,7 +23,7 @@ type Values = {
   interval: string;
   dayOfMonth: string;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
 };
 
 type Props = {
@@ -52,7 +53,7 @@ function initialValues(initial?: RecurringRule): Values {
     interval: String(initial?.interval ?? 1),
     dayOfMonth: String(initial?.dayOfMonth ?? Number(start.slice(8, 10))),
     startDate: start,
-    endDate: initial?.endDate ?? '',
+    endDate: initial?.endDate ?? null,
   };
 }
 
@@ -71,7 +72,7 @@ function toInput(v: Values, active: boolean): unknown {
     interval: Number(v.interval) || 1,
     dayOfMonth: monthly ? Number(v.dayOfMonth) || null : null,
     startDate: v.startDate,
-    endDate: v.endDate || null,
+    endDate: v.endDate,
     active,
   };
 }
@@ -82,6 +83,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
   const envelopes = useEnvelopes();
   const [values, setValues] = useState(() => initialValues(initial));
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
+  const formId = useId();
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -112,30 +114,44 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
       {a.name}
     </option>
   ));
-  const envelopeOptions = (envelopes.data ?? []).map((env) => (
-    <option key={env.id} value={env.id}>
-      {env.name}
-    </option>
-  ));
   const monthly = values.frequency === 'monthly' || values.frequency === 'yearly';
   const unitLabel = { daily: 'jours', weekly: 'semaines', monthly: 'mois', yearly: 'ans' }[values.frequency];
+  const summary = [
+    describeFrequency({ frequency: values.frequency, interval: Number(values.interval) || 1, dayOfMonth: monthly ? Number(values.dayOfMonth) || null : null, startDate: values.startDate }),
+    `à partir du ${formatDateMedium(values.startDate)}`,
+    values.endDate ? `jusqu’au ${formatDateMedium(values.endDate)}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <form className={styles.form} onSubmit={submit} noValidate>
-      <Segmented label="Type d'opération" value={values.kind} onChange={(k) => set('kind', k)} options={KIND_OPTIONS} />
+    <form id={formId} className={styles.form} onSubmit={submit} noValidate>
+      <div className={styles.top}>
+        <Segmented label="Type d'opération" value={values.kind} onChange={(k) => set('kind', k)} options={KIND_OPTIONS} />
+        <AmountHero
+          id={`${formId}-amount`}
+          value={values.amount}
+          onChange={(c) => set('amount', c)}
+          sign={values.kind === 'expense' ? '−' : values.kind === 'income' ? '+' : ''}
+          tone={values.kind === 'income' ? 'income' : 'neutral'}
+          invalid={Boolean(errors.amount)}
+          describedBy={errors.amount ? `${formId}-amount-error` : undefined}
+        />
+        {errors.amount ? (
+          <p id={`${formId}-amount-error`} className={styles.amountError} role="alert">
+            {errors.amount}
+          </p>
+        ) : null}
+      </div>
 
       <div className={styles.grid}>
         <Field label="Nom" error={errors.name}>
-          {(id, by) => <Input id={id} aria-describedby={by} value={values.name} onChange={(e) => set('name', e.target.value)} placeholder="Loyer" autoFocus />}
+          {(id, by) => <Input id={id} aria-describedby={by} value={values.name} onChange={(e) => set('name', e.target.value)} placeholder="Loyer" />}
         </Field>
-        <Field label="Montant" error={errors.amount}>
-          {(id, by) => <MoneyInput id={id} aria-describedby={by} value={values.amount} onChange={(c) => set('amount', c)} placeholder="0,00" />}
+        <Field label="Libellé des opérations" hint="Par défaut, le nom de la règle" error={errors.label}>
+          {(id, by) => <Input id={id} aria-describedby={by} value={values.label} onChange={(e) => set('label', e.target.value)} placeholder={values.name || 'Loyer'} />}
         </Field>
       </div>
-
-      <Field label="Libellé des opérations" hint="Par défaut, le nom de la règle" error={errors.label}>
-        {(id, by) => <Input id={id} aria-describedby={by} value={values.label} onChange={(e) => set('label', e.target.value)} placeholder={values.name || 'Loyer'} />}
-      </Field>
 
       <div className={styles.grid}>
         <Field label={values.kind === 'transfer' ? 'Depuis le compte' : 'Compte'} error={errors.accountId}>
@@ -156,21 +172,25 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
             )}
           </Field>
         ) : null}
-        {values.kind === 'expense' ? (
-          <Field label="Enveloppe" error={errors.envelopeId}>
-            {(id, by) => (
-              <Select id={id} aria-describedby={by} value={values.envelopeId ?? ''} onChange={(e) => set('envelopeId', e.target.value ? Number(e.target.value) : null)}>
-                <option value="">À ranger</option>
-                {envelopeOptions}
-              </Select>
-            )}
-          </Field>
-        ) : null}
       </div>
 
-      <fieldset className={styles.fieldset}>
-        <legend className="eyebrow">Fréquence</legend>
-        <div className={styles.grid}>
+      {values.kind === 'expense' ? (
+        <Field label="Enveloppe" error={errors.envelopeId}>
+          {(id, by, labelId) => (
+            <ChipPicker
+              id={id}
+              aria-labelledby={labelId}
+              aria-describedby={by}
+              value={values.envelopeId}
+              onChange={(v) => set('envelopeId', v)}
+              options={[{ value: null, label: 'À ranger' }, ...(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))]}
+            />
+          )}
+        </Field>
+      ) : null}
+
+      <FormSection title="Quand">
+        <div className={styles.schedule}>
           <Field label="Répéter" error={errors.frequency}>
             {(id, by) => (
               <Select id={id} aria-describedby={by} value={values.frequency} onChange={(e) => set('frequency', e.target.value as Frequency)}>
@@ -193,13 +213,16 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
         </div>
         <div className={styles.grid}>
           <Field label="À partir du" error={errors.startDate}>
-            {(id, by) => <DateInput id={id} aria-describedby={by} value={values.startDate} onChange={(e) => set('startDate', e.target.value)} />}
+            {(id, by) => <DateField id={id} aria-describedby={by} value={values.startDate} onChange={(v) => v && set('startDate', v)} />}
           </Field>
-          <Field label="Jusqu'au" hint="Facultatif" error={errors.endDate}>
-            {(id, by) => <DateInput id={id} aria-describedby={by} value={values.endDate} onChange={(e) => set('endDate', e.target.value)} />}
+          <Field label="Jusqu’au" error={errors.endDate}>
+            {(id, by) => <DateField id={id} aria-describedby={by} value={values.endDate} onChange={(v) => set('endDate', v)} placeholder="Sans fin" clearable min={values.startDate} />}
           </Field>
         </div>
-      </fieldset>
+        <p className={styles.summary} aria-live="polite">
+          {summary}
+        </p>
+      </FormSection>
 
       {serverError ? (
         <p className={styles.serverError} role="alert">
@@ -207,14 +230,14 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
         </p>
       ) : null}
 
-      <div className={styles.actions}>
+      <DialogFooter>
         <Button variant="ghost" onClick={onCancel}>
           Annuler
         </Button>
-        <Button type="submit" variant="primary" loading={submitting}>
+        <Button type="submit" form={formId} variant="primary" loading={submitting}>
           {initial ? 'Enregistrer' : 'Ajouter'}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

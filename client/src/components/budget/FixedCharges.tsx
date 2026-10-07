@@ -14,7 +14,7 @@ import {
 } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
-import { Amount, Badge, Button, Dialog, Dot, Skeleton, useToast } from '@/components/ui';
+import { Amount, Badge, Button, ConfirmDialog, Dialog, Dot, Skeleton, useToast } from '@/components/ui';
 import styles from './FixedCharges.module.css';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; rule: RecurringRuleView } | { mode: 'delete'; rule: RecurringRuleView } | null;
@@ -163,7 +163,7 @@ export function FixedCharges() {
         open={dialog?.mode === 'create' || dialog?.mode === 'edit'}
         onClose={() => setDialog(null)}
         title={dialog?.mode === 'edit' ? `Modifier « ${dialog.rule.name} »` : 'Nouvelle charge fixe ou revenu'}
-        size="lg"
+        size="md"
       >
         {dialog?.mode === 'create' ? (
           <RecurringRuleForm onSubmit={(input) => create.mutate(input)} onCancel={() => setDialog(null)} submitting={create.isPending} serverError={create.error ? errorMessage(create.error) : null} />
@@ -179,34 +179,22 @@ export function FixedCharges() {
         ) : null}
       </Dialog>
 
-      <Dialog
+      <ConfirmDialog
         open={dialog?.mode === 'delete'}
         onClose={() => setDialog(null)}
+        onConfirm={() => dialog?.mode === 'delete' && remove.mutate(dialog.rule.id)}
         title="Supprimer cette ligne ?"
         description="Les opérations déjà passées restent. Plus aucune occurrence ne sera attendue."
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setDialog(null)}>
-              Annuler
-            </Button>
-            <Button variant="danger" loading={remove.isPending} onClick={() => dialog?.mode === 'delete' && remove.mutate(dialog.rule.id)}>
-              Supprimer
-            </Button>
-          </>
-        }
+        confirmLabel="Supprimer"
+        loading={remove.isPending}
+        error={remove.error ? errorMessage(remove.error) : null}
       >
         {dialog?.mode === 'delete' ? (
-          <p>
+          <span>
             <strong>{dialog.rule.name}</strong>, {describeFrequency(dialog.rule).toLowerCase()}.
-          </p>
+          </span>
         ) : null}
-        {remove.error ? (
-          <p className={styles.error} role="alert">
-            {errorMessage(remove.error)}
-          </p>
-        ) : null}
-      </Dialog>
+      </ConfirmDialog>
     </section>
   );
 }

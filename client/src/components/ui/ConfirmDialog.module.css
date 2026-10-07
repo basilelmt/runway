@@ -1,0 +1,16 @@
+.subject {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  font-weight: 500;
+}
+
+.subject + .error {
+  margin-top: var(--s-3);
+}
+
+.error {
+  color: var(--negative);
+  font-size: var(--text-sm);
+}

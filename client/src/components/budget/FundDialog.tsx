@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { EnvelopeWithBalance } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useFundEnvelopes } from '@/api/hooks';
-import { Amount, Button, Dialog, Dot, MoneyInput, useToast } from '@/components/ui';
+import { Amount, Button, Dialog, DialogFooter, Dot, MoneyInput, useToast } from '@/components/ui';
 import { plural } from '@/lib/format';
 import styles from './FundDialog.module.css';
 
@@ -28,6 +28,7 @@ function FundForm({ envelopes, toAllocate, onClose }: Omit<FundDialogProps, 'ope
   const [amounts, setAmounts] = useState<Record<number, number | null>>(() =>
     Object.fromEntries(envelopes.map((e) => [e.id, e.toFundThisMonth > 0 ? e.toFundThisMonth : null])),
   );
+  const formId = useId();
   const fund = useFundEnvelopes({
     onSuccess: (created) => {
       toast.success(`${plural(created.length, 'enveloppe complétée', 'enveloppes complétées')}`);
@@ -45,6 +46,7 @@ function FundForm({ envelopes, toAllocate, onClose }: Omit<FundDialogProps, 'ope
 
   return (
     <form
+      id={formId}
       className={styles.form}
       onSubmit={(e) => {
         e.preventDefault();
@@ -72,38 +74,39 @@ function FundForm({ envelopes, toAllocate, onClose }: Omit<FundDialogProps, 'ope
         ))}
       </ul>
 
-      <div className={styles.footer}>
-      <div className={styles.summary}>
-        <div>
-          <span className={styles.summaryLabel}>À répartir</span>
-          <Amount cents={total} tone="neutral" size="lg" />
-        </div>
-        <div className={styles.summaryRight}>
-          <span className={styles.summaryLabel}>{left >= 0 ? 'Restera non réparti' : 'Dépasse ce qui est disponible de'}</span>
-          <Amount cents={Math.abs(left)} tone="neutral" className={left < 0 ? styles.negative : ''} />
-        </div>
-      </div>
-
-      {left < 0 ? (
-        <p className={styles.warning} role="status">
-          Tu répartis plus que l’argent disponible sur tes comptes. Les enveloppes seront remplies, mais « Pas encore réparti » passera en négatif.
-        </p>
-      ) : null}
-      {fund.error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(fund.error)}
-        </p>
-      ) : null}
-
-      <div className={styles.actions}>
+      <DialogFooter
+        info={
+          <div className={styles.info}>
+            <div className={styles.summary}>
+              <div>
+                <span className={styles.summaryLabel}>À répartir</span>
+                <Amount cents={total} tone="neutral" size="lg" />
+              </div>
+              <div className={styles.summaryRight}>
+                <span className={styles.summaryLabel}>{left >= 0 ? 'Restera non réparti' : 'Dépasse ce qui est disponible de'}</span>
+                <Amount cents={Math.abs(left)} tone="neutral" className={left < 0 ? styles.negative : ''} />
+              </div>
+            </div>
+            {left < 0 ? (
+              <p className={styles.warning} role="status">
+                Tu répartis plus que l’argent disponible sur tes comptes. Les enveloppes seront remplies, mais « Pas encore réparti » passera en négatif.
+              </p>
+            ) : null}
+            {fund.error ? (
+              <p className={styles.error} role="alert">
+                {errorMessage(fund.error)}
+              </p>
+            ) : null}
+          </div>
+        }
+      >
         <Button variant="ghost" onClick={onClose}>
           Annuler
         </Button>
-        <Button type="submit" variant="primary" loading={fund.isPending} disabled={items.length === 0}>
+        <Button type="submit" form={formId} variant="primary" loading={fund.isPending} disabled={items.length === 0}>
           {items.length > 0 ? `Répartir ${formatEuros(total)}` : 'Répartir'}
         </Button>
-      </div>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

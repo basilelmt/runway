@@ -1,9 +1,9 @@
 import { Archive, ArchiveRestore, Landmark, Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { accountInputSchema, type Account, type AccountInput } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useCreateAccount, useOverview, useUpdateAccount } from '@/api/hooks';
-import { Amount, Badge, Button, Dialog, EmptyState, Field, Input, MoneyInput, SkeletonRows, useToast } from '@/components/ui';
+import { Amount, Badge, Button, Checkbox, ConfirmDialog, Dialog, DialogFooter, EmptyState, Field, Input, MoneyInput, SkeletonRows, useToast } from '@/components/ui';
 import { formatDateLong } from '@/lib/format';
 import styles from './Accounts.module.css';
 
@@ -26,6 +26,7 @@ type AccountDialogProps = {
 
 function AccountDialog({ open, account, onClose }: AccountDialogProps) {
   const toast = useToast();
+  const formId = useId();
   const [form, setForm] = useState<FormState>(() => toForm(account));
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const create = useCreateAccount({
@@ -71,36 +72,35 @@ function AccountDialog({ open, account, onClose }: AccountDialogProps) {
 
   return (
     <Dialog open={open} onClose={onClose} title={account ? 'Modifier le compte' : 'Nouveau compte'} size="sm">
-      <form className={styles.form} onSubmit={submit} noValidate>
+      <form id={formId} className={styles.form} onSubmit={submit} noValidate>
         <Field label="Nom" error={errors.name}>
           {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Compte courant" autoFocus />}
         </Field>
         <Field label="Solde initial" hint="Le solde au moment où tu commences à suivre ce compte." error={errors.initialBalance}>
           {(id, describedBy) => <MoneyInput id={id} aria-describedby={describedBy} value={form.initialBalance} onChange={(c) => set('initialBalance', c)} allowNegative />}
         </Field>
-        <label className={styles.check}>
-          <input type="checkbox" checked={!form.onBudget} onChange={(e) => set('onBudget', !e.target.checked)} />
-          <span>
-            Compte d’épargne
-            <span className={styles.checkHint}>Livret, assurance vie : son argent reste hors du budget, et ce que tu y verses compte comme mis de côté.</span>
-          </span>
-        </label>
+        <Checkbox
+          label="Compte d’épargne"
+          hint="Livret, assurance vie : son argent reste hors du budget, et ce que tu y verses compte comme mis de côté."
+          checked={!form.onBudget}
+          onChange={(e) => set('onBudget', !e.target.checked)}
+        />
         <Field label="Numéro de compte bancaire" hint="Facultatif. Rempli automatiquement au premier import." error={errors.bankAccountNumber}>
-          {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={form.bankAccountNumber} onChange={(e) => set('bankAccountNumber', e.target.value)} className="mono" />}
+          {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={form.bankAccountNumber} onChange={(e) => set('bankAccountNumber', e.target.value)} className="mono" spellCheck={false} />}
         </Field>
         {serverError ? (
           <p className={styles.error} role="alert">
             {errorMessage(serverError)}
           </p>
         ) : null}
-        <div className={styles.actions}>
+        <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
-          <Button type="submit" variant="primary" loading={pending}>
+          <Button type="submit" form={formId} variant="primary" loading={pending}>
             {account ? 'Enregistrer' : 'Créer le compte'}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </Dialog>
   );
@@ -118,39 +118,19 @@ function ArchiveDialog({ account, onClose }: ArchiveDialogProps) {
   });
   const archiving = account ? !account.archived : true;
   return (
-    <Dialog
+    <ConfirmDialog
       open={account !== null}
       onClose={onClose}
+      onConfirm={() => account && update.mutate({ id: account.id, archived: archiving })}
       title={archiving ? 'Archiver ce compte ?' : 'Réactiver ce compte ?'}
-      description={
-        archiving
-          ? 'Le compte disparaît des listes et du total. Ses opérations sont conservées.'
-          : 'Le compte réapparaît dans les listes et le total.'
-      }
-      size="sm"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button
-            variant={archiving ? 'danger' : 'primary'}
-            loading={update.isPending}
-            onClick={() => account && update.mutate({ id: account.id, archived: archiving })}
-          >
-            {archiving ? 'Archiver' : 'Réactiver'}
-          </Button>
-        </>
-      }
+      description={archiving ? 'Le compte disparaît des listes et du total. Ses opérations sont conservées.' : 'Le compte réapparaît dans les listes et le total.'}
+      confirmLabel={archiving ? 'Archiver' : 'Réactiver'}
+      tone={archiving ? 'danger' : 'primary'}
+      loading={update.isPending}
+      error={update.error ? errorMessage(update.error) : null}
     >
-      {update.error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(update.error)}
-        </p>
-      ) : (
-        <p className={styles.dialogName}>{account?.name}</p>
-      )}
-    </Dialog>
+      {account?.name}
+    </ConfirmDialog>
   );
 }
 

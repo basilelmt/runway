@@ -10,7 +10,7 @@ import { Upcoming } from '@/components/analyse/Upcoming';
 import { MonthlyBars } from '@/components/charts/MonthlyBars';
 import { NetWorthLine } from '@/components/charts/NetWorthLine';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Amount, DateInput, Dot, EmptyState, Segmented, Skeleton, SkeletonRows, Tabs } from '@/components/ui';
+import { Amount, DateRangeField, Dot, EmptyState, Segmented, Skeleton, SkeletonRows, Tabs } from '@/components/ui';
 import { formatDateCompact, formatDateLong } from '@/lib/format';
 import { useCountUp } from '@/lib/motion';
 import styles from './Analyse.module.css';
@@ -82,11 +82,13 @@ function Spending() {
       <div className={styles.periodBar}>
         <Segmented label="Période" value={preset} onChange={setPreset} options={PRESETS} />
         {preset === 'custom' ? (
-          <div className={styles.customRange}>
-            <DateInput value={custom.from} max={custom.to} onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} aria-label="Du" />
-            <span className="muted">au</span>
-            <DateInput value={custom.to} min={custom.from} onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} aria-label="Au" />
-          </div>
+          <DateRangeField
+            variant="pill"
+            aria-label="Période personnalisée"
+            from={custom.from}
+            to={custom.to}
+            onChange={({ from, to }) => setCustom((c) => ({ ...c, from: from ?? c.from, to: to ?? from ?? c.to }))}
+          />
         ) : (
           <span className="muted">
             Du {formatDateLong(period.from)} au {formatDateLong(period.to)}

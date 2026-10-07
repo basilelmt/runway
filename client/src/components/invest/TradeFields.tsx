@@ -1,7 +1,7 @@
 import { tradeInputSchema, type TradeInput } from '@shared/schemas';
 import { formatEuros } from '@shared/money';
 import { today } from '@shared/dates';
-import { DateInput, Field, Input, MoneyInput, Segmented } from '@/components/ui';
+import { DateField, Field, Input, MoneyInput, Segmented } from '@/components/ui';
 import styles from './Forms.module.css';
 
 export type TradeDraft = { side: 'buy' | 'sell'; date: string; quantity: string; amount: number | null; fees: number | null };
@@ -48,7 +48,7 @@ export function TradeFields({ draft, errors, onChange, unit, allowSell = true }:
       ) : null}
       <div className={styles.pair}>
         <Field label="Date" error={errors.date}>
-          {(id, describedBy) => <DateInput id={id} aria-describedby={describedBy} value={draft.date} max={today()} onChange={(e) => set('date', e.target.value)} />}
+          {(id, describedBy) => <DateField id={id} aria-describedby={describedBy} value={draft.date} max={today()} shortcuts onChange={(v) => v && set('date', v)} />}
         </Field>
         <Field label={unit === 'part' ? 'Nombre de parts' : `Quantité (${unit})`} error={errors.quantity}>
           {(id, describedBy) => (

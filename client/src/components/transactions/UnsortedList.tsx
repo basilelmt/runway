@@ -5,7 +5,7 @@ import type { Transaction } from '@shared/schemas';
 import { ApiError, errorMessage } from '@/api/client';
 import { useApplySorting, useEnvelopes, useSuggestSorting, useTransactions, useUpdateTransaction } from '@/api/hooks';
 import { RuleBanner } from '@/components/transactions/RuleBanner';
-import { Amount, Button, Card, Dot, EmptyState, Select, SkeletonRows, useToast } from '@/components/ui';
+import { Amount, Button, Card, Dot, EmptyState, InlinePill, SkeletonRows, useToast } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { prefersReducedMotion } from '@/lib/motion';
 import styles from './UnsortedList.module.css';
@@ -200,20 +200,15 @@ export function UnsortedList() {
                         <Sparkles />
                       </span>
                     ) : null}
-                    <Select
+                    <InlinePill
                       aria-label={`Enveloppe pour ${t.label}`}
-                      value={suggestedId ?? ''}
-                      className={suggestedId !== null ? styles.suggested : ''}
-                      onChange={(e) => e.target.value && assign(t, Number(e.target.value))}
+                      value={suggestedId}
+                      placeholder="+ Enveloppe"
+                      tone={suggestedId !== null ? 'suggested' : undefined}
+                      options={(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))}
+                      onChange={(v) => v !== null && assign(t, v)}
                       disabled={update.isPending && update.variables?.id === t.id}
-                    >
-                      <option value="">Choisir une enveloppe</option>
-                      {(envelopes.data ?? []).map((env) => (
-                        <option key={env.id} value={env.id}>
-                          {env.name}
-                        </option>
-                      ))}
-                    </Select>
+                    />
                   </div>
                 </div>
               </li>

@@ -1,17 +1,10 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-5);
 }
 
 .serverError {
   color: var(--negative);
   font-size: var(--text-sm);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--s-2);
-  margin-top: var(--s-2);
 }

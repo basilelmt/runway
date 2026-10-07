@@ -121,7 +121,7 @@ function BankCredentials() {
             ) : (
               <Field label="Clé privée (PEM)" error={errors.privateKey} hint="Le fichier .pem téléchargé à la création de l’application. Stockée dans la base locale, jamais exportée.">
                 {(id, describedBy) => (
-                  <Textarea id={id} aria-describedby={describedBy} value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'} spellCheck={false} />
+                  <Textarea id={id} aria-describedby={describedBy} mono value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'} spellCheck={false} />
                 )}
               </Field>
             )}

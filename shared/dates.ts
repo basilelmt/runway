@@ -95,6 +95,8 @@ export function compareISODate(a: ISODate, b: ISODate): number {
 const longFormatter = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 const shortFormatter = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
 const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+const weekdayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const mediumFormatter = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 export function formatDateLong(iso: ISODate): string {
   return longFormatter.format(toUTC(iso));
@@ -102,6 +104,16 @@ export function formatDateLong(iso: ISODate): string {
 
 export function formatDateShort(iso: ISODate): string {
   return shortFormatter.format(toUTC(iso));
+}
+
+/** « jeu. 1 oct. 2026 », pour les champs de date. */
+export function formatDateWithWeekday(iso: ISODate): string {
+  return weekdayFormatter.format(toUTC(iso));
+}
+
+/** « 1 oct. 2026 ». */
+export function formatDateMedium(iso: ISODate): string {
+  return mediumFormatter.format(toUTC(iso));
 }
 
 export function formatMonth(key: string): string {

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { sortingRuleInputSchema, type Envelope, type SortingRule, type SortingRuleInput } from '@shared/schemas';
-import { Button, Dialog, Field, Input, Select } from '@/components/ui';
+import { Button, ChipPicker, Dialog, DialogFooter, Field, Input } from '@/components/ui';
 import styles from './SortingRuleDialog.module.css';
 
 type SortingRuleDialogProps = {
@@ -16,7 +16,7 @@ type SortingRuleDialogProps = {
 /** Création ou édition d'une règle de tri : motif et enveloppe. */
 export function SortingRuleDialog({ open, onClose, envelopes, initial, onSubmit, submitting, serverError }: SortingRuleDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title={initial ? 'Modifier la règle' : 'Nouvelle règle de tri'} size="sm">
+    <Dialog open={open} onClose={onClose} title={initial ? 'Modifier la règle' : 'Nouvelle règle de tri'} size="md">
       {open ? <RuleForm key={initial?.id ?? 'new'} envelopes={envelopes} initial={initial} onSubmit={onSubmit} onCancel={onClose} submitting={submitting} serverError={serverError} /> : null}
     </Dialog>
   );
@@ -33,6 +33,7 @@ function RuleForm({
   const [pattern, setPattern] = useState(initial?.pattern ?? '');
   const [envelopeId, setEnvelopeId] = useState<number | null>(initial?.envelopeId ?? envelopes[0]?.id ?? null);
   const [errors, setErrors] = useState<{ pattern?: string; envelopeId?: string }>({});
+  const formId = useId();
 
   function submit(e: { preventDefault(): void }) {
     e.preventDefault();
@@ -51,7 +52,7 @@ function RuleForm({
   }
 
   return (
-    <form className={styles.form} onSubmit={submit} noValidate>
+    <form id={formId} className={styles.form} onSubmit={submit} noValidate>
       <Field label="Le libellé contient" error={errors.pattern} hint="Sans tenir compte de la casse ni des accents">
         {(id, describedBy) => (
           <Input
@@ -69,23 +70,18 @@ function RuleForm({
         )}
       </Field>
       <Field label="Ranger dans" error={errors.envelopeId}>
-        {(id, describedBy) => (
-          <Select
+        {(id, describedBy, labelId) => (
+          <ChipPicker
             id={id}
+            aria-labelledby={labelId}
             aria-describedby={describedBy}
-            value={envelopeId ?? ''}
-            onChange={(e) => {
-              setEnvelopeId(e.target.value ? Number(e.target.value) : null);
+            value={envelopeId}
+            onChange={(v) => {
+              setEnvelopeId(v);
               setErrors((er) => ({ ...er, envelopeId: undefined }));
             }}
-          >
-            <option value="">Choisir</option>
-            {envelopes.map((env) => (
-              <option key={env.id} value={env.id}>
-                {env.name}
-              </option>
-            ))}
-          </Select>
+            options={envelopes.map((env) => ({ value: env.id, label: env.name, color: env.color }))}
+          />
         )}
       </Field>
       {serverError ? (
@@ -93,14 +89,14 @@ function RuleForm({
           {serverError}
         </p>
       ) : null}
-      <div className={styles.actions}>
+      <DialogFooter>
         <Button variant="ghost" onClick={onCancel}>
           Annuler
         </Button>
-        <Button type="submit" variant="primary" loading={submitting}>
+        <Button type="submit" form={formId} variant="primary" loading={submitting}>
           {initial ? 'Enregistrer' : 'Créer la règle'}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }
