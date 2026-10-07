@@ -32,6 +32,11 @@ export const qtyToNumber = (q: string): number => Number(q);
 export type Trade = { side: 'buy' | 'sell'; date: ISODate; quantity: string; amount: Cents; fees: Cents };
 export type Position = { quantity: string; costBasis: Cents; realized: Cents };
 
+/** Part du coût `cost` qui revient à `part` unités sur `whole` (quantités à 18 décimales), arrondie au centime. */
+export function costShare(cost: Cents, part: bigint, whole: bigint): Cents {
+  return whole === 0n ? 0 : Math.round((cost * Number(part)) / Number(whole));
+}
+
 /** Quantité, coût de revient au prix moyen pondéré et plus-value réalisée, jusqu'à `upTo` inclus. */
 export function position(trades: Trade[], upTo?: ISODate): Position {
   const sorted = trades
@@ -49,9 +54,11 @@ export function position(trades: Trade[], upTo?: ISODate): Position {
       continue;
     }
     if (qty === 0n) continue;
+    // Une vente plus grande que la position (historique incomplet) ne compte que la part réellement détenue.
     const sold = q > qty ? qty : q;
-    const costOut = sold === qty ? cost : Math.round((cost * Number((sold * 1_000_000n) / qty)) / 1_000_000);
-    realized += t.amount - t.fees - costOut;
+    const costOut = sold === qty ? cost : costShare(cost, sold, qty);
+    const proceeds = sold === q ? t.amount - t.fees : Math.round(((t.amount - t.fees) * Number(sold)) / Number(q));
+    realized += proceeds - costOut;
     cost -= costOut;
     qty -= sold;
   }

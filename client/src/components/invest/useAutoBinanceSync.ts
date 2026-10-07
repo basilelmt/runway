@@ -14,6 +14,7 @@ export function useAutoBinanceSync(configured: boolean): void {
   const { mutate } = useSyncBinance({
     onSuccess: (r) => {
       if (r.newTrades > 0) toast.success(plural(r.newTrades, 'nouveau mouvement Binance', 'nouveaux mouvements Binance'));
+      for (const w of r.warnings) toast.error(w);
     },
   });
   const started = useRef(false);

@@ -118,7 +118,8 @@ describe('synchronisation Binance', () => {
       '/api/v3/account': { balances: [{ asset: 'BTC', free: '0.03', locked: '0' }, { asset: 'OBSCURE', free: '100', locked: '0' }] },
     });
     const r = await t.call('POST', '/api/invest/binance/sync', {});
-    expect(r.body.warnings).toEqual(['OBSCURE : pas de cours en euros, ignoré']);
+    expect(r.body.warnings).toEqual(['OBSCURE : pas de cours en euros chez Yahoo Finance, ignoré']);
+    expect((await t.call('GET', '/api/invest/binance')).body.lastSyncAt).not.toBeNull();
   });
 
   it('une conversion entre cryptos vend l’une et achète l’autre au même montant', async () => {
@@ -129,11 +130,12 @@ describe('synchronisation Binance', () => {
         { list: [] },
       ),
       'chart/ETH-EUR': (await import('./fixtures/yahoo')).chart('ETH-EUR', 'EUR', [['2026-02-27', 2000], ['2026-10-06', 2500]]),
+      '/api/v3/account': { balances: [{ asset: 'BTC', free: '0.025', locked: '0' }, { asset: 'ETH', free: '0.2', locked: '0' }] },
     });
     await t.call('POST', '/api/invest/binance/sync', {});
     const p = await t.call('GET', '/api/invest/portfolio');
     const eth = p.body.holdings.find((h: { ticker: string }) => h.ticker === 'ETH-EUR');
-    expect(eth).toMatchObject({ quantity: '0', costBasis: 400_00 });
+    expect(eth).toMatchObject({ quantity: '0.2', costBasis: 400_00, missingQuantity: null });
     const btc = p.body.holdings.find((h: { ticker: string }) => h.ticker === 'BTC-EUR');
     expect(btc.trades.at(-1)).toMatchObject({ side: 'sell', quantity: '0.005', amount: 400_00 });
   });
@@ -143,5 +145,91 @@ describe('synchronisation Binance', () => {
     await t.call('POST', '/api/invest/binance/sync', {});
     expect((await t.call('DELETE', '/api/invest/binance')).status).toBe(204);
     expect((await t.call('GET', '/api/invest/portfolio')).body).toMatchObject({ holdings: [], binance: { configured: false } });
+  });
+});
+
+describe('synchronisation Binance : cas limites', () => {
+  it('ignore un stablecoin acheté par carte et convertit un achat en USDT au taux du jour', async () => {
+    const t = await connected({
+      '/sapi/v1/fiat/payments': inWindow(
+        '2026-02-01',
+        {
+          code: '000000',
+          data: [{ orderNo: 'U1', sourceAmount: '500', fiatCurrency: 'EUR', obtainAmount: '540', cryptoCurrency: 'USDT', totalFee: '5', status: 'Completed', createTime: Date.parse('2026-02-01T12:00:00Z') }],
+        },
+        { code: '000000', data: [] },
+      ),
+      '/api/v3/myTrades?symbol=BTCEUR': [],
+      '/api/v3/myTrades?symbol=BTCUSDT': [
+        { id: 9, symbol: 'BTCUSDT', price: '82500', qty: '0.01', quoteQty: '825', commission: '0.825', commissionAsset: 'USDT', time: Date.parse('2026-03-01T12:00:00Z'), isBuyer: true },
+      ],
+    });
+    await t.call('POST', '/api/invest/binance/sync', {});
+    const p = await t.call('GET', '/api/invest/portfolio');
+    expect(p.body.holdings.map((h: { ticker: string }) => h.ticker)).toEqual(['BTC-EUR']);
+    expect(p.body.holdings[0].trades.at(-1)).toMatchObject({ quantity: '0.01', amount: 750_00, fees: 75 });
+  });
+
+  it("n'avance pas le curseur quand Yahoo est injoignable, puis rattrape tout", async () => {
+    const down = await connected({ 'chart/BTC-EUR': new Error('réseau'), 'chart/EURUSD%3DX': new Error('réseau') });
+    const r = await down.call('POST', '/api/invest/binance/sync', {});
+    expect(r.body.warnings.join(' ')).toContain('seront importés à la prochaine synchronisation');
+    expect((await down.call('GET', '/api/invest/binance')).body.lastSyncAt).toBeNull();
+
+    const { createApp } = await import('../src/app');
+    const back = createApp({
+      db: down.db,
+      now: () => '2026-10-07',
+      investDeps: {
+        fetch: fakeBinance({
+          '/sapi/v1/convert/tradeFlow': inWindow('2025-12-01', convertOnce, { list: [] }),
+          '/sapi/v1/fiat/payments': inWindow('2026-02-01', fiatOnce, { code: '000000', data: [] }),
+        }),
+        now: () => new Date('2026-10-07T11:00:00Z'),
+      },
+    });
+    const res = await back.request('/api/invest/binance/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect(await res.json()).toMatchObject({ newTrades: 3 });
+  });
+
+  it('deux synchros simultanées ne font qu’un seul passage chez Binance', async () => {
+    const t = await connected();
+    const [a, b] = await Promise.all([t.call('POST', '/api/invest/binance/sync', {}), t.call('POST', '/api/invest/binance/sync', {})]);
+    expect(a.body).toEqual(b.body);
+    expect(t.fetch.calls.filter((c) => c.url.includes('/api/v3/account')).length).toBe(1);
+  });
+
+  it('une déconnexion pendant la synchro ne laisse ni clé ni position', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const t = await connected({
+      '/api/v3/myTrades?symbol=BTCEUR': async () => {
+        await gate;
+        return [];
+      },
+    });
+    const sync = t.call('POST', '/api/invest/binance/sync', {});
+    await new Promise((r) => setTimeout(r, 20));
+    expect((await t.call('DELETE', '/api/invest/binance')).status).toBe(204);
+    release();
+    await sync;
+    expect((await t.call('GET', '/api/invest/portfolio')).body).toMatchObject({ holdings: [], binance: { configured: false } });
+  });
+});
+
+describe('solde Binance inférieur aux mouvements', () => {
+  it('sort la différence au prix de revient : plus-value et investi portent sur ce qui reste', async () => {
+    const t = await connected({
+      '/api/v3/account': { balances: [{ asset: 'BTC', free: '0.02', locked: '0' }] },
+      '/sapi/v1/simple-earn/flexible/position': { rows: [] },
+    });
+    await t.call('POST', '/api/invest/binance/sync', {});
+    const p = await t.call('GET', '/api/invest/portfolio');
+    const h = p.body.holdings[0];
+    // 0,03998 BTC achetés pour 3 000 € ; il en reste 0,02 à 70 000 €.
+    const cost = Math.round((3000_00 * 0.02) / 0.03998);
+    expect(h).toMatchObject({ quantity: '0.02', missingQuantity: '0.01998', unpricedQuantity: null, costBasis: cost, value: 1400_00, gain: 1400_00 - cost, realized: 0 });
+    expect(p.body.totals).toMatchObject({ value: 1400_00, invested: cost, gain: 1400_00 - cost });
+    expect(p.body.series.at(-1)).toMatchObject({ value: 1400_00, invested: cost });
   });
 });

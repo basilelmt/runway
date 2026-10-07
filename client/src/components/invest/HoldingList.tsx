@@ -46,6 +46,11 @@ export function HoldingList({ holdings, onOpen, emptyAction }: Props) {
                 {formatQty(h.unpricedQuantity)} {unitOf(h.ticker, h.unpricedQuantity)} sans prix d’achat
               </span>
             ) : null}
+            {h.missingQuantity ? (
+              <span className={styles.unpriced}>
+                {formatQty(h.missingQuantity)} {unitOf(h.ticker, h.missingQuantity)} sortis de Binance
+              </span>
+            ) : null}
           </div>
           <div className={styles.day}>
             {h.dayChangePct !== null ? (

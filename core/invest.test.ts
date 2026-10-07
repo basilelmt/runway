@@ -41,6 +41,14 @@ describe('position (PMP)', () => {
     const trades = [buy('2025-11-01', '1', 100_00), buy('2025-10-01', '1', 50_00)];
     expect(position(trades, '2025-10-15')).toEqual({ quantity: '1', costBasis: 50_00, realized: 0 });
   });
+  it('une vente plus grande que la position ne compte que la part détenue', () => {
+    const p = position([buy('2025-10-01', '0.01', 600_00), sell('2025-11-01', '0.05', 3500_00)]);
+    expect(p).toEqual({ quantity: '0', costBasis: 0, realized: 700_00 - 600_00 });
+  });
+  it('une toute petite vente sort bien une part du coût', () => {
+    const p = position([buy('2025-10-01', '100000', 100_000_00), sell('2025-11-01', '0.5', 1_00)]);
+    expect(p.costBasis).toBe(100_000_00 - 50);
+  });
   it('tout vendre remet le coût à zéro', () => {
     const p = position([buy('2025-10-01', '0.3', 300_00), sell('2025-10-02', '0.3', 330_00)]);
     expect(p).toEqual({ quantity: '0', costBasis: 0, realized: 30_00 });

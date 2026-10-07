@@ -1,4 +1,4 @@
-import { hasOversell, isZeroQty, portfolioSeries, position, simpleReturn, subQty, cmpQty, valueCents, type DatedPrice, type Trade } from '@core/invest';
+import { cmpQty, costShare, hasOversell, isZeroQty, portfolioSeries, position, simpleReturn, subQty, toUnits, valueCents, type DatedPrice, type Trade } from '@core/invest';
 import type { BinanceState, HoldingView, PortfolioRange, PortfolioView, TradeView } from '@shared/api-types';
 import { addDays, compareISODate, type ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
@@ -42,12 +42,19 @@ function weekly<T>(points: T[]): T[] {
 
 type Valued = { view: HoldingView; trades: Trade[]; closes: DatedPrice[] };
 
-async function valueHolding(h: HoldingRow, rows: TradeRow[], prices: Prices, from: ISODate): Promise<Valued> {
+async function valueHolding(h: HoldingRow, rows: TradeRow[], prices: Prices, from: ISODate, today: ISODate): Promise<Valued> {
   const trades = rows.map(toTrade);
-  const pos = position(trades);
+  const rebuilt = position(trades);
   const synced = h.source === 'binance' && h.syncedQuantity !== null;
-  const quantity = synced ? h.syncedQuantity! : pos.quantity;
-  const unpriced = synced && cmpQty(quantity, pos.quantity) > 0 ? subQty(quantity, pos.quantity) : null;
+  const quantity = synced ? h.syncedQuantity! : rebuilt.quantity;
+  const unpriced = synced && cmpQty(quantity, rebuilt.quantity) > 0 ? subQty(quantity, rebuilt.quantity) : null;
+  const missing = synced && cmpQty(quantity, rebuilt.quantity) < 0 ? subQty(rebuilt.quantity, quantity) : null;
+  // Ce qui a quitté Binance sort au prix de revient, sans plus-value : coût, plus-value et courbe portent sur ce qui reste.
+  if (missing) {
+    const costOut = costShare(rebuilt.costBasis, toUnits(missing), toUnits(rebuilt.quantity));
+    trades.push({ side: 'sell', date: today, quantity: missing, amount: costOut, fees: 0 });
+  }
+  const pos = missing ? position(trades) : rebuilt;
 
   const firstTrade = rows[0]?.date;
   const historyFrom = firstTrade && compareISODate(firstTrade, from) < 0 ? firstTrade : from;
@@ -75,6 +82,7 @@ async function valueHolding(h: HoldingRow, rows: TradeRow[], prices: Prices, fro
     gainPct: gain !== null && pos.costBasis > 0 ? gain / pos.costBasis : null,
     dayChangePct: last && prev ? simpleReturn(prev.close, last.close) : null,
     unpricedQuantity: unpriced,
+    missingQuantity: missing,
     trades: rows.map(
       (t): TradeView => ({ id: t.id, side: t.side, date: t.date, quantity: t.quantity, amount: t.amount, fees: t.fees, source: t.source }),
     ),
@@ -96,7 +104,7 @@ export async function buildPortfolio(db: Db, prices: Prices, today: ISODate, ran
     const qty = h.source === 'binance' && h.syncedQuantity !== null ? h.syncedQuantity : position(rows.map(toTrade)).quantity;
     return rows.length > 0 || !isZeroQty(qty);
   });
-  const valued = await Promise.all(holdings.map((h) => valueHolding(h, byHolding.get(h.id) ?? [], prices, priceFrom)));
+  const valued = await Promise.all(holdings.map((h) => valueHolding(h, byHolding.get(h.id) ?? [], prices, priceFrom, today)));
 
   // Positions ouvertes par valeur décroissante, positions soldées à la fin.
   const sorted = [...valued].sort((a, b) => {

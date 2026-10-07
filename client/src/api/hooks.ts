@@ -342,16 +342,19 @@ export function useDisconnectBank(opts?: MutOpts<void, number>) {
 
 // Investir
 
-/** Mutation de l'écran Investir : toute écriture rafraîchit le portefeuille et les idées. */
+/**
+ * Mutation de l'écran Investir : toute écriture rafraîchit le portefeuille et les idées,
+ * même en échec (une synchro Binance ratée enregistre son erreur côté serveur).
+ */
 function useInvestMutation<TData, TVars>(fn: (vars: TVars) => Promise<TData>, opts?: MutOpts<TData, TVars>, mutationKey?: readonly unknown[]) {
   const qc = useQueryClient();
   return useMutation({
     ...opts,
     mutationKey,
     mutationFn: fn,
-    onSuccess: (...a) => {
+    onSettled: (...a) => {
       void qc.invalidateQueries({ queryKey: keys.invest });
-      opts?.onSuccess?.(...a);
+      return opts?.onSettled?.(...a);
     },
   });
 }
@@ -394,6 +397,6 @@ export function useIdeaRun(id: number | null) {
       return run;
     },
     enabled: id !== null,
-    refetchInterval: (q) => (q.state.data?.status === 'running' || !q.state.data ? 3000 : false),
+    refetchInterval: (q) => (q.state.status === 'error' ? false : q.state.data?.status === 'running' || !q.state.data ? 3000 : false),
   });
 }

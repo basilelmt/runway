@@ -20,6 +20,8 @@ export type Prices = {
   closeEurOn(ticker: string, date: ISODate): Promise<{ eur: number; date: ISODate; stale: boolean } | null>;
   /** Dernier cours en euros. */
   quoteEur(ticker: string): Promise<{ eur: number; date: ISODate; stale: boolean; name: string } | null>;
+  /** Vrai si Yahoo a répondu que ce ticker n'existe pas (et pas simplement qu'il était injoignable). */
+  isUnknown(ticker: string): boolean;
 };
 
 export const REFRESH_MINUTES = 15;
@@ -180,6 +182,8 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
   const now = deps.now ?? (() => new Date());
   /** Horodatage (ms) jusqu'auquel on n'appelle plus Yahoo pour un ticker, après une panne confirmée. */
   const errorBackoff = new Map<string, number>();
+  /** Tickers dont Yahoo a dit qu'ils n'existent pas, lors du dernier appel. */
+  const unknown = new Set<string>();
 
   async function history(ticker: string, from: ISODate): Promise<TickerHistory | null> {
     const existing = db.select().from(priceTickers).where(eq(priceTickers.ticker, ticker)).get();
@@ -203,11 +207,16 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     const result = stillBlocked ? ('error' as const) : await fetchChart(fetchFn, ticker, start, to);
 
     if (result === 'error') {
-      errorBackoff.set(ticker, now().getTime() + ERROR_BACKOFF_MINUTES * 60_000);
+      // Seule une vraie panne ouvre la pause : un appel bloqué par la pause ne la prolonge pas.
+      if (!stillBlocked) errorBackoff.set(ticker, now().getTime() + ERROR_BACKOFF_MINUTES * 60_000);
       return readStored(db, ticker, null, true);
     }
-    if (result === 'unknown') return readStored(db, ticker, null, true);
+    if (result === 'unknown') {
+      unknown.add(ticker);
+      return readStored(db, ticker, null, true);
+    }
 
+    unknown.delete(ticker);
     errorBackoff.delete(ticker);
     storeChart(db, ticker, result, from, now());
     return readStored(db, ticker, from, false);
@@ -276,5 +285,5 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     return out;
   }
 
-  return { search, history, historyEur, closeEurOn, quoteEur };
+  return { search, history, historyEur, closeEurOn, quoteEur, isUnknown: (ticker) => unknown.has(ticker) };
 }

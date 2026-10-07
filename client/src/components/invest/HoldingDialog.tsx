@@ -90,6 +90,13 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
         </p>
       ) : null}
 
+      {holding.missingQuantity ? (
+        <p className={styles.note}>
+          Les mouvements importés totalisent {formatQty(holding.missingQuantity)} {unitOf(holding.ticker, holding.missingQuantity)} de plus que le solde Binance (retrait vers un
+          autre portefeuille, staking bloqué ou vente sur une paire non suivie). Cette part sort au prix de revient, sans plus-value.
+        </p>
+      ) : null}
+
       <section aria-labelledby="trades-title">
         <div className={styles.tradesHead}>
           <h3 id="trades-title">Mouvements</h3>

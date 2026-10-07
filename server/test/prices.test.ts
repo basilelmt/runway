@@ -120,9 +120,22 @@ describe('prices', () => {
     await prices.history('NOPE2', '2026-10-01');
     await prices.history('NOPE2', '2026-10-01');
     expect(down.calls).toHaveLength(1);
-    clock = new Date('2026-10-07T10:06:00Z');
+    // Un appel pendant la pause ne la prolonge pas : 5 minutes après la panne, on réessaie.
+    clock = new Date('2026-10-07T10:04:00Z');
+    await prices.history('NOPE2', '2026-10-01');
+    clock = new Date('2026-10-07T10:05:30Z');
     await prices.history('NOPE2', '2026-10-01');
     expect(down.calls).toHaveLength(2);
+  });
+
+  it('distingue un ticker inconnu de Yahoo injoignable', async () => {
+    const { db } = createTestDb();
+    const fetch = fakeFetch({ 'chart/NOPE': unknownTicker, 'chart/DOWN': new Error('réseau') });
+    const prices = createPrices(db, { fetch, now: at('2026-10-07T10:00:00Z') });
+    await prices.quoteEur('NOPE');
+    await prices.quoteEur('DOWN');
+    expect(prices.isUnknown('NOPE')).toBe(true);
+    expect(prices.isUnknown('DOWN')).toBe(false);
   });
 
   it('une actualisation après REFRESH_MINUTES relance un appel réseau', async () => {

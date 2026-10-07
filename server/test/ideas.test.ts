@@ -129,3 +129,43 @@ describe('fournées d’idées', () => {
     expect(view.body.summary).toMatchObject({ closedCount: 1, beatCount: 1, hundredEach: { invested: 100_00, ideas: 125_00, bench: 105_00 } });
   });
 });
+
+describe('fournées d’idées : garde-fous', () => {
+  it('écarte un actif déjà proposé, un lien non http et attend 24 h après un échec hebdomadaire', async () => {
+    let fail = true;
+    const t = setup(async () => (fail ? { stdout: '', stderr: 'TIMEOUT', exitCode: 124 } : ok({ ideas: [idea(), idea({ ticker: 'BAG.PA' }), idea({ ticker: 'SXR8.DE', sourceUrl: 'javascript:alert(1)' })] })));
+    await t.call('POST', '/api/invest/ideas/runs', { trigger: 'weekly' });
+    await t.settle();
+    expect(await t.call('POST', '/api/invest/ideas/runs', { trigger: 'weekly' })).toMatchObject({ status: 200, body: { started: false, run: { status: 'failed' } } });
+
+    fail = false;
+    t.moveTo('2026-10-08');
+    const r = await t.call('POST', '/api/invest/ideas/runs', { trigger: 'weekly' });
+    expect(r.body.started).toBe(true);
+    await t.settle();
+    const run = await t.call('GET', `/api/invest/ideas/runs/${r.body.run.id}`);
+    expect(run.body.rejected).toEqual([
+      { ticker: 'BAG.PA', reason: 'Doublon' },
+      { ticker: 'SXR8.DE', reason: 'Format invalide' },
+    ]);
+
+    // Une nouvelle fournée ne repropose pas l'actif d'une idée encore ouverte.
+    const again = await t.call('POST', '/api/invest/ideas/runs', { trigger: 'manual' });
+    await t.settle();
+    const second = await t.call('GET', `/api/invest/ideas/runs/${again.body.run.id}`);
+    expect(second.body.rejected[0]).toEqual({ ticker: 'BAG.PA', reason: 'Idée déjà en cours sur cet actif' });
+  });
+
+  it('ne clôt pas une idée tant que les cours de l’horizon sont périmés', async () => {
+    const t = setup(async () => ok({ ideas: [idea()] }));
+    await t.call('POST', '/api/invest/ideas/runs', { trigger: 'manual' });
+    await t.settle();
+
+    t.routes['chart/SXR8.DE'] = new Error('réseau');
+    t.routes['chart/BAG.PA'] = new Error('réseau');
+    t.moveTo('2026-11-02');
+    const view = await t.call('GET', '/api/invest/ideas');
+    expect(view.body.closed).toEqual([]);
+    expect(view.body.open).toHaveLength(1);
+  });
+});

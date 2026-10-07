@@ -1,4 +1,4 @@
-import { chart } from './yahoo';
+import { chart, unknownTicker } from './yahoo';
 
 type Json = unknown;
 export type BinanceCall = { url: string; method: string; apiKey: string | null };
@@ -41,8 +41,8 @@ export const fiatOnce = {
  * Faux réseau Binance + Yahoo. Les routes sont cherchées de la plus spécifique à la plus générale.
  * Une valeur fonction est appelée avec l'URL (pour ne répondre qu'à une fenêtre de dates, par exemple).
  */
-export function fakeBinance(overrides: Record<string, Json | ((url: string) => Json)> = {}) {
-  const routes: Record<string, Json | ((url: string) => Json)> = {
+export function fakeBinance(overrides: Record<string, Json | ((url: string) => Json | Promise<Json>)> = {}) {
+  const routes: Record<string, Json | ((url: string) => Json | Promise<Json>)> = {
     ...binanceDefaults(),
     'chart/BTC-EUR': chart('BTC-EUR', 'EUR', [['2026-10-06', 70000]]),
     'chart/EURUSD%3DX': chart('EURUSD=X', 'USD', [['2025-09-01', 1.1], ['2026-10-06', 1.1]]),
@@ -54,9 +54,11 @@ export function fakeBinance(overrides: Record<string, Json | ((url: string) => J
     calls.push({ url, method: init?.method ?? 'GET', apiKey: new Headers(init?.headers).get('X-MBX-APIKEY') });
     const path = url.replace('https://api.binance.com', '');
     const key = keys.find((k) => path.startsWith(k) || url.includes(k));
-    if (!key) return new Response('{}', { status: 404 });
+    // Un ticker non prévu répond comme Yahoo pour un ticker qui n'existe pas.
+    if (!key) return new Response(JSON.stringify(url.includes('finance.yahoo.com') ? unknownTicker : {}), { status: 404 });
     const raw = routes[key];
-    const body = typeof raw === 'function' ? (raw as (u: string) => Json)(url) : raw;
+    // Une route fonction peut être asynchrone (pour suspendre une réponse dans un test).
+    const body = typeof raw === 'function' ? await (raw as (u: string) => Json)(url) : raw;
     if (body instanceof Error) throw body;
     const isError = typeof body === 'object' && body !== null && typeof (body as { code?: unknown }).code === 'number';
     return new Response(JSON.stringify(body), { status: isError ? 400 : 200 });

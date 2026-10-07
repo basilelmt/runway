@@ -31,7 +31,8 @@ export function IdeasSection() {
   }, [ideas.data, mutate]);
 
   const current: IdeaRunView | null = run.data ?? (runId !== null && lastRun?.id === runId ? lastRun : null);
-  const running = current?.status === 'running' || start.isPending;
+  // La demande hebdomadaire que le serveur ignore ne doit pas faire clignoter l'état « en cours ».
+  const running = current?.status === 'running' || (start.isPending && start.variables === 'manual');
   const data = ideas.data;
 
   return (

@@ -6,6 +6,8 @@ import type { HttpFetch } from '../services/prices';
 export const BINANCE_BASE = 'https://api.binance.com';
 const TIMEOUT_MS = 15_000;
 const PAGE = 1000;
+/** Taille de page maximale de l'historique des achats par carte. */
+const FIAT_ROWS = 500;
 /** Les historiques de conversion et d'achat par carte se lisent par fenêtres de 30 jours au plus. */
 export const WINDOW_MS = 30 * 24 * 3600 * 1000;
 
@@ -145,8 +147,14 @@ export function createBinanceClient(keys: { apiKey: string; apiSecret: string },
     async convertFlow(startMs, endMs) {
       const out: ConvertTrade[] = [];
       for (const [s, e] of windows(startMs, endMs)) {
-        const r = (await signed('GET', '/sapi/v1/convert/tradeFlow', { startTime: s, endTime: e, limit: PAGE })) as { list?: ConvertTrade[] };
-        out.push(...(r.list ?? []).filter((t) => t.orderStatus === 'SUCCESS'));
+        // Plus de 1000 conversions dans la fenêtre : on repart juste après la dernière lue.
+        for (let from = s; ; ) {
+          const r = (await signed('GET', '/sapi/v1/convert/tradeFlow', { startTime: from, endTime: e, limit: PAGE })) as { list?: ConvertTrade[]; moreData?: boolean };
+          const list = r.list ?? [];
+          out.push(...list.filter((t) => t.orderStatus === 'SUCCESS'));
+          if (!r.moreData || list.length === 0) break;
+          from = Math.max(...list.map((t) => t.createTime)) + 1;
+        }
       }
       return out;
     },
@@ -154,8 +162,12 @@ export function createBinanceClient(keys: { apiKey: string; apiSecret: string },
     async fiatBuys(startMs, endMs) {
       const out: FiatBuy[] = [];
       for (const [s, e] of windows(startMs, endMs)) {
-        const r = (await signed('GET', '/sapi/v1/fiat/payments', { transactionType: 0, beginTime: s, endTime: e })) as { data?: FiatBuy[] | null };
-        out.push(...(r.data ?? []).filter((t) => t.status === 'Completed'));
+        for (let page = 1; ; page++) {
+          const r = (await signed('GET', '/sapi/v1/fiat/payments', { transactionType: 0, beginTime: s, endTime: e, page, rows: FIAT_ROWS })) as { data?: FiatBuy[] | null };
+          const data = r.data ?? [];
+          out.push(...data.filter((t) => t.status === 'Completed'));
+          if (data.length < FIAT_ROWS) break;
+        }
       }
       return out;
     },

@@ -331,7 +331,7 @@ export const ideaRunStartSchema = z.object({ trigger: z.enum(['manual', 'weekly'
 export const ideaCandidateSchema = z.object({
   title: z.string().trim().min(1).max(200),
   event: z.string().trim().min(1).max(1000),
-  sourceUrl: z.url(),
+  sourceUrl: z.url({ protocol: /^https?$/, error: 'Lien http(s) attendu' }),
   reasoning: z.array(z.string().trim().min(1).max(400)).min(1).max(5),
   pricedIn: z.string().trim().min(1).max(600),
   ticker: z.string().trim().min(1).max(32),

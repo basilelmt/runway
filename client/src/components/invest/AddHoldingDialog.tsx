@@ -6,6 +6,7 @@ import { errorMessage } from '@/api/client';
 import { useAssetSearch, useCreateHolding } from '@/api/hooks';
 import { Button, Dialog, Field, Input, Segmented, useToast } from '@/components/ui';
 import { platformLabel } from '@/lib/invest';
+import { unitOf } from './HoldingList';
 import { emptyTrade, parseTrade, TradeFields, type TradeDraft, type TradeErrors } from './TradeFields';
 import styles from './Forms.module.css';
 import search from './AddHoldingDialog.module.css';
@@ -132,7 +133,7 @@ export function AddHoldingDialog({ open, onClose }: Props) {
           <TradeFields
             draft={draft}
             errors={errors}
-            unit="part"
+            unit={unitOf(asset.ticker)}
             allowSell={false}
             onChange={(d) => {
               setDraft(d);

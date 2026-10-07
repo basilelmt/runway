@@ -1,6 +1,6 @@
 import { ideasSummary, simpleReturn } from '@core/invest';
 import type { IdeaRunStart, IdeaRunView, IdeasView, IdeaView } from '@shared/api-types';
-import { addDays, compareISODate, type ISODate } from '@shared/dates';
+import { addDays, compareISODate, daysBetween, toISODate, type ISODate } from '@shared/dates';
 import { BENCHMARK_TICKER, platforms } from '@shared/invest';
 import { ideaBatchSchema, ideaCandidateSchema, type IdeaCandidate } from '@shared/schemas';
 import type { Db } from '../db/client';
@@ -25,6 +25,10 @@ export const WEEK_DAYS = 7;
 const RECENT_DAYS = 28;
 const MIN_HORIZON_DAYS = 7;
 const MAX_HORIZON_DAYS = 366;
+/** Après une fournée hebdomadaire en échec, on attend ce délai avant de relancer Claude tout seul. */
+const RETRY_AFTER_FAILURE_HOURS = 24;
+/** Une clôture plus ancienne que ce nombre de jours avant l'horizon ne suffit pas à juger une idée. */
+const CLOSE_TOLERANCE_DAYS = 7;
 
 export type IdeasDeps = { exec?: Exec; prices: Prices; now?: () => Date; model?: string };
 
@@ -91,7 +95,7 @@ export function toRunView(row: IdeaRunRow): IdeaRunView {
   };
 }
 
-const todayOf = (d: Date): ISODate => d.toISOString().slice(0, 10);
+const todayOf = (d: Date): ISODate => toISODate(d);
 
 /**
  * Lance une fournée sauf si une est déjà en cours, ou, pour la fournée hebdomadaire, si la dernière réussie a moins de 7 jours.
@@ -104,20 +108,30 @@ export function startIdeaRun(db: Db, deps: IdeasDeps, trigger: 'manual' | 'weekl
   const running = runningRun(db);
   if (running) return skip(running);
   if (trigger === 'weekly') {
-    const last = lastSuccessfulRun(db);
-    if (last && now().getTime() - Date.parse(last.startedAt) < WEEK_DAYS * 24 * 3600 * 1000) return skip(latestRun(db));
+    const ageHours = (row: IdeaRunRow | null) => (row ? (now().getTime() - Date.parse(row.startedAt)) / 3_600_000 : Infinity);
+    if (ageHours(lastSuccessfulRun(db)) < WEEK_DAYS * 24) return skip(latestRun(db));
+    const latest = latestRun(db);
+    if (latest?.status === 'failed' && ageHours(latest) < RETRY_AFTER_FAILURE_HOURS) return skip(latest);
   }
 
   const run = createRun(db, trigger, now().toISOString());
   const done = execute(db, deps, run.id, todayOf(now())).catch((e: unknown) => {
     if (!(e instanceof ClaudeError)) console.error(e);
-    finishRun(db, run.id, { status: 'failed', finishedAt: now().toISOString(), error: e instanceof ClaudeError ? e.message : 'Erreur inattendue' });
+    try {
+      finishRun(db, run.id, { status: 'failed', finishedAt: now().toISOString(), error: e instanceof ClaudeError ? e.message : 'Erreur inattendue' });
+    } catch (inner) {
+      console.error(inner);
+    }
   });
   return { start: { run: toRunView(run), started: true }, done };
 }
 
 async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): Promise<void> {
   const now = deps.now ?? (() => new Date());
+  // La référence d'abord : sans elle, inutile de faire chercher Claude pendant plusieurs minutes.
+  const bench = await deps.prices.quoteEur(BENCHMARK_TICKER);
+  if (!bench) throw new ClaudeError('Cours du S&P 500 indisponible', 'benchmark_unavailable');
+
   const prompt = buildIdeasPrompt({
     today,
     holdings: listHoldings(db).map(({ name, ticker }) => ({ name, ticker })),
@@ -130,11 +144,10 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
   const batch = ideaBatchSchema.safeParse(await runClaude(args, IDEAS_TIMEOUT_MS, deps.exec ?? execClaude));
   if (!batch.success) throw new ClaudeError('Réponse de Claude invalide (format inattendu)', 'claude_invalid_output');
 
-  const bench = await deps.prices.quoteEur(BENCHMARK_TICKER);
-  if (!bench) throw new ClaudeError('Cours du S&P 500 indisponible', 'benchmark_unavailable');
-
   const rejected: { ticker: string; reason: string }[] = [];
   const accepted: { candidate: IdeaCandidate; priceEur: number }[] = [];
+  const held = new Set(listHoldings(db).map((h) => h.ticker));
+  const open = new Set(listIdeas(db, { status: 'open' }).map((i) => i.ticker));
   const seen = new Set<string>();
   for (const raw of batch.data.ideas) {
     const parsed = ideaCandidateSchema.safeParse(raw);
@@ -150,6 +163,14 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
     }
     if (seen.has(c.ticker)) {
       rejected.push({ ticker: c.ticker, reason: 'Doublon' });
+      continue;
+    }
+    if (held.has(c.ticker)) {
+      rejected.push({ ticker: c.ticker, reason: 'Déjà détenu' });
+      continue;
+    }
+    if (open.has(c.ticker)) {
+      rejected.push({ ticker: c.ticker, reason: 'Idée déjà en cours sur cet actif' });
       continue;
     }
     seen.add(c.ticker);
@@ -173,9 +194,11 @@ export async function closeDueIdeas(db: Db, prices: Prices, today: ISODate): Pro
   for (const idea of listIdeas(db, { status: 'open' })) {
     if (compareISODate(idea.horizon, today) >= 0) continue;
     const [end, benchEnd] = await Promise.all([prices.closeEurOn(idea.ticker, idea.horizon), prices.closeEurOn(BENCHMARK_TICKER, idea.horizon)]);
-    if (!end || !benchEnd) continue;
-    const ret = simpleReturn(idea.startPriceEur, end.eur);
-    const benchRet = simpleReturn(idea.benchStartPriceEur, benchEnd.eur);
+    // Le verdict est figé pour toujours : on attend des cours frais et proches de l'horizon.
+    const usable = (p: typeof end) => p !== null && !p.stale && daysBetween(p.date, idea.horizon) <= CLOSE_TOLERANCE_DAYS;
+    if (!usable(end) || !usable(benchEnd)) continue;
+    const ret = simpleReturn(idea.startPriceEur, end!.eur);
+    const benchRet = simpleReturn(idea.benchStartPriceEur, benchEnd!.eur);
     if (ret !== null && benchRet !== null) closeIdea(db, idea.id, ret, benchRet);
   }
 }

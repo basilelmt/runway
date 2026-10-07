@@ -19,6 +19,7 @@ const base: HoldingView = {
   gainPct: 599 / 3001,
   dayChangePct: 0.012,
   unpricedQuantity: null,
+  missingQuantity: null,
   trades: [],
 };
 

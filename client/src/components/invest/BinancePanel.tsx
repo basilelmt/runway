@@ -16,7 +16,10 @@ export function BinancePanel({ state }: { state: BinanceState }) {
   const [confirm, setConfirm] = useState(false);
   const syncing = useIsMutating({ mutationKey: keys.binanceSync }) > 0;
   const sync = useSyncBinance({
-    onSuccess: (r) => toast.success(r.newTrades > 0 ? plural(r.newTrades, 'nouveau mouvement', 'nouveaux mouvements') : 'Binance est à jour'),
+    onSuccess: (r) => {
+      toast.success(r.newTrades > 0 ? plural(r.newTrades, 'nouveau mouvement', 'nouveaux mouvements') : 'Binance est à jour');
+      for (const w of r.warnings) toast.error(w);
+    },
   });
   const disconnect = useDisconnectBinance({ onSuccess: () => toast.success('Binance déconnecté') });
 

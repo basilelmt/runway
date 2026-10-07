@@ -1,24 +1,23 @@
 import { useId, useState } from 'react';
 import { binanceKeysSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useSaveBinance, useSyncBinance } from '@/api/hooks';
+import { useSaveBinance } from '@/api/hooks';
 import { Button, Dialog, Field, Input, useToast } from '@/components/ui';
 import styles from './Forms.module.css';
 
 type Props = { open: boolean; onClose: () => void };
 
-/** Saisie d'une clé API Binance en lecture seule ; la synchro part dès que la clé est acceptée. */
+/** Saisie d'une clé API Binance en lecture seule. */
 export function BinanceConnectDialog({ open, onClose }: Props) {
   const formId = useId();
   const toast = useToast();
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
   const [errors, setErrors] = useState<{ apiKey?: string; apiSecret?: string }>({});
-  const sync = useSyncBinance();
+  // La première synchro part toute seule depuis l'écran dès que Binance apparaît relié.
   const save = useSaveBinance({
     onSuccess: () => {
-      toast.success('Binance relié');
-      sync.mutate(undefined);
+      toast.success('Binance relié, synchronisation en cours');
       onClose();
     },
   });

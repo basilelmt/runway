@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Montants en centimes d'euro entiers (`Cents`), dates `YYYY-MM-DD` (`ISODate`), quantités en texte décimal exact (`"0.04512"`).
-- Tout le texte d'interface, les messages d'erreur et les commentaires sont en français, avec accents ; jamais de tiret cadratin « — », seulement « - ».
+- Tout le texte d'interface, les messages d'erreur et les commentaires sont en français, avec accents ; jamais de tiret cadratin « - », seulement « - ».
 - Aucun écrit dans `/tmp` : les fichiers temporaires vont dans `tmp/` du projet (gitignoré).
 - Aucune nouvelle dépendance npm : HMAC via `node:crypto`, HTTP via `fetch`.
 - Les appels réseau (Yahoo, Binance) et le binaire `claude` sont injectables ; aucun test ne touche le réseau.
@@ -1065,12 +1065,12 @@ describe('portefeuille', () => {
 });
 ```
 
-- [ ] **Step 2: Vérifier l'échec** — Run: `npx vitest run server/test/portfolio.test.ts` ; Expected: FAIL.
+- [ ] **Step 2: Vérifier l'échec** - Run: `npx vitest run server/test/portfolio.test.ts` ; Expected: FAIL.
 
 - [ ] **Step 3: Implémenter** `services/portfolio.ts`, `routes/invest.ts` (structure de `routes/accounts.ts`, `validate` de `../validate`, erreurs via `AppError(message, 400, code)` de `../errors`), puis brancher `app.ts` et `helpers.ts`.
 Pour `POST /holdings`, renvoyer la ligne `HoldingRow` créée ; `POST /holdings/:id/trades` et `PATCH /trades/:id` renvoient la `TradeRow`.
 
-- [ ] **Step 4: Lancer** — Run: `npx vitest run server/test/portfolio.test.ts && npm test && npm run typecheck && npm run lint` ; Expected: PASS.
+- [ ] **Step 4: Lancer** - Run: `npx vitest run server/test/portfolio.test.ts && npm test && npm run typecheck && npm run lint` ; Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -1158,11 +1158,11 @@ Valeurs par défaut : restrictions lecture seule ; spot `BTC 0.03`, `EUR 12`, `L
   - une erreur `-2015` enregistre `lastError` et renvoie 502 ; les positions déjà synchronisées restent ;
   - `DELETE /api/invest/binance` supprime la position BTC et l'état.
 
-- [ ] **Step 3: Vérifier l'échec** — Run: `npx vitest run server/test/binance.test.ts` ; Expected: FAIL.
+- [ ] **Step 3: Vérifier l'échec** - Run: `npx vitest run server/test/binance.test.ts` ; Expected: FAIL.
 
 - [ ] **Step 4: Implémenter** `bank/binance.ts`, `services/binance-sync.ts` et les routes, en suivant les règles ci-dessus.
 
-- [ ] **Step 5: Lancer** — Run: `npx vitest run server/test/binance.test.ts && npm test && npm run typecheck && npm run lint` ; Expected: PASS.
+- [ ] **Step 5: Lancer** - Run: `npx vitest run server/test/binance.test.ts && npm test && npm run typecheck && npm run lint` ; Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -1236,13 +1236,13 @@ Règles :
 
   Pour les tests de route, exposer `done` en injectant dans `InvestDeps` un `onRunStarted?: (done: Promise<void>) => void` que la route appelle ; les tests y capturent la promesse et l'attendent.
 
-- [ ] **Step 2: Vérifier l'échec** — Run: `npx vitest run server/test/ideas.test.ts` ; Expected: FAIL.
+- [ ] **Step 2: Vérifier l'échec** - Run: `npx vitest run server/test/ideas.test.ts` ; Expected: FAIL.
 
 - [ ] **Step 3: Refactor `claude.ts`** (extraire `runClaude`), puis Run: `npx vitest run server/test/claude.test.ts` ; Expected: PASS sans modifier ce test.
 
 - [ ] **Step 4: Implémenter** `services/ideas.ts`, les routes et l'appel dans `index.ts`.
 
-- [ ] **Step 5: Lancer** — Run: `npx vitest run server/test/ideas.test.ts && npm test && npm run typecheck && npm run lint` ; Expected: PASS.
+- [ ] **Step 5: Lancer** - Run: `npx vitest run server/test/ideas.test.ts && npm test && npm run typecheck && npm run lint` ; Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -1327,7 +1327,7 @@ Utiliser un vrai signe moins typographique ou le trait d'union selon `formatEuro
 - [ ] **Step 3: Vérifier l'échec**, implémenter hooks, lib, navigation, route, page et composants.
 Styles : variables de `tokens.css` uniquement, sections séparées par l'espace et des filets, une seule surface en relief (le résumé), conforme à « Direction visuelle » de `2026-10-06-ux-redesign.md`.
 
-- [ ] **Step 4: Lancer** — Run: `npm test && npm run typecheck && npm run lint` ; Expected: PASS.
+- [ ] **Step 4: Lancer** - Run: `npm test && npm run typecheck && npm run lint` ; Expected: PASS.
 
 - [ ] **Step 5: Vérifier dans le navigateur** : `npm run dev` dans le worktree avec `RUNWAY_DB=tmp/invest-e2e.db` (copie de `data/runway.db` du dépôt principal, jamais la vraie base), ajouter la position S&P 500 (rechercher « SXR8 »), un achat, ouvrir le détail, à 1440px et 390px, clair et sombre.
 
@@ -1360,7 +1360,7 @@ Contenu :
 
 - [ ] **Step 1: Test** `BinancePanel.test.tsx` : état non configuré (bouton « Relier Binance »), état configuré avec `lastError` (message et « Réessayer » visibles).
 - [ ] **Step 2: Vérifier l'échec, implémenter.**
-- [ ] **Step 3: Lancer** — Run: `npm test && npm run typecheck && npm run lint` ; Expected: PASS.
+- [ ] **Step 3: Lancer** - Run: `npm test && npm run typecheck && npm run lint` ; Expected: PASS.
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1392,7 +1392,7 @@ Contenu :
 
 - [ ] **Step 1: Test** `IdeaCard.test.tsx` : idée ouverte (déduction en étapes, lien source, performances), idée close battue (« A battu le S&P 500 ») et non battue.
 - [ ] **Step 2: Vérifier l'échec, implémenter.**
-- [ ] **Step 3: Lancer** — Run: `npm test && npm run typecheck && npm run lint` ; Expected: PASS.
+- [ ] **Step 3: Lancer** - Run: `npm test && npm run typecheck && npm run lint` ; Expected: PASS.
 - [ ] **Step 4: Commit**
 
 ```bash

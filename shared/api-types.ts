@@ -269,6 +269,8 @@ export type HoldingView = {
   dayChangePct: number | null;
   /** Quantité synchronisée sans mouvement d'achat connu (« 0,002 BTC sans prix d'achat »), sinon null. */
   unpricedQuantity: string | null;
+  /** Quantité achetée d'après les mouvements mais absente du solde Binance (retrait, staking bloqué), sinon null. */
+  missingQuantity: string | null;
   trades: TradeView[];
 };
 
