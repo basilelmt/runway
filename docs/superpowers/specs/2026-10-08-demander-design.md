@@ -100,7 +100,7 @@ Le serveur valide chaque action (`validateActions` dans `server/src/ask/actions.
 - `sort` : opérations existantes, de type dépense, au plus 500 ; enveloppe active ; ajoute le nombre, le total et le nom de l'enveloppe ; motif d'au moins 2 caractères ou `null`.
 - `move` : enveloppes actives et différentes, montant positif ; ajoute les noms.
 - `budget` : enveloppe active ; ajoute le nom et le budget actuel.
-- `recurring` : passe `recurringRuleInputSchema` ; ajoute la phrase de fréquence et le nom du compte.
+- `recurring` : passe `recurringRuleInputSchema`, compte et enveloppe actifs ; ajoute le nom du compte (la phrase de fréquence est formée côté client par `describeFrequency`).
 
 Une action invalide est retirée en silence, et le nombre d'actions écartées est journalisé côté serveur.
 
