@@ -3,10 +3,10 @@ import { useState } from 'react';
 import type { Transaction } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useConfirmTransaction, useDeleteTransaction, useUpdateTransaction } from '@/api/hooks';
-import { Button, Dialog, useToast } from '@/components/ui';
+import { AllocationForm } from '@/components/envelopes/AllocationForm';
+import { Button, ConfirmDialog, Dialog, useToast } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
-import { TransactionForm } from './TransactionForm';
-import styles from './TransactionEditDialog.module.css';
+import { QuickEntry } from './QuickEntry';
 
 type TransactionEditDialogProps = { transaction: Transaction | null; onClose: () => void };
 
@@ -37,6 +37,13 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
   });
 
   const t = transaction;
+  const serverError = update.error ? errorMessage(update.error) : null;
+  const deleteButton = (
+    <Button variant="danger-quiet" icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
+      Supprimer
+    </Button>
+  );
+
   return (
     <>
       <Dialog
@@ -44,51 +51,51 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
         onClose={onClose}
         title={t ? `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}` : ''}
         description={t?.status === 'planned' ? 'Opération prévue par une règle récurrente, pas encore passée en banque.' : undefined}
+        size={t?.kind === 'allocation' ? 'md' : 'lg'}
       >
         {t ? (
-          <>
-            <TransactionForm
+          t.kind === 'allocation' ? (
+            <AllocationForm
               key={t.id}
               initial={t}
-              kinds={[t.kind]}
               submitLabel="Enregistrer"
               submitting={update.isPending}
-              serverError={update.error ? errorMessage(update.error) : null}
+              serverError={serverError}
               onSubmit={(input) => update.mutate({ id: t.id, ...input })}
               onCancel={onClose}
+              footerStart={deleteButton}
             />
-            <div className={styles.secondary}>
-              <Button variant="danger" size="sm" icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
-                Supprimer
-              </Button>
-              {t.status === 'planned' ? (
-                <Button variant="secondary" size="sm" icon={<Check />} loading={confirm.isPending} onClick={() => confirm.mutate(t.id)}>
-                  Confirmer sans modifier
-                </Button>
-              ) : null}
-            </div>
-          </>
+          ) : (
+            <QuickEntry
+              key={t.id}
+              mode="edit"
+              initial={t}
+              submitting={update.isPending}
+              serverError={serverError}
+              onSubmit={(input) => update.mutate({ id: t.id, ...input })}
+              footerStart={deleteButton}
+              footerExtra={
+                t.status === 'planned' ? (
+                  <Button variant="ghost" icon={<Check />} loading={confirm.isPending} onClick={() => confirm.mutate(t.id)}>
+                    Confirmer sans modifier
+                  </Button>
+                ) : null
+              }
+            />
+          )
         ) : null}
       </Dialog>
-      <Dialog
+      <ConfirmDialog
         open={t !== null && confirmDelete}
         onClose={() => setConfirmDelete(false)}
+        onConfirm={() => t && remove.mutate(t.id)}
         title="Supprimer cette opération ?"
         description="Les soldes du compte et de l'enveloppe sont recalculés. Cette action est définitive."
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Annuler
-            </Button>
-            <Button variant="danger" loading={remove.isPending} onClick={() => t && remove.mutate(t.id)}>
-              Supprimer
-            </Button>
-          </>
-        }
+        confirmLabel="Supprimer"
+        loading={remove.isPending}
       >
-        <p className={styles.name}>{t?.label}</p>
-      </Dialog>
+        {t?.label}
+      </ConfirmDialog>
     </>
   );
 }

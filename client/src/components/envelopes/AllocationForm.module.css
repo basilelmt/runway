@@ -1,0 +1,23 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s-5);
+}
+
+.amountError {
+  margin-top: var(--s-2);
+  text-align: center;
+  color: var(--negative);
+  font-size: var(--text-sm);
+}
+
+.serverError {
+  color: var(--negative);
+  font-size: var(--text-sm);
+}
