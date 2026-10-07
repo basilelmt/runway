@@ -11,16 +11,21 @@
   animation: open var(--dur) var(--ease-out);
 }
 
+.text {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
 .icon {
   width: 16px;
   height: 16px;
   flex: none;
-}
-
-.text {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
+  /* Calée sur la première ligne du texte quand il passe à la ligne. */
+  margin-top: calc((1lh - 16px) / 2);
 }
 
 .shortfall {

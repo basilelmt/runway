@@ -22,12 +22,14 @@ export function FundingBanner({ funding, budgetLink = false }: FundingBannerProp
 
   return (
     <div className={styles.banner} role="group" aria-label="Répartition du salaire">
-      <WalletCards className={styles.icon} aria-hidden />
       <p className={styles.text}>
-        Salaire réparti : <strong>{formatEuros(funding.total)}</strong> dans {plural(funding.envelopeCount, 'enveloppe')} pour {formatMonth(funding.month)}
-        {funding.shortfallCount > 0 ? (
-          <span className={styles.shortfall}> · {plural(funding.shortfallCount, 'enveloppe incomplète', 'enveloppes incomplètes')} faute d’argent</span>
-        ) : null}
+        <WalletCards className={styles.icon} aria-hidden />
+        <span>
+          Salaire réparti : <strong>{formatEuros(funding.total)}</strong> dans {plural(funding.envelopeCount, 'enveloppe')} pour {formatMonth(funding.month)}
+          {funding.shortfallCount > 0 ? (
+            <span className={styles.shortfall}> · {plural(funding.shortfallCount, 'enveloppe incomplète', 'enveloppes incomplètes')} faute d’argent</span>
+          ) : null}
+        </span>
       </p>
       <div className={styles.actions}>
         {budgetLink ? (
