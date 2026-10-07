@@ -41,6 +41,11 @@
     color: var(--ink);
   }
 
+  /* Pas de survol au doigt : la flèche de l'entrée Investir passe au vert quand l'écran est ouvert */
+  .active .liftoff {
+    color: var(--positive);
+  }
+
   .active::after {
     content: '';
     position: absolute;

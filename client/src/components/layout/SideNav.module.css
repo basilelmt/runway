@@ -147,6 +147,47 @@
   flex: 1;
 }
 
+/* Entrée Investir : au survol, la flèche grandit et crève le plafond de l'entrée en passant au vert */
+.liftoff {
+  position: relative;
+  z-index: 2;
+  transform-origin: 0% 100%;
+  transition:
+    transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    color var(--dur) var(--ease-out);
+}
+
+.link:hover .liftoff {
+  color: var(--positive);
+  transform: translate(2px, -9px) scale(1.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link:hover .liftoff {
+    transform: none;
+  }
+}
+
+/* Clin d'œil discret de l'entrée Investir, qui apparaît au survol et sur l'écran actif */
+.tagline {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-mute);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.link:hover .tagline,
+.active .tagline {
+  opacity: 1;
+  transform: none;
+}
+
 .count {
   min-width: 20px;
   height: 20px;

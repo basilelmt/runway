@@ -1,12 +1,47 @@
-/* La seule surface en relief de l'écran */
+/*
+ * La seule surface en relief de l'écran : un ciel lunaire, sombre en mode clair comme en mode sombre.
+ * Les couleurs sont redéfinies localement pour rester lisibles sur l'ascii art.
+ */
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--s-10);
+  --ink: #f2efe8;
+  --ink-soft: #cfcac1;
+  --ink-mute: #9a978f;
+  --rule: rgb(255 255 255 / 0.14);
+  --positive: #5fc08f;
+  --negative: #ef6f58;
+  --warning: #e0a04a;
+  --paper-sunken: rgb(255 255 255 / 0.08);
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 280px;
+  display: flex;
+  align-items: flex-end;
   padding: var(--s-8);
   border: 1px solid var(--rule);
   border-radius: var(--radius-lg);
-  background: var(--paper-raised);
+  background: #030408;
+  color: var(--ink);
+}
+
+.heroArt {
+  position: absolute;
+  z-index: -2;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Cadré sur la Terre et l'horizon : le haut du ciel et le bas du sol sortent du bloc. */
+  transform: translateY(-6%);
+}
+
+/* Voile à gauche, sous les chiffres, pour qu'ils se lisent sur les cratères */
+.hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(3 4 8 / 0.92) 0%, rgb(3 4 8 / 0.7) 38%, rgb(3 4 8 / 0) 65%);
 }
 
 .heroMain {
@@ -37,12 +72,11 @@
 
 .stats {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--s-6);
-  margin: 0;
-  padding-left: var(--s-10);
-  border-left: 1px solid var(--rule);
+  flex-wrap: wrap;
+  gap: var(--s-8);
+  margin: var(--s-3) 0 0;
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--rule);
 }
 
 .stat {
@@ -58,6 +92,26 @@
 
 .stat dd {
   margin: 0;
+}
+
+/* « to the moon » en pixels, qui suit le curseur à distance et s'efface quand il sort */
+.cursorText {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--marking);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(calc(var(--cursor-x, 0px) + 16px), calc(var(--cursor-y, 0px) + 18px));
+  transition:
+    transform 140ms var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .hero:hover .cursorText {
+    opacity: 0.6;
+  }
 }
 
 .positive {
@@ -162,19 +216,20 @@
 }
 
 @media (max-width: 767px) {
+  /* Sur mobile, la scène occupe le haut du bloc et se fond dans le ciel sous les chiffres */
   .hero {
-    grid-template-columns: 1fr;
-    gap: var(--s-5);
+    min-height: 0;
     padding: var(--s-5);
+    padding-top: 40%;
   }
 
-  .stats {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: var(--s-8);
-    padding: var(--s-5) 0 0;
-    border-left: none;
-    border-top: 1px solid var(--rule);
+  .hero::before {
+    background: none;
+  }
+
+  .heroArt {
+    transform: none;
+    mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
   }
 
   .chart {

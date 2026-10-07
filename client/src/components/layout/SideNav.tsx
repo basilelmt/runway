@@ -19,8 +19,13 @@ export function SideNav() {
 
   const link = (item: NavItem) => (
     <NavLink to={item.to} end={item.to === '/'} className={({ isActive }) => [styles.link, isActive ? styles.active : ''].join(' ')}>
-      <item.icon className={styles.icon} aria-hidden strokeWidth={1.75} />
+      <item.icon className={[styles.icon, item.liftoff ? styles.liftoff : ''].join(' ')} aria-hidden strokeWidth={1.75} />
       <span className={styles.label}>{item.label}</span>
+      {item.liftoff ? (
+        <span className={styles.tagline} aria-hidden>
+          {item.liftoff.tagline}
+        </span>
+      ) : null}
       {item.badge === 'unsorted' && unsorted > 0 ? (
         <span key={unsorted} className={['num', styles.count].join(' ')} aria-label={`${unsorted} à ranger`}>
           {unsorted}
