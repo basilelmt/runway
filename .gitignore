@@ -8,3 +8,4 @@ data/
 *.db-shm
 .env
 .superpowers/
+.claude/worktrees/
