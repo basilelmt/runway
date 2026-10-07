@@ -1,5 +1,5 @@
 import { asc, eq } from 'drizzle-orm';
-import type { Account, AccountInput } from '@shared/schemas';
+import type { Account, AccountInput, AccountPatch } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { accounts } from '../db/schema';
 import { NotFoundError } from '../errors';
@@ -32,7 +32,7 @@ export function createAccount(db: Db, input: AccountInput): Account {
     .get();
 }
 
-export function updateAccount(db: Db, id: number, input: Partial<AccountInput> & { archived?: boolean }): Account {
+export function updateAccount(db: Db, id: number, input: AccountPatch): Account {
   getAccount(db, id);
   const patch: Partial<typeof accounts.$inferInsert> = {};
   if (input.name !== undefined) patch.name = input.name;

@@ -26,17 +26,6 @@ describe('materializeDue', () => {
     expect(materializeDue(ctx.db, '2026-04-05')).toBe(1);
   });
 
-  it('les allocations sont confirmées d’office', () => {
-    createRule(ctx.db, {
-      name: 'Budget courses', kind: 'allocation', amount: 400_00, label: 'Budget courses', envelopeId: ctx.courses.id,
-      frequency: 'monthly', interval: 1, dayOfMonth: 1, startDate: '2026-03-01', active: true,
-    });
-    materializeDue(ctx.db, '2026-03-10');
-    const [t] = listTransactions(ctx.db);
-    expect(t?.status).toBe('confirmed');
-    expect(t?.kind).toBe('allocation');
-  });
-
   it('respecte la date de fin et l’inactivité', () => {
     createRule(ctx.db, {
       name: 'Fini', kind: 'expense', amount: 1, label: 'Fini', accountId: ctx.courant.id,

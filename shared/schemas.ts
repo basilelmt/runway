@@ -29,13 +29,23 @@ export const accountSchema = z.object({
 });
 export type Account = z.infer<typeof accountSchema>;
 
-export const accountInputSchema = z.object({
+const accountFields = {
   name: z.string().trim().min(1, 'Nom requis').max(80),
-  initialBalance: centsSchema.default(0),
-  onBudget: z.boolean().default(true),
+  initialBalance: centsSchema,
+  onBudget: z.boolean(),
   bankAccountNumber: z.string().trim().max(40).nullable().optional(),
+};
+
+export const accountInputSchema = z.object({
+  ...accountFields,
+  initialBalance: accountFields.initialBalance.default(0),
+  onBudget: accountFields.onBudget.default(true),
 });
 export type AccountInput = z.infer<typeof accountInputSchema>;
+
+/** Modification partielle : sans valeurs par défaut, un champ absent reste inchangé. */
+export const accountPatchSchema = z.object(accountFields).partial().extend({ archived: z.boolean().optional() });
+export type AccountPatch = z.infer<typeof accountPatchSchema>;
 
 export const envelopeSchema = z.object({
   id: idSchema,
@@ -44,15 +54,36 @@ export const envelopeSchema = z.object({
   monthlyTarget: centsSchema.nullable(),
   sortOrder: z.number().int(),
   archived: z.boolean(),
+  isSavings: z.boolean(),
 });
 export type Envelope = z.infer<typeof envelopeSchema>;
 
-export const envelopeInputSchema = z.object({
+const envelopeFields = {
   name: z.string().trim().min(1, 'Nom requis').max(80),
-  color: colorSchema.default('#4f8a5b'),
+  color: colorSchema,
   monthlyTarget: positiveCentsSchema.nullable().optional(),
+  isSavings: z.boolean(),
+};
+
+export const envelopeInputSchema = z.object({
+  ...envelopeFields,
+  color: envelopeFields.color.default('#4f8a5b'),
+  isSavings: envelopeFields.isSavings.optional(),
 });
 export type EnvelopeInput = z.infer<typeof envelopeInputSchema>;
+
+/** Répartition groupée depuis "Pas encore réparti" vers plusieurs enveloppes. */
+export const envelopeFundSchema = z.object({
+  items: z
+    .array(z.object({ envelopeId: idSchema, amount: positiveCentsSchema }))
+    .min(1, 'Rien à répartir')
+    .refine((items) => new Set(items.map((i) => i.envelopeId)).size === items.length, 'Une enveloppe apparaît deux fois'),
+});
+export type EnvelopeFund = z.infer<typeof envelopeFundSchema>;
+
+/** Modification partielle : sans valeurs par défaut, un champ absent reste inchangé. */
+export const envelopePatchSchema = z.object(envelopeFields).partial().extend({ archived: z.boolean().optional() });
+export type EnvelopePatch = z.infer<typeof envelopePatchSchema>;
 
 /** Champs communs à une opération et au modèle d'une règle récurrente (entités stockées). */
 const operationFields = {
@@ -166,6 +197,10 @@ export const recurringRuleInputSchema = z
     active: z.boolean().default(true),
   })
   .superRefine((rule, ctx) => {
+    if (rule.kind === 'allocation') {
+      ctx.addIssue({ code: 'custom', message: 'Le budget mensuel se règle sur l’enveloppe', path: ['kind'] });
+      return;
+    }
     checkOperation(rule, ctx);
     if ((rule.frequency === 'monthly' || rule.frequency === 'yearly') && !rule.dayOfMonth) {
       ctx.addIssue({ code: 'custom', message: 'Jour du mois requis', path: ['dayOfMonth'] });

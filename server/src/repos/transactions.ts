@@ -117,11 +117,6 @@ export function countUnsorted(db: Db): number {
   return row?.n ?? 0;
 }
 
-export function countPlanned(db: Db): number {
-  const row = db.select({ n: sql<number>`count(*)` }).from(transactions).where(eq(transactions.status, 'planned')).get();
-  return row?.n ?? 0;
-}
-
 /** Dernière date générée par règle, pour vérifier l'idempotence de la matérialisation. */
 export function existsForRuleAndDate(db: Db, ruleId: number, date: string): boolean {
   const row = db

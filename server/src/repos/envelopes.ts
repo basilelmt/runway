@@ -1,5 +1,5 @@
 import { asc, eq, sql } from 'drizzle-orm';
-import type { Envelope, EnvelopeInput } from '@shared/schemas';
+import type { Envelope, EnvelopeInput, EnvelopePatch } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { envelopes } from '../db/schema';
 import { NotFoundError } from '../errors';
@@ -23,18 +23,20 @@ export function createEnvelope(db: Db, input: EnvelopeInput): Envelope {
       name: input.name,
       color: input.color,
       monthlyTarget: input.monthlyTarget ?? null,
+      isSavings: input.isSavings ?? false,
       sortOrder: (max?.m ?? -1) + 1,
     })
     .returning()
     .get();
 }
 
-export function updateEnvelope(db: Db, id: number, input: Partial<EnvelopeInput> & { archived?: boolean }): Envelope {
+export function updateEnvelope(db: Db, id: number, input: EnvelopePatch): Envelope {
   getEnvelope(db, id);
   const patch: Partial<typeof envelopes.$inferInsert> = {};
   if (input.name !== undefined) patch.name = input.name;
   if (input.color !== undefined) patch.color = input.color;
   if (input.monthlyTarget !== undefined) patch.monthlyTarget = input.monthlyTarget;
+  if (input.isSavings !== undefined) patch.isSavings = input.isSavings;
   if (input.archived !== undefined) patch.archived = input.archived;
   if (Object.keys(patch).length === 0) return getEnvelope(db, id);
   return db.update(envelopes).set(patch).where(eq(envelopes.id, id)).returning().get()!;

@@ -21,6 +21,12 @@ describe('accounts', () => {
     expect(all.body).toHaveLength(3);
   });
 
+  it('archiver ne touche pas aux autres champs', async () => {
+    const created = await t.call('POST', '/api/accounts', { name: 'Épargne', initialBalance: 500_00, onBudget: false });
+    const patched = await t.call('PATCH', `/api/accounts/${created.body.id}`, { archived: true });
+    expect(patched.body).toMatchObject({ archived: true, initialBalance: 500_00, onBudget: false });
+  });
+
   it('valide et signale les doublons', async () => {
     expect((await t.call('POST', '/api/accounts', { name: '' })).status).toBe(400);
     const dup = await t.call('POST', '/api/accounts', { name: 'Courant' });
@@ -36,6 +42,13 @@ describe('envelopes', () => {
     expect(created.body).toMatchObject({ color: '#4f8a5b', monthlyTarget: 100_00, sortOrder: 2 });
     const reordered = await t.call('PUT', '/api/envelopes/reorder', { ids: [created.body.id, t.courses.id, t.loisirs.id] });
     expect(reordered.body.map((e: any) => e.name)).toEqual(['Vacances', 'Courses', 'Loisirs']);
+  });
+
+  it('archiver ne touche pas aux autres champs', async () => {
+    const created = await t.call('POST', '/api/envelopes', { name: 'Bourse', color: '#3f6fae', isSavings: true });
+    expect(created.body).toMatchObject({ isSavings: true });
+    const patched = await t.call('PATCH', `/api/envelopes/${created.body.id}`, { archived: true });
+    expect(patched.body).toMatchObject({ archived: true, color: '#3f6fae', isSavings: true });
   });
 
   it('refuse une couleur invalide', async () => {

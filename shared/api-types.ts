@@ -34,7 +34,8 @@ export type ForecastEvent = {
   toAccountId: number | null;
   envelopeId: number | null;
   fromEnvelopeId: number | null;
-  source: 'planned' | 'rule';
+  /** `budget` : répartition attendue d'après le budget mensuel de l'enveloppe `sourceId`. */
+  source: 'planned' | 'rule' | 'budget';
   sourceId: number;
 };
 
@@ -57,6 +58,27 @@ export type EnvelopeWithBalance = Envelope & {
   balance: Cents;
   allocatedThisMonth: Cents;
   spentThisMonth: Cents;
+  /** Ce qu'il manque pour atteindre le budget du mois. */
+  toFundThisMonth: Cents;
+};
+
+export type MonthSummary = {
+  start: ISODate;
+  end: ISODate;
+  /** Dépenses confirmées du mois, à trier comprises, hors enveloppes d'épargne. */
+  spent: Cents;
+  /** Somme des budgets mensuels des enveloppes hors épargne. */
+  budget: Cents;
+  /** Dépenses courantes : hors enveloppes portées par une charge fixe active (loyer, prêt...). */
+  variable: { spent: Cents; budget: Cents };
+  /** Mis de côté : virements nets vers l'épargne et dépenses des enveloppes d'épargne. */
+  saved: Cents;
+  /** Ce qu'il manque aux enveloppes pour atteindre leur budget du mois. */
+  toFund: Cents;
+  /** Revenu mensuel attendu : revenus récurrents actifs, ramenés au mois. */
+  income: Cents;
+  /** Somme des budgets mensuels de toutes les enveloppes, épargne comprise : ce que le budget prélève sur le revenu. */
+  planned: Cents;
 };
 
 export type Overview = {
@@ -65,20 +87,25 @@ export type Overview = {
   netWorth: Cents;
   accounts: AccountWithBalance[];
   envelopes: EnvelopeWithBalance[];
+  month: MonthSummary;
   alerts: ForecastAlert[];
   unsortedCount: number;
-  plannedCount: number;
-  netWorthSparkline: { date: ISODate; value: Cents }[];
+  /** Opérations prévues que le relevé n'a pas confirmées dans la fenêtre de rapprochement : à vérifier. */
+  latePlanned: Transaction[];
 };
 
 export type SpendingReport = {
   from: ISODate;
   to: ISODate;
   total: Cents;
-  byEnvelope: { envelopeId: number | null; name: string; color: string; amount: Cents }[];
+  /** Somme des budgets mensuels des enveloppes de dépenses actives, pour comparer à la période. */
+  monthlyBudget: Cents;
+  /** Dépenses par enveloppe, hors enveloppes d'épargne ; `envelopeId` null = à trier. */
+  byEnvelope: { envelopeId: number | null; name: string; color: string; amount: Cents; monthlyTarget: Cents | null }[];
 };
 
-export type MonthlyReport = { month: string; income: Cents; expense: Cents }[];
+/** `expense` exclut les enveloppes d'épargne, comptées dans `saved`. */
+export type MonthlyReport = { month: string; income: Cents; expense: Cents; saved: Cents }[];
 
 export type NetWorthReport = {
   history: { date: ISODate; value: Cents }[];

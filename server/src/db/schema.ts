@@ -21,6 +21,8 @@ export const envelopes = sqliteTable('envelopes', {
   monthlyTarget: integer('monthly_target'),
   sortOrder: integer('sort_order').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  /** Enveloppe d'épargne : ses dépenses comptent comme argent mis de côté, pas comme consommation. */
+  isSavings: integer('is_savings', { mode: 'boolean' }).notNull().default(false),
 });
 
 export const recurringRules = sqliteTable('recurring_rules', {

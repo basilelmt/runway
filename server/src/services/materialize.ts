@@ -6,7 +6,7 @@ import { createTransaction, existsForRuleAndDate } from '../repos/transactions';
 
 /**
  * Crée en base les occurrences dues (jusqu'à `today` inclus) de chaque règle active.
- * Les allocations sont confirmées d'office ; les autres sont "prévues" en attendant le relevé.
+ * Elles sont "prévues" en attendant le relevé qui les confirme.
  * Idempotent : une règle n'est rejouée qu'après `lastGeneratedDate`.
  */
 export function materializeDue(db: Db, today: ISODate): number {
@@ -28,7 +28,7 @@ export function materializeDue(db: Db, today: ISODate): number {
           toAccountId: rule.toAccountId,
           envelopeId: rule.envelopeId,
           fromEnvelopeId: rule.fromEnvelopeId,
-          status: rule.kind === 'allocation' ? 'confirmed' : 'planned',
+          status: 'planned',
           recurringRuleId: rule.id,
         });
         created++;

@@ -25,6 +25,7 @@ export function envelope(partial: Partial<Envelope> & { name: string }): Envelop
     monthlyTarget: null,
     sortOrder: 0,
     archived: false,
+    isSavings: false,
     ...partial,
   };
 }

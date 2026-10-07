@@ -44,6 +44,38 @@ describe('forecast', () => {
     expect(r.alerts.find((a) => a.kind === 'account')).toBeUndefined();
   });
 
+  it('compte le budget mensuel : le reste du mois aujourd’hui, puis le budget complet chaque 1er', () => {
+    const courant = account({ name: 'Courant', initialBalance: 5000_00 });
+    const logement = envelope({ name: 'Logement', monthlyTarget: 800_00 });
+    const loyer = rule({ kind: 'expense', amount: 800_00, accountId: courant.id, envelopeId: logement.id, frequency: 'monthly', dayOfMonth: 5, startDate: '2026-01-01', lastGeneratedDate: '2026-03-05' });
+    const dejaReparti = tx({ kind: 'allocation', amount: 300_00, envelopeId: logement.id, date: '2026-03-02' });
+    const r = forecast({ accounts: [courant], envelopes: [logement], transactions: [dejaReparti] }, [loyer], '2026-03-10', 60);
+
+    const budget = r.events.filter((e) => e.source === 'budget');
+    expect(budget.map((e) => [e.date, e.amount])).toEqual([
+      ['2026-03-10', 500_00],
+      ['2026-04-01', 800_00],
+      ['2026-05-01', 800_00],
+    ]);
+    expect(budget[0]).toMatchObject({ kind: 'allocation', envelopeId: logement.id, sourceId: logement.id, label: 'Budget Logement' });
+    // Le loyer du 5 est couvert par le budget du 1er : pas de fausse alerte.
+    expect(r.alerts).toEqual([]);
+  });
+
+  it('n’ajoute rien pour une enveloppe sans budget, archivée ou déjà remplie', () => {
+    const courant = account({ name: 'Courant', initialBalance: 100_00 });
+    const sansBudget = envelope({ name: 'Divers' });
+    const archivee = envelope({ name: 'Ancienne', monthlyTarget: 50_00, archived: true });
+    const remplie = envelope({ name: 'Courses', monthlyTarget: 200_00 });
+    const r = forecast(
+      { accounts: [courant], envelopes: [sansBudget, archivee, remplie], transactions: [tx({ kind: 'allocation', amount: 200_00, envelopeId: remplie.id, date: '2026-03-01' })] },
+      [],
+      '2026-03-10',
+      15,
+    );
+    expect(r.events).toEqual([]);
+  });
+
   it('ne renvoie aucune alerte quand tout reste positif', () => {
     const courant = account({ name: 'Courant', initialBalance: 5000_00 });
     const r = forecast({ accounts: [courant], envelopes: [], transactions: [] }, [], '2026-03-10', 90);

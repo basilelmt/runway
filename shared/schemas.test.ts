@@ -68,6 +68,12 @@ describe('recurringRuleInputSchema', () => {
     expect(recurringRuleInputSchema.safeParse(rule).success).toBe(true);
   });
 
+  it('refuse une allocation : le budget mensuel se règle sur l’enveloppe', () => {
+    const r = recurringRuleInputSchema.safeParse({ ...rule, kind: 'allocation', accountId: null });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]?.path).toEqual(['kind']);
+  });
+
   it('exige dayOfMonth pour monthly', () => {
     expect(recurringRuleInputSchema.safeParse({ ...rule, dayOfMonth: undefined }).success).toBe(false);
   });

@@ -1,4 +1,5 @@
 import { applyOperation, summarize, type AccountMap, type EnvelopeMap } from '@core/balances';
+import { savedInMonth } from '@core/budget';
 import { forecast } from '@core/forecast';
 import type { MonthlyReport, NetWorthReport, SpendingReport } from '@shared/api-types';
 import { addMonths, endOfMonth, monthKey, startOfMonth, type ISODate } from '@shared/dates';
@@ -14,18 +15,21 @@ export function spendingReport(db: Db, from: ISODate, to: ISODate): SpendingRepo
   }
   const byEnvelope: SpendingReport['byEnvelope'] = [];
   for (const env of state.envelopes) {
+    if (env.isSavings) continue;
     const amount = totals.get(env.id) ?? 0;
-    if (amount > 0) byEnvelope.push({ envelopeId: env.id, name: env.name, color: env.color, amount });
+    if (amount > 0) byEnvelope.push({ envelopeId: env.id, name: env.name, color: env.color, amount, monthlyTarget: env.monthlyTarget });
   }
   const unsorted = totals.get(null) ?? 0;
-  if (unsorted > 0) byEnvelope.push({ envelopeId: null, name: 'À trier', color: '#9a9a9a', amount: unsorted });
+  if (unsorted > 0) byEnvelope.push({ envelopeId: null, name: 'À ranger', color: '#9a9a9a', amount: unsorted, monthlyTarget: null });
   byEnvelope.sort((a, b) => b.amount - a.amount);
   const total = byEnvelope.reduce((s, e) => s + e.amount, 0);
-  return { from, to, total, byEnvelope };
+  const monthlyBudget = state.envelopes.filter((e) => !e.archived && !e.isSavings).reduce((s, e) => s + (e.monthlyTarget ?? 0), 0);
+  return { from, to, total, monthlyBudget, byEnvelope };
 }
 
 export function monthlyReport(db: Db, today: ISODate, months: number): MonthlyReport {
   const state = loadState(db);
+  const savings = new Set(state.envelopes.filter((e) => e.isSavings).map((e) => e.id));
   const buckets = new Map<string, { income: number; expense: number }>();
   const first = startOfMonth(addMonths(today, -(months - 1)));
   for (let i = 0; i < months; i++) buckets.set(monthKey(addMonths(first, i)), { income: 0, expense: 0 });
@@ -34,9 +38,13 @@ export function monthlyReport(db: Db, today: ISODate, months: number): MonthlyRe
     const bucket = buckets.get(monthKey(t.date));
     if (!bucket) continue;
     if (t.kind === 'income') bucket.income += t.amount;
-    if (t.kind === 'expense') bucket.expense += t.amount;
+    if (t.kind === 'expense' && !(t.envelopeId != null && savings.has(t.envelopeId))) bucket.expense += t.amount;
   }
-  return [...buckets.entries()].map(([month, v]) => ({ month, ...v }));
+  return [...buckets.entries()].map(([month, v]) => ({
+    month,
+    ...v,
+    saved: savedInMonth(state.accounts, state.envelopes, state.transactions, `${month}-01`),
+  }));
 }
 
 /** Valeur nette à chaque fin de mois sur `months` mois, puis projection quotidienne sur `horizonDays`. */

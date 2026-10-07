@@ -22,6 +22,20 @@
       "when": 1791143856456,
       "tag": "0002_bank_accounts_linked_at",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791307570828,
+      "tag": "0003_envelope_savings_budget",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791309451864,
+      "tag": "0004_drop_allocation_rules",
+      "breakpoints": true
     }
   ]
 }

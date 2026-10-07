@@ -1,0 +1,1 @@
+ALTER TABLE `envelopes` ADD `is_savings` integer DEFAULT false NOT NULL;

@@ -21,7 +21,10 @@ function plannedSignedAmount(t: Transaction): number {
  * même montant signé, date à ±tolerance jours, la plus proche gagne, chaque prévue au plus une fois.
  * Renvoie `index de ligne -> id de prévue`.
  */
-export function matchPlanned(rows: ImportedRow[], planned: Transaction[], toleranceDays = 5): Map<number, number> {
+/** Écart maximal, en jours, entre une opération prévue et celle du relevé qui la confirme. */
+export const MATCH_TOLERANCE_DAYS = 5;
+
+export function matchPlanned(rows: ImportedRow[], planned: Transaction[], toleranceDays = MATCH_TOLERANCE_DAYS): Map<number, number> {
   const candidates: { index: number; plannedId: number; distance: number }[] = [];
   for (const row of rows) {
     for (const p of planned) {
