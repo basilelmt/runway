@@ -1,0 +1,77 @@
+import { useId, useState } from 'react';
+import { binanceKeysSchema } from '@shared/schemas';
+import { errorMessage } from '@/api/client';
+import { useSaveBinance, useSyncBinance } from '@/api/hooks';
+import { Button, Dialog, Field, Input, useToast } from '@/components/ui';
+import styles from './Forms.module.css';
+
+type Props = { open: boolean; onClose: () => void };
+
+/** Saisie d'une clé API Binance en lecture seule ; la synchro part dès que la clé est acceptée. */
+export function BinanceConnectDialog({ open, onClose }: Props) {
+  const formId = useId();
+  const toast = useToast();
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+  const [errors, setErrors] = useState<{ apiKey?: string; apiSecret?: string }>({});
+  const sync = useSyncBinance();
+  const save = useSaveBinance({
+    onSuccess: () => {
+      toast.success('Binance relié');
+      sync.mutate(undefined);
+      onClose();
+    },
+  });
+
+  function submit(e: { preventDefault(): void }) {
+    e.preventDefault();
+    const parsed = binanceKeysSchema.safeParse({ apiKey, apiSecret });
+    if (!parsed.success) {
+      const next: typeof errors = {};
+      for (const issue of parsed.error.issues) next[issue.path[0] as 'apiKey' | 'apiSecret'] ??= issue.message;
+      return setErrors(next);
+    }
+    save.mutate(parsed.data);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      size="sm"
+      title="Relier Binance"
+      description="Runway lit tes soldes et ton historique d’achats. Il ne peut ni acheter, ni vendre, ni retirer."
+      footer={
+        <div className={styles.actions}>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form={formId} variant="primary" loading={save.isPending}>
+            Relier
+          </Button>
+        </div>
+      }
+    >
+      <form id={formId} className={styles.form} onSubmit={submit} noValidate>
+        <ol className={styles.help}>
+          <li>Sur binance.com : Profil, puis Gestion des API, puis Créer une API (clé générée par le système).</li>
+          <li>Ne laisse cochée que « Activer la lecture ». Runway refuse une clé qui peut trader ou retirer.</li>
+          <li>Colle la clé API et la clé secrète ci-dessous.</li>
+        </ol>
+        <Field label="Clé API" error={errors.apiKey}>
+          {(id, describedBy) => <Input id={id} aria-describedby={describedBy} className="mono" autoComplete="off" spellCheck={false} value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoFocus />}
+        </Field>
+        <Field label="Clé secrète" error={errors.apiSecret}>
+          {(id, describedBy) => (
+            <Input id={id} aria-describedby={describedBy} className="mono" type="password" autoComplete="off" spellCheck={false} value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} />
+          )}
+        </Field>
+        {save.error ? (
+          <p className={styles.error} role="alert">
+            {errorMessage(save.error)}
+          </p>
+        ) : null}
+      </form>
+    </Dialog>
+  );
+}

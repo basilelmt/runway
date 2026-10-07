@@ -3,13 +3,21 @@ import type {
   BankAuthStart,
   BankConnectionView,
   BankSyncRunResult,
+  AssetSearchResult,
   BankSyncState,
+  BinanceState,
+  BinanceSyncResult,
   ForecastResponse,
+  IdeaRunStart,
+  IdeaRunView,
+  IdeasView,
   ImportCommitInput,
   ImportPreview,
   MonthlyReport,
   NetWorthReport,
   Overview,
+  PortfolioRange,
+  PortfolioView,
   SpendingReport,
   SuggestResponse,
 } from '@shared/api-types';
@@ -18,10 +26,12 @@ import type {
   AccountInput,
   AccountPatch,
   BankLinkInput,
+  BinanceKeys,
   Envelope,
   EnvelopeFund,
   EnvelopeInput,
   EnvelopePatch,
+  HoldingInput,
   ImportRecord,
   RecurringRule,
   RecurringRuleInput,
@@ -29,6 +39,8 @@ import type {
   SortingApply,
   SortingRule,
   SortingRuleInput,
+  TradeInput,
+  TradePatch,
   Transaction,
   TransactionFilter,
   TransactionInput,
@@ -54,6 +66,12 @@ export const keys = {
   imports: ['imports'] as const,
   bankSync: ['bank-sync'] as const,
   bankSyncRun: ['bank-sync', 'run'] as const,
+  invest: ['invest'] as const,
+  portfolio: (range: PortfolioRange) => ['invest', 'portfolio', range] as const,
+  assetSearch: (q: string) => ['invest', 'search', q] as const,
+  ideas: ['invest', 'ideas'] as const,
+  ideaRun: (id: number) => ['invest', 'run', id] as const,
+  binanceSync: ['invest', 'binance', 'sync'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -319,5 +337,63 @@ export function useDisconnectBank(opts?: MutOpts<void, number>) {
       invalidate(keys.bankSync);
       opts?.onSuccess?.(...a);
     },
+  });
+}
+
+// Investir
+
+/** Mutation de l'écran Investir : toute écriture rafraîchit le portefeuille et les idées. */
+function useInvestMutation<TData, TVars>(fn: (vars: TVars) => Promise<TData>, opts?: MutOpts<TData, TVars>, mutationKey?: readonly unknown[]) {
+  const qc = useQueryClient();
+  return useMutation({
+    ...opts,
+    mutationKey,
+    mutationFn: fn,
+    onSuccess: (...a) => {
+      void qc.invalidateQueries({ queryKey: keys.invest });
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export const usePortfolio = (range: PortfolioRange) =>
+  useQuery({ queryKey: keys.portfolio(range), queryFn: () => api.get<PortfolioView>(`/api/invest/portfolio?range=${range}`), placeholderData: (prev) => prev });
+
+export const useAssetSearch = (query: string) =>
+  useQuery({
+    queryKey: keys.assetSearch(query.trim()),
+    queryFn: () => api.get<AssetSearchResult[]>(`/api/invest/search?q=${encodeURIComponent(query.trim())}`),
+    enabled: query.trim().length >= 2,
+    staleTime: 60_000,
+  });
+
+export const useCreateHolding = (opts?: MutOpts<{ id: number }, HoldingInput>) => useInvestMutation((input) => api.post<{ id: number }>('/api/invest/holdings', input), opts);
+export const useDeleteHolding = (opts?: MutOpts<void, number>) => useInvestMutation((id) => api.delete(`/api/invest/holdings/${id}`), opts);
+export const useAddTrade = (opts?: MutOpts<unknown, { holdingId: number } & TradeInput>) =>
+  useInvestMutation(({ holdingId, ...input }) => api.post(`/api/invest/holdings/${holdingId}/trades`, input), opts);
+export const useUpdateTrade = (opts?: MutOpts<unknown, { id: number } & TradePatch>) => useInvestMutation(({ id, ...patch }) => api.patch(`/api/invest/trades/${id}`, patch), opts);
+export const useDeleteTrade = (opts?: MutOpts<void, number>) => useInvestMutation((id) => api.delete(`/api/invest/trades/${id}`), opts);
+
+export const useSaveBinance = (opts?: MutOpts<BinanceState, BinanceKeys>) => useInvestMutation((keys) => api.put<BinanceState>('/api/invest/binance', keys), opts);
+export const useDisconnectBinance = (opts?: MutOpts<void, void>) => useInvestMutation(() => api.delete('/api/invest/binance'), opts);
+export const useSyncBinance = (opts?: MutOpts<BinanceSyncResult, number | undefined>) =>
+  useInvestMutation((onlyIfStaleMinutes) => api.post<BinanceSyncResult>('/api/invest/binance/sync', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}), opts, keys.binanceSync);
+
+export const useIdeas = () => useQuery({ queryKey: keys.ideas, queryFn: () => api.get<IdeasView>('/api/invest/ideas') });
+export const useStartIdeaRun = (opts?: MutOpts<IdeaRunStart, 'manual' | 'weekly'>) =>
+  useInvestMutation((trigger) => api.post<IdeaRunStart>('/api/invest/ideas/runs', { trigger }), opts);
+
+/** Suit une fournée toutes les 3 secondes tant qu'elle tourne, puis rafraîchit les idées. */
+export function useIdeaRun(id: number | null) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: keys.ideaRun(id ?? 0),
+    queryFn: async () => {
+      const run = await api.get<IdeaRunView>(`/api/invest/ideas/runs/${id}`);
+      if (run.status !== 'running') void qc.invalidateQueries({ queryKey: keys.ideas });
+      return run;
+    },
+    enabled: id !== null,
+    refetchInterval: (q) => (q.state.data?.status === 'running' || !q.state.data ? 3000 : false),
   });
 }

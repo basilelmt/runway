@@ -23,9 +23,10 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: 'budget', Component: BudgetPage },
       { path: 'operations', Component: OperationsPage },
-      // Écrans chargés à la demande : l'analyse embarque les graphiques, l'import et les réglages servent rarement.
+      // Écrans chargés à la demande : l'analyse et Investir embarquent les graphiques, l'import et les réglages servent rarement.
       { path: 'operations/importer', lazy: () => import('@/pages/Import').then((m) => ({ Component: m.ImportPage })) },
       { path: 'analyse', lazy: () => import('@/pages/Analyse').then((m) => ({ Component: m.AnalysePage })) },
+      { path: 'investir', lazy: () => import('@/pages/Invest').then((m) => ({ Component: m.InvestPage })) },
       {
         path: 'reglages',
         lazy: () => import('@/pages/settings/SettingsLayout').then((m) => ({ Component: m.SettingsLayout })),

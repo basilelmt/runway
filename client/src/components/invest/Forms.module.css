@@ -1,0 +1,49 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+.error {
+  color: var(--negative);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.actionsSpread {
+  justify-content: space-between;
+}
+
+.help {
+  margin: 0;
+  padding-left: var(--s-5);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+@media (max-width: 480px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+}
