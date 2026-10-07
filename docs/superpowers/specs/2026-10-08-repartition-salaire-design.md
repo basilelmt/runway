@@ -49,13 +49,13 @@ Migration `0006_auto_funding.sql`.
 | created_at | text | |
 
 La contrainte d'unicité sur `source_transaction_id` rend la répartition idempotente : un salaire ne déclenche qu'une seule répartition, et une répartition annulée (`undone`) ne se refait pas.
-Si le salaire est supprimé, la répartition est supprimée avec ses allocations (`ON DELETE CASCADE` côté `fundings`, suppression explicite des allocations dans le service).
+Si le salaire est supprimé, la répartition est supprimée avec ses allocations, par deux cascades SQLite : `fundings.source_transaction_id` et `transactions.funding_id` sont tous deux en `ON DELETE CASCADE`.
 
 ### `transactions`
 
 | Champ | Type | Note |
 |---|---|---|
-| funding_id | integer nullable | répartition qui a créé cette allocation |
+| funding_id | integer nullable, `ON DELETE CASCADE` | répartition qui a créé cette allocation |
 
 ## Logique
 
@@ -84,7 +84,7 @@ planAutoFunding(envelopes: Envelope[], allocatedInMonth: Map<number, Cents>, ava
    La date des allocations est le jour de l'opération, ou le 1er du mois suivant.
 3. Calcule `available` = « À répartir » actuel (soldes confirmés, salaire inclus) et `allocatedInMonth` = allocations du mois financé (`monthActivity` sur la date des allocations).
 4. Appelle `planAutoFunding`.
-   S'il n'y a aucun item et aucun manque, il s'arrête sans créer de ligne `fundings`.
+   S'il n'y a aucun montant à répartir, il s'arrête sans créer de ligne `fundings` : un budget déjà complet ne mérite pas de bandeau, et l'argent épuisé est déjà signalé par l'Accueil (tâche « à répartir » ou dépassement).
 5. Crée la ligne `fundings` puis les allocations (`kind = 'allocation'`, `status = 'confirmed'`, libellé `Budget <mois>` comme « Répartir », `funding_id` renseigné).
 
 ### Points d'appel
@@ -94,7 +94,8 @@ La confirmation d'une opération prévue passe aujourd'hui par deux chemins, qui
 - `services/import.ts` à la confirmation d'un import, utilisé aussi par la synchro bancaire (`services/bank-sync.ts`) ;
 - `routes/transactions.ts`, action « Confirmer » sur une opération prévue.
 
-Pour éviter qu'un futur chemin l'oublie, ces deux appels passent par une seule fonction `confirmPlanned(tx, id, patch)` dans le repo des opérations, qui confirme puis appelle `autoFund`.
+À l'import, `autoFund` est appelé une fois toutes les lignes écrites, pour que le disponible tienne compte de tout le relevé et pas seulement des lignes qui précèdent le salaire.
+Chaque chemin est couvert par un test, ce qui protège contre un oubli.
 
 ### Annulation
 
@@ -109,20 +110,21 @@ Il devient `remainingToFund(env, allocations déjà datées de ce mois)`, ce qui
 
 ## API
 
-- `GET /api/fundings/latest` : dernière répartition `applied` non fermée, avec le mois, le total, le nombre d'enveloppes, `shortfallCount` et le libellé du salaire ; `null` sinon.
+- `GET /api/overview` renvoie un champ `latestFunding` : dernière répartition `applied` non fermée, avec le mois, le total, le nombre d'enveloppes, `shortfallCount` et le libellé du salaire ; `null` sinon.
+  Passer par la vue d'ensemble plutôt que par une route dédiée évite toute plomberie d'invalidation : l'import, la synchro et la confirmation invalident déjà `overview`.
 - `POST /api/fundings/:id/undo`.
 - `POST /api/fundings/:id/dismiss`.
-- Schémas des règles récurrentes : `triggersFunding` et `fundsNextMonth` (zod, refus si `triggersFunding` sur un autre type que Revenu).
-- Les mutations d'import, de synchro et de confirmation invalident la requête `fundings/latest` côté client.
+- Schémas des règles récurrentes : `triggersFunding` et `fundsNextMonth` (zod, refus si `triggersFunding` sur un autre type que Revenu, ou `fundsNextMonth` sans `triggersFunding`).
 
 ## Interface
 
 ### Bandeau de répartition
 
-- Affiché en haut d'Accueil et de Budget quand `fundings/latest` renvoie une répartition.
+- Affiché en haut d'Accueil et de Budget quand `latestFunding` n'est pas nul.
 - Texte : « Salaire réparti : 2 340 € dans 8 enveloppes pour octobre ».
   Avec un manque : « … dont 2 incomplètes faute d'argent ».
-- Actions : « Voir » ouvre le dialogue Répartir (ajustement manuel habituel), « Annuler » annule la répartition, une croix ferme le bandeau.
+- Actions : « Annuler » annule la répartition, une croix ferme le bandeau.
+  Sur Accueil seulement, « Voir le budget » mène à la page Budget, où les enveloppes s'ajustent comme d'habitude.
 - Après « Annuler », le bandeau confirme « Répartition annulée » puis disparaît.
 - Même langage visuel que `RuleBanner`, à vérifier à 1440px et 390px, en clair et en sombre.
 
@@ -137,5 +139,6 @@ Il devient `remainingToFund(env, allocations déjà datées de ce mois)`, ce qui
 - `core/forecast.test.ts` : un mois futur déjà alloué ne génère que le reste de son budget.
 - Tests serveur : déclenchement par import, par synchro et par confirmation manuelle ; idempotence (deux confirmations, réimport) ; règle non marquée ; mois suivant avec allocations datées du 1er ; annulation et absence de nouvelle répartition ensuite ; suppression du salaire.
 - Tests client : bandeau (textes, annuler, fermer) et cases du formulaire de charge fixe.
+- L'export JSON inclut la table `fundings`.
 - Passage complet dans le navigateur : marquer la règle du salaire, importer un vrai relevé LBP qui contient le salaire, vérifier les enveloppes, le bandeau, l'annulation et la prévision.
 - `npm run typecheck`, `npm run lint` et `npm test` au vert.
