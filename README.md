@@ -46,6 +46,17 @@ L'écran Paramètres propose aussi un export JSON complet et un export CSV des o
 
 Au premier import, le numéro de compte lu dans le fichier est mémorisé sur le compte Runway, et les imports suivants le retrouvent seuls.
 
+## Investir
+
+L'écran Investir suit ton portefeuille et propose des idées d'investissement tirées de l'actualité.
+
+- Trade Republic n'a pas d'API : ajoute ta position (recherche par nom, ticker ou ISIN) puis chaque achat ou vente.
+  Les cours viennent de Yahoo Finance, sans clé, et sont mis en cache dans la base.
+- Binance se synchronise à l'ouverture de l'écran avec une clé API en lecture seule (Profil, Gestion des API, ne cocher que « Activer la lecture »).
+  Runway refuse une clé qui peut trader ou retirer, et ne renvoie jamais la clé au navigateur.
+- Les idées sont cherchées par Claude sur le web (`claude -p` avec la recherche web), une fois par semaine à l'ouverture de l'écran ou à la demande.
+  Chaque idée garde son cours de départ et se clôt à son horizon : le bilan dit si elles battent le S&P 500.
+
 ## Commandes
 
 | Commande | Rôle |

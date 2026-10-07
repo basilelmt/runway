@@ -44,6 +44,7 @@ describe('HoldingList', () => {
     expect(screen.getByText('+599,00 €')).toBeInTheDocument();
     expect(screen.getByText('Trade Republic')).toBeInTheDocument();
     expect(screen.getByText('0,04 BTC')).toBeInTheDocument();
+    expect(screen.getByText('5 parts')).toBeInTheDocument();
     expect(screen.getByText('0,00002 BTC sans prix d’achat')).toBeInTheDocument();
     expect(screen.getByText('-200,00 €')).toBeInTheDocument();
   });

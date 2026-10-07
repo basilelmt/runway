@@ -50,7 +50,7 @@ export function TradeFields({ draft, errors, onChange, unit, allowSell = true }:
         <Field label="Date" error={errors.date}>
           {(id, describedBy) => <DateInput id={id} aria-describedby={describedBy} value={draft.date} max={today()} onChange={(e) => set('date', e.target.value)} />}
         </Field>
-        <Field label={`Quantité (${unit})`} error={errors.quantity}>
+        <Field label={unit === 'part' ? 'Nombre de parts' : `Quantité (${unit})`} error={errors.quantity}>
           {(id, describedBy) => (
             <Input id={id} aria-describedby={describedBy} inputMode="decimal" autoComplete="off" className="num" value={draft.quantity} onChange={(e) => set('quantity', e.target.value)} placeholder="5" />
           )}

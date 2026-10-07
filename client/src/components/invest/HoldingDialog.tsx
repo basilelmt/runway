@@ -7,7 +7,7 @@ import { useDeleteHolding, useDeleteTrade } from '@/api/hooks';
 import { Amount, Button, Dialog, useToast } from '@/components/ui';
 import { formatDateCompact } from '@/lib/format';
 import { formatPct, formatQty, gainTone, platformLabel } from '@/lib/invest';
-import { shortTicker } from './HoldingList';
+import { unitOf } from './HoldingList';
 import { TradeDialog } from './TradeDialog';
 import styles from './HoldingDialog.module.css';
 
@@ -41,7 +41,6 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
   const qty = Number(holding.quantity);
   const covered = holding.unpricedQuantity ? qty - Number(holding.unpricedQuantity) : qty;
   const average = covered > 0 ? Math.round(holding.costBasis / covered) : null;
-  const unit = shortTicker(holding.ticker);
   const manual = holding.source === 'manual';
   const error = removeTrade.error ?? removeHolding.error;
 
@@ -51,7 +50,7 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
         <div>
           <dt>Quantité</dt>
           <dd className="num">
-            {formatQty(holding.quantity)} <span className={styles.unit}>{unit}</span>
+            {formatQty(holding.quantity)} <span className={styles.unit}>{unitOf(holding.ticker, holding.quantity)}</span>
           </dd>
         </div>
         <div>
@@ -86,7 +85,7 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
 
       {holding.unpricedQuantity ? (
         <p className={styles.note}>
-          {formatQty(holding.unpricedQuantity)} {unit} détenus sur Binance n’ont pas de prix d’achat connu (dépôt depuis un autre portefeuille, par exemple). Ajoute
+          {formatQty(holding.unpricedQuantity)} {unitOf(holding.ticker, holding.unpricedQuantity)} détenus sur Binance n’ont pas de prix d’achat connu (dépôt depuis un autre portefeuille, par exemple). Ajoute
           l’achat à la main pour un coût de revient exact.
         </p>
       ) : null}
@@ -104,7 +103,7 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
               <span className={styles.tradeDate}>{formatDateCompact(t.date)}</span>
               <span className={styles.tradeSide}>{t.side === 'buy' ? 'Achat' : 'Vente'}</span>
               <span className={['num', styles.tradeQty].join(' ')}>
-                {formatQty(t.quantity)} {unit}
+                {formatQty(t.quantity)} {unitOf(holding.ticker, t.quantity)}
               </span>
               <span className={['num', styles.tradeAmount].join(' ')}>
                 {formatEuros(t.amount)}

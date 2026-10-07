@@ -170,6 +170,7 @@
 
   .stats {
     flex-direction: row;
+    justify-content: flex-start;
     gap: var(--s-8);
     padding: var(--s-5) 0 0;
     border-left: none;

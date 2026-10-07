@@ -10,6 +10,12 @@ type Props = { holdings: HoldingView[]; onOpen: (id: number) => void; emptyActio
 /** Symbole court d'une position : « BTC » pour « BTC-EUR », sinon le ticker. */
 export const shortTicker = (ticker: string) => ticker.replace(/-EUR$/, '');
 
+/** Unité d'une quantité : le symbole pour une crypto (« BTC »), des parts pour une action ou un ETF. */
+export function unitOf(ticker: string, quantity?: string): string {
+  if (ticker.endsWith('-EUR')) return shortTicker(ticker);
+  return quantity !== undefined && Number(quantity) > 1 ? 'parts' : 'part';
+}
+
 export function HoldingList({ holdings, onOpen, emptyAction }: Props) {
   if (holdings.length === 0) {
     return (
@@ -30,13 +36,14 @@ export function HoldingList({ holdings, onOpen, emptyAction }: Props) {
             <span className={styles.name}>{h.name}</span>
             <span className={styles.meta}>
               <Badge>{platformLabel(h.platform)}</Badge>
-              <span className="mono">
-                {formatQty(h.quantity)} {shortTicker(h.ticker)}
+              <span className="num">
+                {formatQty(h.quantity)} {unitOf(h.ticker, h.quantity)}
               </span>
+              <span className="mono">{h.ticker}</span>
             </span>
             {h.unpricedQuantity ? (
               <span className={styles.unpriced}>
-                {formatQty(h.unpricedQuantity)} {shortTicker(h.ticker)} sans prix d’achat
+                {formatQty(h.unpricedQuantity)} {unitOf(h.ticker, h.unpricedQuantity)} sans prix d’achat
               </span>
             ) : null}
           </div>

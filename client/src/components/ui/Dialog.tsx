@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { prefersReducedMotion } from '@/lib/motion';
 import { Button } from './Button';
 import styles from './Dialog.module.css';
@@ -20,6 +20,8 @@ type DialogProps = {
 /** Boîte de dialogue modale native (`<dialog>`), fermée par Échap ou clic sur le fond, avec une sortie animée. */
 export function Dialog({ open, onClose, title, description, children, footer, size = 'md' }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Identifiant propre à chaque dialogue : deux dialogues empilés gardent chacun leur nom accessible.
+  const titleId = useId();
   // Le contenu reste affiché pendant l'animation de sortie, puis le dialogue se ferme vraiment.
   const [rendered, setRendered] = useState(open);
   const [closing, setClosing] = useState(false);
@@ -65,7 +67,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     <dialog
       ref={ref}
       className={[styles.dialog, styles[size], closing ? styles.closing : ''].join(' ')}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -78,7 +80,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         <div className={styles.panel}>
           <header className={styles.header}>
             <div>
-              <h2 id="dialog-title" className={styles.title}>
+              <h2 id={titleId} className={styles.title}>
                 {shown.title}
               </h2>
               {shown.description ? <p className={styles.description}>{shown.description}</p> : null}

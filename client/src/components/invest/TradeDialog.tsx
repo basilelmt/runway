@@ -3,7 +3,7 @@ import type { HoldingView, TradeView } from '@shared/api-types';
 import { errorMessage } from '@/api/client';
 import { useAddTrade, useUpdateTrade } from '@/api/hooks';
 import { Button, Dialog, useToast } from '@/components/ui';
-import { shortTicker } from './HoldingList';
+import { unitOf } from './HoldingList';
 import { emptyTrade, parseTrade, TradeFields, tradeFromInput, type TradeDraft, type TradeErrors } from './TradeFields';
 import styles from './Forms.module.css';
 
@@ -53,7 +53,7 @@ export function TradeDialog({ holding, trade, open, onClose }: Props) {
         <TradeFields
           draft={draft}
           errors={errors}
-          unit={shortTicker(holding.ticker).length <= 6 ? shortTicker(holding.ticker) : 'part'}
+          unit={unitOf(holding.ticker)}
           onChange={(d) => {
             setDraft(d);
             setErrors({});

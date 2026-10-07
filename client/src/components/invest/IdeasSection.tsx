@@ -14,7 +14,7 @@ export function IdeasSection() {
   const ideas = useIdeas();
   const [runId, setRunId] = useState<number | null>(null);
   const [showClosed, setShowClosed] = useState(false);
-  const start = useStartIdeaRun({ onSuccess: (r) => r.run && setRunId(r.run.id) });
+  const start = useStartIdeaRun({ onSuccess: (r) => r.started && r.run && setRunId(r.run.id) });
   const run = useIdeaRun(runId);
 
   // Reprend une fournée déjà en cours (lancée avant un rechargement de la page).
@@ -36,8 +36,8 @@ export function IdeasSection() {
 
   return (
     <section aria-labelledby="ideas-title" className={styles.section}>
-      <div className="section-title">
-        <div>
+      <div className={styles.head}>
+        <div className={styles.headText}>
           <h2 id="ideas-title">Idées</h2>
           <p className={styles.subtitle}>Tirées de l’actualité par Claude, suivies face au S&P 500.</p>
         </div>

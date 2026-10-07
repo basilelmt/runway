@@ -4,6 +4,24 @@
   gap: var(--s-4);
 }
 
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.headText {
+  flex: 1 1 260px;
+}
+
+.headText h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
 .subtitle {
   color: var(--ink-mute);
   font-size: var(--text-sm);
