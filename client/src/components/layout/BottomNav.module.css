@@ -42,7 +42,7 @@
   }
 
   /* Pas de survol au doigt : la pointe de la flèche d'Investir passe au vert quand l'écran est ouvert */
-  .active .liftoff g {
+  .active .liftoff [data-tip] {
     color: var(--positive);
   }
 

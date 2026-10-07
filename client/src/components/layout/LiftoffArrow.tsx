@@ -1,8 +1,9 @@
 import styles from './LiftoffArrow.module.css';
 
 /**
- * L'icône « tendance à la hausse » de Lucide, redessinée en deux morceaux : la ligne brisée reste fixe,
- * le dernier segment qui monte (avec sa pointe) s'allonge au survol de l'entrée et sort de son cadre.
+ * L'icône « tendance à la hausse » de Lucide, découpée en segments. Au survol de l'entrée, la ligne se déforme
+ * progressivement : le pied bouge à peine, chaque segment s'allonge et s'épaissit un peu plus que le précédent,
+ * et la pointe sort largement du cadre en vert. Les tracés de survol sont dans le CSS (propriété `d`).
  */
 export function LiftoffArrow({ className }: { className?: string }) {
   return (
@@ -16,11 +17,10 @@ export function LiftoffArrow({ className }: { className?: string }) {
       className={[styles.arrow, className ?? ''].join(' ')}
       aria-hidden
     >
-      <path d="M13.5 15.5l-5-5L2 17" />
-      <g className={styles.tip}>
-        <path d="M13.5 15.5L22 7" vectorEffect="non-scaling-stroke" />
-        <path d="M16 7h6v6" vectorEffect="non-scaling-stroke" />
-      </g>
+      <path className={styles.s1} d="M2 17L8.5 10.5" />
+      <path className={styles.s2} d="M8.5 10.5L13.5 15.5" />
+      <path className={styles.s3} d="M13.5 15.5L22 7" data-tip />
+      <path className={styles.head} d="M16 7H22V13" data-tip />
     </svg>
   );
 }

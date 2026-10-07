@@ -5,8 +5,12 @@ import styles from './MoonTrail.module.css';
 
 const PIXEL = 2;
 const GAP = 3;
-/** Part du chemin parcouru à chaque image : plus c'est petit, plus la fusée traîne derrière le curseur. */
-const HEAD_EASE = 0.09;
+/** Ressort qui tire la fusée vers sa cible : raideur faible et amortissement fort pour un vol souple, sans à-coups. */
+const STIFFNESS = 0.012;
+const DAMPING = 0.86;
+/** Vol libre quand la souris est partie : une boucle lente (en millisecondes par radian) dans le ciel du bloc. */
+const WANDER_X_MS = 4200;
+const WANDER_Y_MS = 2900;
 /** Chaque lettre rattrape sa voisine un peu plus mollement, d'où la traînée qui ondule. */
 const LINK_EASE = 0.28;
 const ROCKET_SIZE = 14;
@@ -44,8 +48,9 @@ function Rocket() {
 }
 
 /**
- * Au survol du parent, une fusée en pixels suit le curseur avec du retard, tirant « TO THE MOON » derrière elle
- * comme une corde : chaque lettre suit la précédente à distance fixe. Souris uniquement.
+ * Au survol du parent, une fusée en pixels suit le curseur au bout d'un ressort, tirant « TO THE MOON » derrière elle
+ * comme une corde : chaque lettre suit la précédente à distance fixe. Quand la souris s'en va, la fusée continue
+ * de voler seule dans le ciel du bloc. Souris uniquement ; l'animation s'arrête quand le bloc sort de l'écran.
  */
 export function MoonTrail() {
   const root = useRef<HTMLDivElement>(null);
@@ -62,9 +67,13 @@ export function MoonTrail() {
 
     const target: Node = { x: 0, y: 0 };
     const nodes: Node[] = parts.map(() => ({ x: 0, y: 0 }));
+    const velocity: Node = { x: 0, y: 0 };
     let angle = 0;
     let frame = 0;
     let running = false;
+    let started = false;
+    let hovering = false;
+    let visible = true;
 
     const place = () => {
       // Au premier survol, la traînée part à l'horizontale à gauche du curseur.
@@ -76,11 +85,22 @@ export function MoonTrail() {
 
     const tick = (t: number) => {
       const head = nodes[0]!;
-      const ease = reduced ? 1 : HEAD_EASE;
-      const vx = (target.x - head.x) * ease;
-      const vy = (target.y - head.y) * ease;
-      head.x += vx;
-      head.y += vy;
+      if (!hovering) {
+        // Vol libre : la cible décrit une boucle lente dans le haut du bloc, la fusée la suit au ressort.
+        target.x = host.clientWidth * (0.55 + 0.32 * Math.sin(t / WANDER_X_MS));
+        target.y = host.clientHeight * (0.38 + 0.2 * Math.sin(t / WANDER_Y_MS + 1));
+      }
+      if (reduced) {
+        head.x = target.x;
+        head.y = target.y;
+      } else {
+        velocity.x = (velocity.x + (target.x - head.x) * STIFFNESS) * DAMPING;
+        velocity.y = (velocity.y + (target.y - head.y) * STIFFNESS) * DAMPING;
+        head.x += velocity.x;
+        head.y += velocity.y;
+      }
+      const vx = velocity.x;
+      const vy = velocity.y;
       // La fusée pointe où elle va ; à l'arrêt, elle garde son cap.
       if (Math.hypot(vx, vy) > 0.4) angle = Math.atan2(vy, vx) + Math.PI / 2;
       rocket.style.transform = `translate3d(${head.x}px, ${head.y}px, 0) translate(-50%, -50%) rotate(${angle}rad)`;
@@ -106,32 +126,54 @@ export function MoonTrail() {
       target.x = e.clientX - box.left + 18;
       target.y = e.clientY - box.top - 14;
     };
-    const enter = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse') return;
-      local(e);
-      place();
-      el.dataset.on = '';
-      if (!running) {
-        running = true;
-        frame = requestAnimationFrame(tick);
-      }
+    const start = () => {
+      if (running || !visible) return;
+      running = true;
+      frame = requestAnimationFrame(tick);
     };
-    const move = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse') return;
-      if (!running) enter(e);
-      else local(e);
-    };
-    const leave = () => {
-      delete el.dataset.on;
+    const stop = () => {
       running = false;
       cancelAnimationFrame(frame);
     };
+
+    const enter = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      hovering = true;
+      local(e);
+      // Au tout premier survol, la traînée apparaît à côté du curseur ; ensuite la fusée revient d'où elle volait.
+      if (!started) place();
+      started = true;
+      el.dataset.on = '';
+      start();
+    };
+    const move = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      if (!hovering) enter(e);
+      else local(e);
+    };
+    const leave = () => {
+      hovering = false;
+      // Sans animation, pas de vol libre : la traînée disparaît avec la souris.
+      if (reduced) {
+        delete el.dataset.on;
+        stop();
+      }
+    };
+
+    // Hors de l'écran, inutile de faire tourner l'animation.
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry?.isIntersecting ?? true;
+      if (!visible) stop();
+      else if (started) start();
+    });
+    observer.observe(host);
 
     host.addEventListener('pointerenter', enter);
     host.addEventListener('pointermove', move);
     host.addEventListener('pointerleave', leave);
     return () => {
-      leave();
+      stop();
+      observer.disconnect();
       host.removeEventListener('pointerenter', enter);
       host.removeEventListener('pointermove', move);
       host.removeEventListener('pointerleave', leave);

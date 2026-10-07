@@ -3,31 +3,51 @@
   flex-shrink: 0;
 }
 
-/* Le segment montant grandit depuis son pied, la pointe file vers le haut à droite */
-.tip {
-  transform-box: view-box;
-  transform-origin: 13.5px 15.5px;
+.arrow path {
   transition:
-    transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    d 460ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    stroke-width 460ms var(--ease-out),
     color var(--dur) var(--ease-out);
 }
 
-.tip path {
-  transition: stroke-width 420ms var(--ease-out);
+/*
+ * Survol : le pied (2, 17) reste en place, chaque segment est agrandi un peu plus que le précédent
+ * (x1,15 puis x1,5 puis x3,2) et s'épaissit de même ; la couleur glisse de l'encre vers le vert.
+ */
+
+/* Couleur pour tout le monde */
+:global(a:hover) > .arrow .s1 {
+  color: color-mix(in oklab, currentColor 65%, var(--positive));
 }
 
-:global(a:hover) > .arrow .tip {
+:global(a:hover) > .arrow .s2 {
+  color: color-mix(in oklab, currentColor 30%, var(--positive));
+}
+
+:global(a:hover) > .arrow .s3,
+:global(a:hover) > .arrow .head {
   color: var(--positive);
-  transform: scale(3.2);
 }
 
-/* Le trait ne grossit pas avec l'échelle (vector-effect) : on l'épaissit à part, en pixels d'écran */
-:global(a:hover) > .arrow .tip path {
-  stroke-width: 3.5px;
-}
+/* Déformation seulement si le système accepte les animations */
+@media (prefers-reduced-motion: no-preference) {
+  :global(a:hover) > .arrow .s1 {
+    d: path('M2 17L9.475 9.525');
+    stroke-width: 2.3;
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  :global(a:hover) > .arrow .tip {
-    transform: none;
+  :global(a:hover) > .arrow .s2 {
+    d: path('M9.475 9.525L16.975 17.025');
+    stroke-width: 3.2;
+  }
+
+  :global(a:hover) > .arrow .s3 {
+    d: path('M16.975 17.025L44.175 -10.175');
+    stroke-width: 4.6;
+  }
+
+  :global(a:hover) > .arrow .head {
+    d: path('M29.775 -10.175H44.175V4.225');
+    stroke-width: 4.6;
   }
 }
