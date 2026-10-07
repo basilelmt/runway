@@ -32,7 +32,7 @@
 
   /* Typographie */
   --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
-  --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   --text-xs: 0.75rem;
@@ -42,6 +42,7 @@
   --text-xl: 1.5rem;
   --text-2xl: 2.25rem;
   --text-3xl: 3.25rem;
+  --text-4xl: 4.25rem;
 
   /* Espacement 4px */
   --s-1: 4px;
@@ -64,10 +65,11 @@
 
   --sidenav-width: 232px;
   --bottomnav-height: 60px;
-  --content-max: 1120px;
+  --content-max: 1040px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 160ms;
+  --dur-slow: 480ms;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -99,5 +101,6 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur: 0ms;
+    --dur-slow: 0ms;
   }
 }

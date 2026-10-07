@@ -1,17 +1,50 @@
 .track {
-  height: 6px;
-  border-radius: 3px;
+  position: relative;
+}
+
+.clip {
+  height: 100%;
+  border-radius: inherit;
   background: var(--paper-sunken);
   overflow: hidden;
 }
 
+.sm {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.md {
+  height: 10px;
+  border-radius: 5px;
+}
+
 .fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: inherit;
   background: var(--positive);
-  transition: width 240ms var(--ease-out);
+  transform-origin: left;
+  transition: width var(--dur-slow) var(--ease-out);
+  animation: grow var(--dur-slow) var(--ease-out);
 }
 
 .over {
   background: var(--negative);
+}
+
+/* Repère : un trait d'encre qui dépasse la barre */
+.marker {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
 }

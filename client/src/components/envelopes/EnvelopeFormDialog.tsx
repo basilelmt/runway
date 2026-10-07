@@ -7,7 +7,7 @@ import styles from './EnvelopeFormDialog.module.css';
 
 export const ENVELOPE_COLORS = ['#4f8a5b', '#c2703d', '#3f6fae', '#9a4f9c', '#b8961a', '#2a8f8a', '#b74a5e', '#6b7280'];
 
-type FormState = { name: string; color: string; monthlyTarget: number | null };
+type FormState = { name: string; color: string; monthlyTarget: number | null; isSavings: boolean };
 
 type EnvelopeFormDialogProps = { open: boolean; envelope?: Envelope; onClose: () => void };
 
@@ -17,6 +17,7 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
     name: envelope?.name ?? '',
     color: envelope?.color ?? ENVELOPE_COLORS[0]!,
     monthlyTarget: envelope?.monthlyTarget ?? null,
+    isSavings: envelope?.isSavings ?? false,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const create = useCreateEnvelope({
@@ -40,7 +41,7 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
 
   function submit(e: { preventDefault(): void }) {
     e.preventDefault();
-    const parsed = envelopeInputSchema.safeParse({ name: form.name, color: form.color, monthlyTarget: form.monthlyTarget });
+    const parsed = envelopeInputSchema.safeParse({ name: form.name, color: form.color, monthlyTarget: form.monthlyTarget, isSavings: form.isSavings });
     if (!parsed.success) {
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
@@ -81,9 +82,16 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
             </div>
           )}
         </Field>
-        <Field label="Objectif mensuel" hint="Facultatif. Montant que tu veux allouer chaque mois, pour la barre de progression." error={errors.monthlyTarget}>
-          {(id, describedBy) => <MoneyInput id={id} aria-describedby={describedBy} value={form.monthlyTarget} onChange={(c) => set('monthlyTarget', c)} placeholder="0,00" />}
+        <Field label="Budget mensuel" hint="Ce que tu prévois d’y mettre chaque mois. « Répartir » le propose automatiquement et la prévision en tient compte." error={errors.monthlyTarget}>
+          {(id, describedBy) => <MoneyInput id={id} aria-describedby={describedBy} value={form.monthlyTarget} onChange={(c) => set('monthlyTarget', c)} placeholder="Facultatif" />}
         </Field>
+        <label className={styles.check}>
+          <input type="checkbox" checked={form.isSavings} onChange={(e) => set('isSavings', e.target.checked)} />
+          <span>
+            Enveloppe d’épargne
+            <span className={styles.checkHint}>Ce qui en sort (versement vers un courtier, un PEA) compte comme mis de côté, pas comme une dépense.</span>
+          </span>
+        </label>
         {serverError ? (
           <p className={styles.error} role="alert">
             {errorMessage(serverError)}

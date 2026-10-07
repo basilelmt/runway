@@ -4,11 +4,14 @@ import type { SuggestResponse } from '@shared/api-types';
 import type { Transaction } from '@shared/schemas';
 import { ApiError, errorMessage } from '@/api/client';
 import { useApplySorting, useEnvelopes, useSuggestSorting, useTransactions, useUpdateTransaction } from '@/api/hooks';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { RuleBanner } from '@/components/transactions/RuleBanner';
 import { Amount, Button, Card, Dot, EmptyState, Select, SkeletonRows, useToast } from '@/components/ui';
-import { formatDateShort, plural } from '@/lib/format';
-import styles from './Unsorted.module.css';
+import { formatDateCompact, plural } from '@/lib/format';
+import { prefersReducedMotion } from '@/lib/motion';
+import styles from './UnsortedList.module.css';
+
+/** Durée de la sortie d'une ligne rangée, alignée sur `.leaving` dans le CSS. */
+const LEAVE_MS = 260;
 
 type Banner = { transactionId: number; label: string; envelopeId: number };
 
@@ -28,11 +31,13 @@ function claudeErrorTitle(err: unknown): string {
   return 'Le tri automatique a échoué';
 }
 
-export function UnsortedPage() {
+/** Dépenses sans enveloppe : on les range une à une, ou on laisse Claude proposer. */
+export function UnsortedList() {
   const toast = useToast();
   const envelopes = useEnvelopes();
   const unsorted = useTransactions({ unsorted: true, limit: 1000 });
   const [banner, setBanner] = useState<Banner | null>(null);
+  const [leaving, setLeaving] = useState<Set<number>>(new Set());
   const [suggestions, setSuggestions] = useState<SuggestResponse | null>(null);
   const [checkedRules, setCheckedRules] = useState<Set<string>>(new Set());
 
@@ -62,11 +67,23 @@ export function UnsortedPage() {
   function assign(t: Transaction, envelopeId: number) {
     const env = envelopeMap.get(envelopeId);
     if (!env) return;
+    // La ligne glisse vers la droite et se replie, puis l'opération est rangée.
+    setLeaving((ids) => new Set(ids).add(t.id));
+    window.setTimeout(() => save(t, envelopeId, env.name), prefersReducedMotion() ? 0 : LEAVE_MS);
+  }
+
+  function save(t: Transaction, envelopeId: number, envelopeName: string) {
     update.mutate(
       { id: t.id, kind: t.kind, date: t.date, amount: t.amount, label: t.label, accountId: t.accountId, toAccountId: t.toAccountId, envelopeId, fromEnvelopeId: t.fromEnvelopeId, note: t.note },
       {
+        onError: () =>
+          setLeaving((ids) => {
+            const next = new Set(ids);
+            next.delete(t.id);
+            return next;
+          }),
         onSuccess: () => {
-          toast.success(`Rangé dans ${env.name}`);
+          toast.success(`Rangé dans ${envelopeName}`);
           setBanner({ transactionId: t.id, label: t.label, envelopeId });
           setSuggestions((s) => (s ? { ...s, suggestions: s.suggestions.filter((x) => x.transactionId !== t.id) } : s));
         },
@@ -82,18 +99,17 @@ export function UnsortedPage() {
   }
 
   return (
-    <div className="page">
-      <PageHeader
-        title="À trier"
-        subtitle={unsorted.data ? `${plural(list.length, 'dépense')} sans enveloppe` : undefined}
-        actions={
-          list.length > 0 ? (
-            <Button variant="marking" icon={<Sparkles />} loading={suggest.isPending} onClick={() => suggest.mutate()} disabled={(envelopes.data ?? []).length === 0}>
-              {suggest.isPending ? 'Claude réfléchit…' : 'Trier avec Claude'}
-            </Button>
-          ) : null
-        }
-      />
+    <div className={styles.wrap}>
+      {list.length > 0 ? (
+        <div className={styles.bar}>
+          <p className={styles.barText}>
+            {plural(list.length, 'dépense', 'dépenses')} sans enveloppe. Range chacune dans la bonne enveloppe, Runway te proposera une règle pour les prochaines fois.
+          </p>
+          <Button variant="marking" icon={<Sparkles />} loading={suggest.isPending} onClick={() => suggest.mutate()} disabled={(envelopes.data ?? []).length === 0}>
+            {suggest.isPending ? 'Claude réfléchit…' : 'Trier avec Claude'}
+          </Button>
+        </div>
+      ) : null}
 
       {suggest.isPending ? <p className={styles.waiting}>Claude lit tes opérations et tes enveloppes. Cela peut prendre une minute.</p> : null}
 
@@ -166,18 +182,18 @@ export function UnsortedPage() {
           {errorMessage(unsorted.error)}
         </p>
       ) : list.length === 0 ? (
-        <EmptyState icon={<Inbox />} title="Tout est rangé" description="Chaque dépense a son enveloppe. Les prochains imports et saisies sans enveloppe arriveront ici." />
+        <EmptyState icon={<Inbox />} title="Tout est rangé" description="Chaque dépense a son enveloppe. Les nouvelles opérations sans enveloppe arriveront ici." />
       ) : (
-        <ul className={['ledger', styles.list].join(' ')}>
+        <ul className={['ledger', 'stagger', styles.list].join(' ')}>
           {list.map((t) => {
             const suggestion = suggestionFor.get(t.id);
             const suggestedId = suggestion?.envelopeId ?? null;
             return (
-              <li key={t.id} className={styles.item}>
-                <div className={styles.row}>
-                  <span className={['mono', styles.date].join(' ')}>{formatDateShort(t.date)}</span>
+              <li key={t.id} className={[styles.item, leaving.has(t.id) ? styles.leaving : ''].join(' ')}>
+                <div className={['hover-row', styles.row].join(' ')}>
+                  <span className={['num', styles.date].join(' ')}>{formatDateCompact(t.date)}</span>
                   <span className={styles.label}>{t.label}</span>
-                  <Amount cents={-t.amount} className={styles.amount} />
+                  <Amount cents={-t.amount} tone="neutral" className={styles.amount} />
                   <div className={styles.choose}>
                     {suggestion && suggestedId !== null ? (
                       <span className={styles.sparkle} title={suggestion.reason} aria-label={`Suggestion de Claude : ${suggestion.reason}`}>

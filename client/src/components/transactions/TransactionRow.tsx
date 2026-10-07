@@ -16,6 +16,15 @@ type TransactionRowProps = {
   confirming?: boolean;
 };
 
+const squash = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+/** Les relevés PDF gardent le texte brut en note : inutile de l'afficher s'il ne fait que répéter le libellé. */
+function repeatsLabel(note: string, label: string): boolean {
+  const n = squash(note);
+  const l = squash(label);
+  return n.startsWith(l.slice(0, 24)) || l.startsWith(n.slice(0, 24));
+}
+
 export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming }: TransactionRowProps) {
   const amount = signedAmount(t, viewAccountId);
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
@@ -28,11 +37,11 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
     t.kind === 'transfer'
       ? `${account?.name ?? '?'} → ${toAccount?.name ?? '?'}`
       : t.kind === 'allocation'
-        ? `${fromEnvelope?.name ?? 'À répartir'} → ${envelope?.name ?? '?'}`
+        ? `${fromEnvelope?.name ?? 'Pas encore réparti'} → ${envelope?.name ?? '?'}`
         : account?.name ?? '';
 
   return (
-    <li className={[styles.row, planned ? styles.planned : '', onClick ? styles.clickable : ''].join(' ')}>
+    <li className={[styles.row, planned ? styles.planned : '', onClick ? `hover-row ${styles.clickable}` : ''].join(' ')}>
       <button type="button" className={styles.main} onClick={onClick} disabled={!onClick}>
         <span className={styles.label}>{t.label}</span>
         <span className={styles.meta}>
@@ -44,12 +53,12 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
                 {envelope.name}
               </Badge>
             ) : (
-              <Badge tone="marking">À trier</Badge>
+              <Badge tone="marking">À ranger</Badge>
             )
           ) : null}
           {planned ? <Badge tone="warning">Prévue</Badge> : null}
           {where ? <span className={styles.where}>{where}</span> : null}
-          {t.note ? <span className={styles.note}>{t.note}</span> : null}
+          {t.note && !repeatsLabel(t.note, t.label) ? <span className={styles.note}>{t.note}</span> : null}
         </span>
       </button>
       {planned && onConfirm ? (
@@ -57,7 +66,7 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
           Confirmer
         </Button>
       ) : null}
-      <Amount cents={amount} tone={t.kind === 'allocation' ? 'neutral' : 'always'} className={styles.amount} />
+      <Amount cents={amount} tone={amount > 0 && t.kind !== 'allocation' ? 'always' : 'neutral'} className={styles.amount} />
     </li>
   );
 }

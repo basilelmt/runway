@@ -1,9 +1,8 @@
-import { ChevronDown, ChevronUp, GripVertical, ListFilter, Plus, Wand2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, ListFilter, Pencil, Plus, Trash2, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import type { SortingRule } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useApplySortingRules, useCreateSortingRule, useDeleteSortingRule, useEnvelopes, useReorderSortingRules, useSortingRules, useUpdateSortingRule } from '@/api/hooks';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { RuleTester } from '@/components/sorting/RuleTester';
 import { SortingRuleDialog } from '@/components/sorting/SortingRuleDialog';
 import { Button, Dot, EmptyState, SkeletonRows, useToast } from '@/components/ui';
@@ -11,7 +10,7 @@ import styles from './SortingRules.module.css';
 
 type DialogState = { open: false } | { open: true; rule: SortingRule | null };
 
-export function SortingRulesPage() {
+export function SortingRulesSettings() {
   const toast = useToast();
   const rules = useSortingRules();
   const envelopes = useEnvelopes();
@@ -43,28 +42,25 @@ export function SortingRulesPage() {
 
   const activeMutation = dialog.open && dialog.rule ? update : create;
   const applyAll = useApplySortingRules({
-    onSuccess: ({ assigned }) => toast.success(assigned === 0 ? 'Rien à ranger : aucune opération à trier ne correspond' : `${assigned} opération${assigned > 1 ? 's' : ''} rangée${assigned > 1 ? 's' : ''}`),
+    onSuccess: ({ assigned }) => toast.success(assigned === 0 ? 'Rien à ranger : aucune opération ne correspond' : `${assigned} opération${assigned > 1 ? 's' : ''} rangée${assigned > 1 ? 's' : ''}`),
     onError: (e) => toast.error(errorMessage(e)),
   });
 
   return (
-    <div className="page">
-      <PageHeader
-        title="Règles de tri"
-        subtitle="La première règle qui correspond l'emporte."
-        actions={
-          <>
-            <Button icon={<Wand2 />} onClick={() => applyAll.mutate()} loading={applyAll.isPending} disabled={(rules.data?.length ?? 0) === 0}>
-              Appliquer aux opérations à trier
-            </Button>
-            <Button variant="primary" icon={<Plus />} onClick={() => setDialog({ open: true, rule: null })}>
-              Nouvelle règle
-            </Button>
-          </>
-        }
-      />
-
-      <p className={styles.explain}>Le motif est cherché dans le libellé de chaque dépense importée, sans tenir compte de la casse ni des accents.</p>
+    <div className={styles.page}>
+      <div className={styles.toolbar}>
+        <p className={styles.explain}>
+          Chaque nouvelle dépense dont le libellé contient le motif est rangée dans l’enveloppe, sans tenir compte des majuscules ni des accents. La première règle qui correspond l’emporte.
+        </p>
+        <div className={styles.toolbarActions}>
+          <Button icon={<Wand2 />} onClick={() => applyAll.mutate()} loading={applyAll.isPending} disabled={(rules.data?.length ?? 0) === 0}>
+            Appliquer aux opérations à ranger
+          </Button>
+          <Button variant="primary" icon={<Plus />} onClick={() => setDialog({ open: true, rule: null })}>
+            Nouvelle règle
+          </Button>
+        </div>
+      </div>
 
       <RuleTester envelopes={envelopes.data ?? []} refreshKey={rules.dataUpdatedAt} />
 
@@ -88,7 +84,7 @@ export function SortingRulesPage() {
             return (
               <li
                 key={rule.id}
-                className={[styles.row, dragId === rule.id ? styles.dragging : '', overId === rule.id && dragId !== rule.id ? styles.over : ''].join(' ')}
+                className={['hover-row', styles.row, dragId === rule.id ? styles.dragging : '', overId === rule.id && dragId !== rule.id ? styles.over : ''].join(' ')}
                 draggable
                 onDragStart={(e) => {
                   setDragId(rule.id);
@@ -111,7 +107,7 @@ export function SortingRulesPage() {
                 <span className={styles.handle} aria-hidden>
                   <GripVertical />
                 </span>
-                <span className={['mono', styles.priority].join(' ')}>{i + 1}</span>
+                <span className={['num', styles.priority].join(' ')}>{i + 1}</span>
                 <span className={['mono', styles.pattern].join(' ')}>{rule.pattern}</span>
                 <span className={styles.arrow} aria-hidden>
                   →
@@ -126,20 +122,19 @@ export function SortingRulesPage() {
                   )}
                 </span>
                 <span className={styles.actions}>
-                  <Button size="sm" variant="ghost" aria-label="Monter" icon={<ChevronUp />} disabled={i === 0 || reorder.isPending} onClick={() => move(i, i - 1)} />
-                  <Button size="sm" variant="ghost" aria-label="Descendre" icon={<ChevronDown />} disabled={i === list.length - 1 || reorder.isPending} onClick={() => move(i, i + 1)} />
-                  <Button size="sm" variant="ghost" onClick={() => setDialog({ open: true, rule })}>
-                    Modifier
-                  </Button>
+                  <Button size="sm" variant="ghost" aria-label={`Monter « ${rule.pattern} »`} title="Monter" icon={<ChevronUp />} disabled={i === 0 || reorder.isPending} onClick={() => move(i, i - 1)} />
+                  <Button size="sm" variant="ghost" aria-label={`Descendre « ${rule.pattern} »`} title="Descendre" icon={<ChevronDown />} disabled={i === list.length - 1 || reorder.isPending} onClick={() => move(i, i + 1)} />
+                  <Button size="sm" variant="ghost" aria-label={`Modifier « ${rule.pattern} »`} title="Modifier" icon={<Pencil />} onClick={() => setDialog({ open: true, rule })} />
                   <Button
                     size="sm"
-                    variant="danger"
+                    variant="ghost"
+                    aria-label={`Supprimer « ${rule.pattern} »`}
+                    title="Supprimer"
+                    icon={<Trash2 />}
                     onClick={() => {
                       if (window.confirm(`Supprimer la règle « ${rule.pattern} » ?`)) remove.mutate(rule.id);
                     }}
-                  >
-                    Supprimer
-                  </Button>
+                  />
                 </span>
               </li>
             );

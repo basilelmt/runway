@@ -1,3 +1,27 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-8);
+  flex-wrap: wrap;
+}
+
+.intro {
+  color: var(--ink-mute);
+  font-size: var(--text-sm);
+  max-width: 52ch;
+}
+
+.chart {
+  padding-top: var(--s-2);
+}
+
 .horizon {
   display: flex;
   flex-direction: column;
@@ -10,14 +34,6 @@
 .horizon input[type='range'] {
   accent-color: var(--ink);
   width: 100%;
-}
-
-.clear {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  color: var(--marking-ink);
-  font-weight: 500;
 }
 
 .alertIcon {

@@ -1,17 +1,17 @@
 import { AlertTriangle, Landmark, Plane, WalletCards } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
 import { errorMessage } from '@/api/client';
 import { useForecast, useSettings } from '@/api/hooks';
 import { BalanceAreaChart } from '@/components/charts/BalanceAreaChart';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Amount, Badge, Card, EmptyState, Select, Skeleton, SkeletonRows } from '@/components/ui';
+import { RunwayStrip } from '@/components/dashboard/RunwayStrip';
+import { Amount, Badge, ButtonLink, EmptyState, Select, Skeleton, SkeletonRows } from '@/components/ui';
 import { formatDateShort, inDays, KIND_LABELS } from '@/lib/format';
-import styles from './Forecast.module.css';
+import styles from './Upcoming.module.css';
 
 type Series = `account-${number}` | `envelope-${number}`;
 
-export function ForecastPage() {
+/** Ce qui arrive : soldes projetés, découverts à venir, échéances. */
+export function Upcoming() {
   const settings = useSettings();
   const [horizon, setHorizon] = useState<number | null>(null);
   const effectiveHorizon = horizon ?? settings.data?.forecastHorizonDays ?? 90;
@@ -38,19 +38,18 @@ export function ForecastPage() {
   const hasInputs = (data?.events.length ?? 0) > 0;
 
   return (
-    <div className="page">
-      <PageHeader
-        title="Prévision"
-        subtitle="Soldes projetés à partir des récurrences et des opérations prévues."
-        actions={
-          <label className={styles.horizon}>
-            <span>
-              Horizon <strong className="mono">{effectiveHorizon} j</strong>
-            </span>
-            <input type="range" min={30} max={365} step={30} value={effectiveHorizon} onChange={(e) => setHorizon(Number(e.target.value))} aria-label="Horizon de prévision en jours" />
-          </label>
-        }
-      />
+    <div className={styles.view}>
+      <div className={styles.toolbar}>
+        <p className={styles.intro}>Soldes projetés à partir de tes charges fixes, des opérations prévues et du budget mensuel de tes enveloppes.</p>
+        <label className={styles.horizon}>
+          <span>
+            Horizon <strong className="num">{effectiveHorizon} jours</strong>
+          </span>
+          <input type="range" min={30} max={365} step={30} value={effectiveHorizon} onChange={(e) => setHorizon(Number(e.target.value))} aria-label="Horizon de prévision en jours" />
+        </label>
+      </div>
+
+      {data ? <RunwayStrip forecast={data} /> : null}
 
       {forecast.isPending ? (
         <SkeletonRows rows={3} />
@@ -58,11 +57,7 @@ export function ForecastPage() {
         <EmptyState title="Impossible de calculer la prévision" description={errorMessage(forecast.error)} />
       ) : (
         <>
-          {data!.alerts.length === 0 ? (
-            <Card tone="marking" padding="sm" className={styles.clear}>
-              <Plane size={18} aria-hidden /> Piste dégagée : rien ne passe dans le rouge sur {effectiveHorizon} jours.
-            </Card>
-          ) : (
+          {data!.alerts.length === 0 ? null : (
             <section>
               <div className="section-title">
                 <h2>
@@ -86,7 +81,7 @@ export function ForecastPage() {
                         {a.kind === 'account' ? <Landmark size={14} aria-label="Compte" /> : <WalletCards size={14} aria-label="Enveloppe" />}
                         {a.name}
                       </span>
-                      <span role="cell" className="mono">
+                      <span role="cell" className="num">
                         {formatDateShort(a.firstNegativeDate)}
                       </span>
                       <span role="cell">
@@ -106,8 +101,8 @@ export function ForecastPage() {
             <EmptyState
               icon={<Plane />}
               title="Rien à projeter pour l'instant"
-              description="Ajoute des récurrences pour voir plus loin : loyer, salaire, abonnements, budget mensuel."
-              action={<Link to="/recurrences">Créer une récurrence</Link>}
+              description="Ajoute tes charges fixes et revenus (loyer, salaire, abonnements) dans le Budget pour voir plus loin."
+              action={<ButtonLink to="/budget">Aller au Budget</ButtonLink>}
             />
           ) : (
             <section className={styles.chartSection}>
@@ -131,9 +126,9 @@ export function ForecastPage() {
                 </Select>
               </div>
               {selected ? (
-                <Card padding="sm">
+                <div className={styles.chart}>
                   <BalanceAreaChart data={selected.points} name={selected.name} today={data!.today} />
-                </Card>
+                </div>
               ) : (
                 <Skeleton height={260} />
               )}
@@ -156,12 +151,12 @@ export function ForecastPage() {
                           (e.kind === 'allocation' && e.fromEnvelopeId === selected.id);
                         return (
                           <div key={`${e.source}-${e.sourceId}-${e.date}-${i}`} className={styles.event}>
-                            <span className="mono muted">{formatDateShort(e.date)}</span>
+                            <span className="num muted">{formatDateShort(e.date)}</span>
                             <span className="grow">
                               {e.label} <span className="muted">· {KIND_LABELS[e.kind]}</span>
                             </span>
-                            <Badge tone={e.source === 'planned' ? 'info' : 'neutral'}>{e.source === 'planned' ? 'prévue' : 'récurrence'}</Badge>
-                            <Amount cents={outgoing ? -e.amount : e.amount} size="sm" tone={outgoing ? 'auto' : 'always'} />
+                            {e.source === 'rule' ? null : <Badge tone={e.source === 'planned' ? 'info' : 'neutral'}>{e.source === 'planned' ? 'prévue' : 'budget'}</Badge>}
+                            <Amount cents={outgoing ? -e.amount : e.amount} size="sm" tone={outgoing ? 'neutral' : 'always'} />
                           </div>
                         );
                       })}

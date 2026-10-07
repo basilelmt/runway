@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import type { ImportPreviewRow } from '@shared/api-types';
 import type { Account, Envelope } from '@shared/schemas';
 import { Amount, Badge, Button, Select } from '@/components/ui';
-import { formatDateShort, plural } from '@/lib/format';
+import { formatDateCompact, plural } from '@/lib/format';
 import styles from './ImportPreview.module.css';
 
 type ImportPreviewProps = {
@@ -55,7 +55,7 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
         onChange={(e) => update(row.index, { envelopeId: e.target.value ? Number(e.target.value) : null })}
         className={styles.select}
       >
-        <option value="">À trier</option>
+        <option value="">À ranger</option>
         {envelopes.map((env) => (
           <option key={env.id} value={env.id}>
             {env.name}
@@ -97,7 +97,7 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
       <Section title="Nouvelles" count={fresh.length}>
         {fresh.map((row) => (
           <div key={row.index} className={styles.row}>
-            <span className={[styles.date, 'mono'].join(' ')}>{formatDateShort(row.date)}</span>
+            <span className={[styles.date, 'num'].join(' ')}>{formatDateCompact(row.date)}</span>
             <span className={styles.label}>
               {row.label}
               {detached.has(row.index) ? <Badge tone="info">détachée</Badge> : null}
@@ -111,7 +111,7 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
       <Section title="Rapprochées" count={matched.length}>
         {matched.map((row) => (
           <div key={row.index} className={[styles.row, styles.matchedRow].join(' ')}>
-            <span className={[styles.date, 'mono'].join(' ')}>{formatDateShort(row.date)}</span>
+            <span className={[styles.date, 'num'].join(' ')}>{formatDateCompact(row.date)}</span>
             <span className={styles.label}>
               {row.label}
               <span className={styles.replaces}>↳ remplace la prévue « {row.plannedLabel} »</span>
@@ -129,7 +129,7 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
       <Section title="Doublons ignorés" count={duplicates.length} defaultOpen={false}>
         {duplicates.map((row) => (
           <div key={row.index} className={[styles.row, styles.duplicate].join(' ')} aria-disabled>
-            <span className={[styles.date, 'mono'].join(' ')}>{formatDateShort(row.date)}</span>
+            <span className={[styles.date, 'num'].join(' ')}>{formatDateCompact(row.date)}</span>
             <span className={styles.label}>{row.label}</span>
             <span className={styles.envelope}>{row.status === 'internal' ? <Badge tone="info">virement déjà saisi</Badge> : null}</span>
             <Amount cents={row.signedAmount} tone="neutral" className={styles.amount} />

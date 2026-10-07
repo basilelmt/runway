@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { accountInputSchema, type Account, type AccountInput } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useCreateAccount, useOverview, useUpdateAccount } from '@/api/hooks';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Amount, Badge, Button, Dialog, EmptyState, Field, Input, MoneyInput, SkeletonRows, useToast } from '@/components/ui';
 import { formatDateLong } from '@/lib/format';
 import styles from './Accounts.module.css';
@@ -80,13 +79,13 @@ function AccountDialog({ open, account, onClose }: AccountDialogProps) {
           {(id, describedBy) => <MoneyInput id={id} aria-describedby={describedBy} value={form.initialBalance} onChange={(c) => set('initialBalance', c)} allowNegative />}
         </Field>
         <label className={styles.check}>
-          <input type="checkbox" checked={form.onBudget} onChange={(e) => set('onBudget', e.target.checked)} />
+          <input type="checkbox" checked={!form.onBudget} onChange={(e) => set('onBudget', !e.target.checked)} />
           <span>
-            Inclus dans le budget
-            <span className={styles.checkHint}>L'argent de ce compte alimente "À répartir". Décoche pour un livret ou une épargne.</span>
+            Compte d’épargne
+            <span className={styles.checkHint}>Livret, assurance vie : son argent reste hors du budget, et ce que tu y verses compte comme mis de côté.</span>
           </span>
         </label>
-        <Field label="Numéro de compte bancaire" hint="Facultatif. Rempli automatiquement au premier import CSV." error={errors.bankAccountNumber}>
+        <Field label="Numéro de compte bancaire" hint="Facultatif. Rempli automatiquement au premier import." error={errors.bankAccountNumber}>
           {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={form.bankAccountNumber} onChange={(e) => set('bankAccountNumber', e.target.value)} className="mono" />}
         </Field>
         {serverError ? (
@@ -125,8 +124,8 @@ function ArchiveDialog({ account, onClose }: ArchiveDialogProps) {
       title={archiving ? 'Archiver ce compte ?' : 'Réactiver ce compte ?'}
       description={
         archiving
-          ? 'Le compte disparaît des listes et de la valeur nette. Ses opérations sont conservées.'
-          : 'Le compte réapparaît dans les listes et la valeur nette.'
+          ? 'Le compte disparaît des listes et du total. Ses opérations sont conservées.'
+          : 'Le compte réapparaît dans les listes et le total.'
       }
       size="sm"
       footer={
@@ -155,7 +154,7 @@ function ArchiveDialog({ account, onClose }: ArchiveDialogProps) {
   );
 }
 
-export function AccountsPage() {
+export function AccountsSettings() {
   const overview = useOverview();
   const all = useAccounts(true);
   const [creating, setCreating] = useState(false);
@@ -167,22 +166,19 @@ export function AccountsPage() {
   const active = overview.data?.accounts ?? [];
 
   return (
-    <div className="page">
-      <PageHeader
-        title="Comptes"
-        subtitle={
-          overview.data ? (
+    <div className={styles.page}>
+      <div className={styles.toolbar}>
+        <p className={styles.total}>
+          {overview.data ? (
             <>
-              Valeur nette <Amount cents={overview.data.netWorth} />
+              Total <Amount cents={overview.data.netWorth} tone="neutral" />
             </>
-          ) : undefined
-        }
-        actions={
-          <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
-            Nouveau compte
-          </Button>
-        }
-      />
+          ) : null}
+        </p>
+        <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
+          Nouveau compte
+        </Button>
+      </div>
 
       {overview.isPending ? (
         <SkeletonRows rows={3} />
@@ -204,15 +200,15 @@ export function AccountsPage() {
       ) : (
         <ul className={['ledger', styles.list].join(' ')}>
           {active.map((a) => (
-            <li key={a.id} className={styles.row}>
+            <li key={a.id} className={['hover-row', styles.row].join(' ')}>
               <div className={styles.main}>
                 <div className={styles.nameLine}>
                   <span className={styles.name}>{a.name}</span>
-                  {!a.onBudget ? <Badge tone="info">Hors budget</Badge> : null}
+                  {!a.onBudget ? <Badge>Épargne</Badge> : null}
                 </div>
                 <div className={styles.meta}>
                   {a.bankAccountNumber ? <span className="mono">{a.bankAccountNumber}</span> : null}
-                  {a.lastImport ? <span>Dernier import le {formatDateLong(a.lastImport.importedAt.slice(0, 10))}</span> : <span>Jamais importé</span>}
+                  {a.lastImport ? <span>Mis à jour le {formatDateLong(a.lastImport.importedAt.slice(0, 10))}</span> : <span>Jamais synchronisé</span>}
                 </div>
               </div>
               <Amount cents={a.balance} size="lg" />

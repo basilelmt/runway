@@ -47,8 +47,8 @@
 }
 
 .money {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   text-align: right;
 }
 

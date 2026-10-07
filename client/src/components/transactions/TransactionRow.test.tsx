@@ -6,7 +6,7 @@ import { TransactionRow } from './TransactionRow';
 
 const courant: Account = { id: 1, name: 'Courant', initialBalance: 0, onBudget: true, bankAccountNumber: null, archived: false, createdAt: '' };
 const livret: Account = { id: 2, name: 'Livret', initialBalance: 0, onBudget: false, bankAccountNumber: null, archived: false, createdAt: '' };
-const courses: Envelope = { id: 10, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false };
+const courses: Envelope = { id: 10, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false, isSavings: false };
 const accounts = new Map([[courant.id, courant], [livret.id, livret]]);
 const envelopes = new Map([[courses.id, courses]]);
 
@@ -54,7 +54,18 @@ describe('TransactionRow', () => {
     );
     expect(screen.getByText('+2 000,00 €')).toBeInTheDocument();
     expect(screen.getByText('Revenu')).toBeInTheDocument();
-    expect(screen.getByText('À trier')).toBeInTheDocument();
+    expect(screen.getByText('À ranger')).toBeInTheDocument();
+  });
+
+  it('masque une note qui ne fait que répéter le libellé, garde une vraie note', () => {
+    render(
+      <ul>
+        <TransactionRow transaction={tx({ id: 1, kind: 'expense', amount: 300, label: 'ACHAT CB Smovengo 03.10.26', note: 'ACHAT CB  Smovengo 03.10.26 CARTE NUMERO 089' })} accounts={accounts} envelopes={envelopes} />
+        <TransactionRow transaction={tx({ id: 2, kind: 'expense', amount: 500, label: 'Restaurant', note: 'Anniversaire de Léa' })} accounts={accounts} envelopes={envelopes} />
+      </ul>,
+    );
+    expect(screen.queryByText(/CARTE NUMERO 089/)).not.toBeInTheDocument();
+    expect(screen.getByText('Anniversaire de Léa')).toBeInTheDocument();
   });
 
   it('montre le badge Prévue et le bouton Confirmer', () => {

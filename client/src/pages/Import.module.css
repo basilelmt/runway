@@ -22,86 +22,28 @@
   max-width: 420px;
 }
 
-.history {
-  font-size: var(--text-sm);
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
 }
 
-.historyRow {
-  display: grid;
-  grid-template-columns: 150px 1fr 140px 90px 100px 80px;
-  gap: var(--s-3);
+.back {
+  display: inline-flex;
   align-items: center;
-  padding: var(--s-3) var(--s-2);
-}
-
-.historyHead {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  gap: var(--s-1);
+  align-self: flex-start;
   color: var(--ink-mute);
-  padding-top: 0;
-  padding-bottom: var(--s-2);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease-out);
 }
 
-.file {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.back:hover {
+  color: var(--ink);
 }
 
-.num {
-  text-align: right;
-}
-
-@media (max-width: 767px) {
-  .historyHead {
-    display: none;
-  }
-
-  .historyRow {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      'date account'
-      'file file'
-      'new matched';
-  }
-
-  .historyRow > :nth-child(1) {
-    grid-area: date;
-  }
-
-  .historyRow > :nth-child(2) {
-    grid-area: file;
-  }
-
-  .historyRow > :nth-child(3) {
-    grid-area: account;
-    text-align: right;
-  }
-
-  .historyRow > :nth-child(4)::before {
-    content: 'nouvelles ';
-    color: var(--ink-mute);
-    font-family: var(--font-body);
-  }
-
-  .historyRow > :nth-child(5)::before {
-    content: 'rapprochées ';
-    color: var(--ink-mute);
-    font-family: var(--font-body);
-  }
-
-  .historyRow > :nth-child(4) {
-    grid-area: new;
-    text-align: left;
-  }
-
-  .historyRow > :nth-child(5) {
-    grid-area: matched;
-    text-align: left;
-  }
-
-  .historyRow > :nth-child(6) {
-    display: none;
-  }
+.back :global(svg) {
+  width: 16px;
+  height: 16px;
 }

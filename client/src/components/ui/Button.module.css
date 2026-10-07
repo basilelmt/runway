@@ -13,6 +13,10 @@
     transform var(--dur) var(--ease-out);
 }
 
+.link {
+  text-decoration: none;
+}
+
 .button:active:not(:disabled) {
   transform: translateY(1px);
 }
@@ -33,6 +37,11 @@
   padding: 0 var(--s-3);
   font-size: var(--text-sm);
   border-radius: var(--radius-sm);
+}
+
+.iconOnly {
+  padding: 0;
+  aspect-ratio: 1;
 }
 
 .primary {

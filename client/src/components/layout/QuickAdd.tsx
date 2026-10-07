@@ -1,10 +1,10 @@
 import { Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useCreateTransaction } from '@/api/hooks';
 import { errorMessage } from '@/api/client';
-import { TransactionForm } from '@/components/transactions/TransactionForm';
+import { QuickEntry } from '@/components/transactions/QuickEntry';
 import { Dialog, useToast } from '@/components/ui';
-import { KIND_LABELS } from '@/lib/format';
+import { QuickAddContext } from './quick-add-context';
 import styles from './QuickAdd.module.css';
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -12,16 +12,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
-/** Bouton flottant "+" et raccourcis clavier globaux : `n` nouvelle opération, `/` recherche. */
-export function QuickAdd() {
+/**
+ * Saisie rapide d'une opération : bouton flottant sur mobile, `useQuickAdd()` ailleurs,
+ * et raccourcis clavier globaux : `n` nouvelle opération, `/` recherche.
+ */
+export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const toast = useToast();
-  const create = useCreateTransaction({
-    onSuccess: (t) => {
-      toast.success(`${KIND_LABELS[t.kind]} enregistrée`);
-      setOpen(false);
-    },
-  });
+  const create = useCreateTransaction();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -43,21 +42,37 @@ export function QuickAdd() {
   }, []);
 
   return (
-    <>
-      <button type="button" className={styles.fab} onClick={() => setOpen(true)} aria-label="Nouvelle opération" title="Nouvelle opération (n)">
+    <QuickAddContext.Provider value={() => setOpen(true)}>
+      {children}
+      <button type="button" className={styles.fab} onClick={() => setOpen(true)} aria-label="Nouvelle opération">
         <Plus aria-hidden />
       </button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Nouvelle opération">
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          create.reset();
+        }}
+        title="Nouvelle opération"
+        size="lg"
+      >
         {open ? (
-          <TransactionForm
-            key={String(open)}
-            onSubmit={(input) => create.mutate(input)}
-            onCancel={() => setOpen(false)}
+          <QuickEntry
+            resetKey={resetKey}
             submitting={create.isPending}
             serverError={create.error ? errorMessage(create.error) : null}
+            onSubmit={(input, again) =>
+              create.mutate(input, {
+                onSuccess: () => {
+                  toast.success(again ? 'Enregistrée. Au suivant.' : 'Opération enregistrée');
+                  if (again) setResetKey((k) => k + 1);
+                  else setOpen(false);
+                },
+              })
+            }
           />
         ) : null}
       </Dialog>
-    </>
+    </QuickAddContext.Provider>
   );
 }

@@ -7,7 +7,7 @@ const STALE_MINUTES = 60;
 
 /**
  * À l'ouverture de l'app, demande une synchronisation si la dernière date de plus d'une heure.
- * Silencieux sauf quand des opérations arrivent ; les erreurs restent visibles dans la carte Import.
+ * Silencieux sauf quand des opérations arrivent ; un retard ou une erreur apparaît dans « À faire » sur l'accueil.
  */
 export function useAutoBankSync(): void {
   const toast = useToast();

@@ -1,6 +1,5 @@
-import { ArrowRight, Landmark, RefreshCw, Settings } from 'lucide-react';
+import { ArrowRight, Landmark, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import type { BankConnectionView } from '@shared/api-types';
 import type { ISODate } from '@shared/dates';
 import type { Account } from '@shared/schemas';
@@ -14,9 +13,9 @@ import {
   useRunBankSync,
   useStartBankConnection,
 } from '@/api/hooks';
-import { Badge, Button, Card, Input, Select, SkeletonRows, useToast } from '@/components/ui';
+import { Badge, Button, Input, Select, SkeletonRows, useToast } from '@/components/ui';
 import { formatDateLong, formatDateTime, plural, syncSummary } from '@/lib/format';
-import styles from './BankSyncCard.module.css';
+import styles from './BankSyncPanel.module.css';
 
 const EXPIRY_WARNING_DAYS = 15;
 
@@ -49,9 +48,8 @@ const STATUS_LABEL: Record<BankConnectionView['status'], { label: string; tone: 
 
 type Auth = { connectionId: number; url: string };
 
-export function BankSyncCard() {
+export function BankSyncPanel() {
   const toast = useToast();
-  const navigate = useNavigate();
   const state = useBankSync();
   const accounts = useAccounts();
   const [auth, setAuth] = useState<Auth | null>(null);
@@ -99,9 +97,9 @@ export function BankSyncCard() {
 
   if (state.isPending) {
     return (
-      <Card className={styles.card}>
+      <div className={styles.card}>
         <SkeletonRows rows={2} />
-      </Card>
+      </div>
     );
   }
   if (!state.data) return null;
@@ -110,14 +108,12 @@ export function BankSyncCard() {
   const connection = visible.at(-1) ?? null;
 
   return (
-    <Card className={styles.card}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>
-          <Landmark aria-hidden />
-          Synchronisation bancaire
-        </h2>
-        {connection ? <Badge tone={STATUS_LABEL[connection.status].tone}>{STATUS_LABEL[connection.status].label}</Badge> : null}
-      </div>
+    <div className={styles.card}>
+      {connection ? (
+        <div className={styles.head}>
+          <Badge tone={STATUS_LABEL[connection.status].tone}>{STATUS_LABEL[connection.status].label}</Badge>
+        </div>
+      ) : null}
 
       {auth ? (
         <>
@@ -162,16 +158,11 @@ export function BankSyncCard() {
         </>
       ) : !state.data.configured ? (
         <>
-          <p className={styles.text}>Récupère tes opérations La Banque Postale automatiquement, à chaque ouverture de Runway. Il faut d'abord renseigner les identifiants Enable Banking.</p>
-          <div className={styles.actions}>
-            <Button variant="primary" icon={<Settings aria-hidden />} onClick={() => navigate('/parametres')}>
-              Configurer dans Paramètres
-            </Button>
-          </div>
+          <p className={styles.text}>Il faut d'abord renseigner l'accès Enable Banking, dans la section ci-dessous.</p>
         </>
       ) : !connection ? (
         <>
-          <p className={styles.text}>Récupère tes opérations La Banque Postale automatiquement, à chaque ouverture de Runway et sur demande. Les doublons, virements internes et opérations prévues sont traités comme pour un relevé.</p>
+          <p className={styles.text}>Les doublons, virements internes et opérations prévues sont traités comme pour un relevé.</p>
           <div className={styles.actions}>
             <Button variant="primary" icon={<Landmark aria-hidden />} loading={start.isPending} onClick={() => start.mutate(undefined)}>
               Connecter La Banque Postale
@@ -200,7 +191,7 @@ export function BankSyncCard() {
           }}
         />
       )}
-    </Card>
+    </div>
   );
 }
 

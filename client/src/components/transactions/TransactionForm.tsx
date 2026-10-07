@@ -153,10 +153,10 @@ export function TransactionForm({ initial, kinds = [...transactionKinds], submit
             </Field>
           ) : null}
           {values.kind === 'expense' ? (
-            <Field label="Enveloppe" error={errors.envelopeId} hint={values.envelopeId === null ? 'Sans enveloppe, la dépense ira dans "À trier"' : undefined}>
+            <Field label="Enveloppe" error={errors.envelopeId} hint={values.envelopeId === null ? 'Sans enveloppe, la dépense ira dans «\u00a0À\u00a0ranger\u00a0»' : undefined}>
               {(id, describedBy) => (
                 <Select id={id} aria-describedby={describedBy} value={values.envelopeId ?? ''} onChange={(e) => set('envelopeId', e.target.value ? Number(e.target.value) : null)}>
-                  <option value="">À trier plus tard</option>
+                  <option value="">À ranger plus tard</option>
                   {envelopeOptions}
                 </Select>
               )}
@@ -173,7 +173,7 @@ export function TransactionForm({ initial, kinds = [...transactionKinds], submit
                 value={values.fromEnvelopeId ?? TO_ALLOCATE}
                 onChange={(e) => set('fromEnvelopeId', e.target.value === TO_ALLOCATE ? null : Number(e.target.value))}
               >
-                <option value={TO_ALLOCATE}>À répartir</option>
+                <option value={TO_ALLOCATE}>Pas encore réparti</option>
                 {envelopeOptions}
               </Select>
             )}

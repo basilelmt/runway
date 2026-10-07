@@ -2,10 +2,7 @@
   display: flex;
   align-items: flex-end;
   gap: var(--s-4);
-  padding: var(--s-4);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
-  background: var(--paper-raised);
+  padding: var(--s-4) 0;
 }
 
 .field {

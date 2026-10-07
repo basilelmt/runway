@@ -1,213 +1,341 @@
-import { AlertTriangle, ArrowRight, Inbox, Landmark, Plus, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, ArrowRight, Check, ChevronRight, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import type { EnvelopeWithBalance, Overview } from '@shared/api-types';
+import { daysBetween, formatDateShort } from '@shared/dates';
+import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
-import { useCreateTransaction, useForecast, useOverview } from '@/api/hooks';
-import { Sparkline } from '@/components/charts/Sparkline';
-import { RunwayStrip } from '@/components/dashboard/RunwayStrip';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { TransactionForm } from '@/components/transactions/TransactionForm';
-import { Amount, Badge, Button, Card, Dialog, Dot, EmptyState, ProgressBar, Skeleton, SkeletonRows, useToast } from '@/components/ui';
-import { formatDateShort, inDays, plural } from '@/lib/format';
-import styles from './Dashboard.module.css';
+import { useIsMutating } from '@tanstack/react-query';
+import { keys, useBankSync, useOverview } from '@/api/hooks';
+import { EnvelopeDetailDialog } from '@/components/budget/EnvelopeDetailDialog';
+import { EnvelopeRow, EnvelopeRowHeader } from '@/components/budget/EnvelopeRow';
+import { Amount, Button, ButtonLink, EmptyState, ProgressBar, Skeleton } from '@/components/ui';
+import { bankSyncTodo } from '@/lib/bank';
+import { budgetOverIncome, monthProgress } from '@/lib/budget';
+import { plural } from '@/lib/format';
+import styles from './Home.module.css';
 
-export function DashboardPage() {
+const HOME_ENVELOPES = 6;
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const monthName = (iso: string) => capitalize(new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
+const longDay = (iso: string) =>
+  capitalize(new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
+
+export function HomePage() {
   const overview = useOverview();
-  const forecast = useForecast();
-  const toast = useToast();
-  const [dialog, setDialog] = useState<'allocate' | 'new' | null>(null);
-  const create = useCreateTransaction({
-    onSuccess: () => {
-      toast.success(dialog === 'allocate' ? 'Allocation enregistrée' : 'Opération enregistrée');
-      setDialog(null);
-    },
-  });
 
   if (overview.isError) {
     return (
       <div className="page">
-        <PageHeader title="Tableau de bord" />
-        <EmptyState title="Impossible de charger le tableau de bord" description={errorMessage(overview.error)} action={<Button onClick={() => overview.refetch()}>Réessayer</Button>} />
+        <EmptyState title="Impossible de charger l’accueil" description={errorMessage(overview.error)} action={<Button onClick={() => overview.refetch()}>Réessayer</Button>} />
       </div>
     );
   }
 
   const data = overview.data;
+  if (!data) return <HomeSkeleton />;
 
-  if (data && data.accounts.length === 0) {
+  if (data.accounts.length === 0) {
     return (
       <div className="page">
-        <PageHeader title="Tableau de bord" />
         <EmptyState
           icon={<Landmark />}
-          title="Commence par un compte"
-          description="Crée ton compte courant avec son solde actuel, puis des enveloppes pour découper ton budget."
+          title="Bienvenue sur Runway"
+          description="Commence par ton compte courant et son solde actuel. Tu découperas ensuite ton budget en enveloppes."
           action={
-            <Button variant="primary" onClick={() => undefined} icon={<ArrowRight />}>
-              <Link to="/comptes" className={styles.plainLink}>
-                Créer un compte
-              </Link>
-            </Button>
+            <ButtonLink to="/reglages/comptes" variant="primary" icon={<ArrowRight />}>
+              Créer un compte
+            </ButtonLink>
           }
         />
       </div>
     );
   }
 
+  const daysLeft = daysBetween(data.today, data.month.end);
+
   return (
     <div className="page">
-      <PageHeader
-        title="Tableau de bord"
-        actions={
+      <header className={styles.header}>
+        <p className={styles.date}>{longDay(data.today)}</p>
+        <h1 className={styles.title}>{monthName(data.today)}</h1>
+        <p className={styles.daysLeft}>{daysLeft === 0 ? 'Dernier jour du mois' : `Encore ${plural(daysLeft, 'jour')} ce mois-ci`}</p>
+      </header>
+
+      <MonthHero data={data} />
+      <TodoList data={data} />
+      <EnvelopesPreview data={data} />
+      <AccountsStrip data={data} />
+    </div>
+  );
+}
+
+function MonthHero({ data }: { data: Overview }) {
+  const { spent, budget, saved, variable } = data.month;
+  const progress = monthProgress(data.today, data.month.end);
+  const margin = budget - spent;
+  // Le rythme ne vaut que pour les dépenses courantes : le loyer tombe en début de mois, pas au fil des jours.
+  const pace = Math.round(variable.budget * progress) - variable.spent;
+
+  return (
+    <section className={styles.hero} aria-label="Ce mois-ci">
+      <div className={styles.heroMain}>
+        <p className="eyebrow">Dépensé ce mois-ci</p>
+        <div className={styles.heroFigure}>
+          <Amount cents={spent} size="xl" tone="neutral" animate />
+          {budget > 0 ? <span className={styles.heroBudget}>sur {formatEuros(budget)} prévus</span> : null}
+        </div>
+        {budget > 0 ? (
           <>
-            <Button variant="secondary" onClick={() => setDialog('allocate')} icon={<Sparkles />}>
-              Allouer
-            </Button>
-            <Button variant="primary" onClick={() => setDialog('new')} icon={<Plus />}>
-              Nouvelle opération
-            </Button>
-          </>
-        }
-      />
-
-      {forecast.data ? <RunwayStrip forecast={forecast.data} /> : <Skeleton height={96} />}
-
-      {data ? (
-        <>
-          <div className={styles.hero}>
-            <Card className={styles.toAllocate}>
-              <span className="eyebrow">À répartir</span>
-              <Amount cents={data.toAllocate} size="xl" />
-              <p className="muted">{data.toAllocate < 0 ? 'Tu as alloué plus que ce que tes comptes contiennent.' : 'Argent arrivé sur tes comptes, pas encore rangé dans une enveloppe.'}</p>
-              <div className={styles.heroLinks}>
-                {data.unsortedCount > 0 ? (
-                  <Link to="/a-trier" className={styles.unsortedLink}>
-                    <Badge tone="marking">
-                      <Inbox size={12} /> {plural(data.unsortedCount, 'opération à trier', 'opérations à trier')}
-                    </Badge>
-                  </Link>
-                ) : null}
-                {data.plannedCount > 0 ? (
-                  <Link to="/operations?status=planned" className={styles.plainLink}>
-                    <Badge tone="info">{plural(data.plannedCount, 'opération prévue', 'opérations prévues')}</Badge>
-                  </Link>
-                ) : null}
-              </div>
-            </Card>
-            <Card className={styles.netWorth}>
-              <div className="spread">
-                <span className="eyebrow">Valeur nette</span>
-                <span className="muted" style={{ fontSize: 'var(--text-xs)' }}>
-                  6 mois
-                </span>
-              </div>
-              <Amount cents={data.netWorth} size="lg" tone="neutral" />
-              <Sparkline data={data.netWorthSparkline} label="Valeur nette" />
-            </Card>
-          </div>
-
-          {data.alerts.length > 0 ? (
-            <Card tone="negative" padding="sm" className={styles.alerts}>
-              <div className="spread">
-                <h2 className={styles.alertsTitle}>
-                  <AlertTriangle size={16} aria-hidden /> {plural(data.alerts.length, 'découvert à venir', 'découverts à venir')}
-                </h2>
-                <Link to="/prevision" className={styles.plainLink}>
-                  Prévision
-                </Link>
-              </div>
-              <ul className={styles.alertList}>
-                {data.alerts.map((a) => (
-                  <li key={`${a.kind}-${a.id}`} className={styles.alertRow}>
-                    <span className={styles.alertName}>
-                      <Badge tone="neutral">{a.kind === 'account' ? 'Compte' : 'Enveloppe'}</Badge> {a.name}
-                    </span>
-                    <span className="muted">
-                      {formatDateShort(a.firstNegativeDate)} · {inDays(a.daysUntil)}
-                    </span>
-                    <Amount cents={a.minBalance} size="sm" />
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
-
-          <div className={styles.columns}>
-            <section>
-              <div className="section-title">
-                <h2>Comptes</h2>
-                <Link to="/comptes" className={styles.plainLink}>
-                  Gérer
-                </Link>
-              </div>
-              <div className="ledger">
-                {data.accounts.map((a) => (
-                  <div key={a.id} className={styles.accountRow}>
-                    <span className="grow">
-                      {a.name}
-                      {!a.onBudget ? (
-                        <span className="muted" style={{ fontSize: 'var(--text-xs)', marginLeft: 'var(--s-2)' }}>
-                          hors budget
-                        </span>
-                      ) : null}
-                    </span>
-                    <Amount cents={a.balance} />
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section>
-              <div className="section-title">
-                <h2>Enveloppes</h2>
-                <Link to="/enveloppes" className={styles.plainLink}>
-                  Gérer
-                </Link>
-              </div>
-              {data.envelopes.length === 0 ? (
-                <EmptyState title="Aucune enveloppe" description="Les enveloppes découpent ton argent par thème." action={<Link to="/enveloppes">Créer une enveloppe</Link>} />
-              ) : (
-                <div className="ledger">
-                  {data.envelopes.map((e) => {
-                    const ratio = e.monthlyTarget ? e.allocatedThisMonth / e.monthlyTarget : null;
-                    return (
-                      <div key={e.id} className={styles.envelopeRow}>
-                        <div className="spread">
-                          <span className={styles.envelopeName}>
-                            <Dot color={e.color} /> {e.name}
-                          </span>
-                          <Amount cents={e.balance} />
-                        </div>
-                        {ratio !== null ? (
-                          <div className={styles.envelopeTarget}>
-                            <ProgressBar ratio={ratio} color={e.color} label={`${e.name} : ${Math.round(ratio * 100)} % de l'objectif alloué`} tone={e.balance < 0 ? 'negative' : 'auto'} />
-                            <span className="muted">{Math.round(ratio * 100)} % de l'objectif</span>
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+            <ProgressBar ratio={spent / budget} size="md" color="var(--ink)" label={`${formatEuros(spent)} dépensés sur un budget de ${formatEuros(budget)}`} />
+            {variable.budget > 0 ? (
+              <div className={styles.variable}>
+                <div className={styles.variableHead}>
+                  <span>
+                    Dépenses courantes <span className={[styles.muted, styles.nowrap].join(' ')}>hors charges fixes</span>
+                  </span>
+                  <span className={['num', styles.nowrap].join(' ')}>
+                    {formatEuros(variable.spent)} <span className={styles.muted}>/ {formatEuros(variable.budget)}</span>
+                  </span>
                 </div>
-              )}
-            </section>
+                <ProgressBar
+                  ratio={variable.spent / variable.budget}
+                  color="var(--ink-soft)"
+                  label={`Dépenses courantes : ${formatEuros(variable.spent)} sur ${formatEuros(variable.budget)}`}
+                  marker={progress}
+                  markerLabel="Aujourd’hui"
+                />
+                <p className={[styles.pace, pace < 0 ? styles.paceOver : ''].join(' ')}>
+                  <strong className="num">{formatEuros(Math.abs(pace))}</strong> {pace >= 0 ? 'sous le' : 'au-dessus du'} rythme du mois. Le trait marque aujourd’hui.
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p className={styles.pace}>
+            Aucun budget mensuel pour l’instant. <Link to="/budget">Fixe un budget à tes enveloppes</Link> pour suivre ton rythme.
+          </p>
+        )}
+      </div>
+
+      <dl className={styles.stats}>
+        {budget > 0 ? (
+          <div className={styles.stat}>
+            <dt>{margin >= 0 ? 'Marge restante' : 'Budget dépassé de'}</dt>
+            <dd>
+              <Amount cents={Math.abs(margin)} size="lg" tone="neutral" className={margin < 0 ? styles.negative : ''} animate />
+            </dd>
+          </div>
+        ) : null}
+        <div className={styles.stat}>
+          <dt>Mis de côté</dt>
+          <dd>
+            <Amount cents={saved} size="lg" tone="neutral" className={saved > 0 ? styles.positive : saved < 0 ? styles.negative : ''} animate />
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+type Todo = { key: string; to: string; icon: ReactNode; text: ReactNode; tone?: 'alert' };
+
+function TodoList({ data }: { data: Overview }) {
+  const bank = useBankSync();
+  // Pendant la synchronisation automatique de l'ouverture, le retard est peut-être en train d'être rattrapé.
+  const syncing = useIsMutating({ mutationKey: keys.bankSyncRun }) > 0;
+  const todos: Todo[] = [];
+  const sync = bank.data && !syncing ? bankSyncTodo(bank.data, new Date()) : null;
+  if (sync) {
+    todos.push({ key: 'sync', to: '/reglages/banque', icon: <RefreshCw />, tone: sync.tone === 'alert' ? 'alert' : undefined, text: <>{sync.text}</> });
+  }
+  if (data.unsortedCount > 0) {
+    todos.push({ key: 'unsorted', to: '/operations?vue=a-ranger', icon: <Inbox />, text: <>{plural(data.unsortedCount, 'opération à ranger', 'opérations à ranger')} dans une enveloppe</> });
+  }
+  if (data.toAllocate < 0) {
+    todos.push({
+      key: 'over',
+      to: '/budget',
+      icon: <WalletCards />,
+      tone: 'alert',
+      text: <>Tu as réparti {formatEuros(-data.toAllocate)} de plus que ce que tes comptes contiennent</>,
+    });
+  } else if (data.toAllocate > 0 && data.month.toFund > 0) {
+    todos.push({
+      key: 'fund',
+      to: '/budget?repartir=1',
+      icon: <WalletCards />,
+      text: <>{formatEuros(Math.min(data.toAllocate, data.month.toFund))} à répartir pour compléter le budget du mois</>,
+    });
+  }
+  const overIncome = budgetOverIncome(data.month);
+  if (overIncome > 0) {
+    todos.push({
+      key: 'income',
+      to: '/budget',
+      icon: <WalletCards />,
+      tone: 'alert',
+      text: (
+        <>
+          Tes enveloppes prévoient {formatEuros(overIncome)} de plus que ton revenu
+          <span className={styles.todoDetail}>
+            {' '}
+            · <span className={styles.nowrap}>{formatEuros(data.month.planned)}</span> pour <span className={styles.nowrap}>{formatEuros(data.month.income)}</span> par mois
+          </span>
+        </>
+      ),
+    });
+  }
+  const alert = data.alerts[0];
+  if (alert) {
+    todos.push({
+      key: 'alert',
+      to: '/analyse?vue=a-venir',
+      icon: <AlertTriangle />,
+      tone: 'alert',
+      text: (
+        <>
+          {alert.kind === 'account' ? 'Le compte' : 'L’enveloppe'} {alert.name} passe dans le rouge {alert.daysUntil <= 0 ? 'dès aujourd’hui' : `le ${formatDateShort(alert.firstNegativeDate)}`}
+          <span className={styles.todoDetail}> · point bas {formatEuros(alert.minBalance)}</span>
+        </>
+      ),
+    });
+  }
+  const late = data.latePlanned;
+  const first = late[0];
+  if (first) {
+    todos.push({
+      key: 'planned',
+      to: '/operations?status=planned&period=all',
+      icon: <Clock />,
+      text:
+        late.length === 1 ? (
+          <>
+            {first.kind === 'income' ? 'Le revenu' : first.kind === 'transfer' ? 'Le virement' : 'Le prélèvement'} « {first.label} » de {formatEuros(first.amount)} prévu le {formatDateShort(first.date)} n’est pas passé
+            <span className={styles.todoDetail}> · confirme-le ou supprime-le</span>
+          </>
+        ) : (
+          <>
+            {late.length} opérations prévues ne sont pas passées
+            <span className={styles.todoDetail}> · confirme-les ou supprime-les</span>
+          </>
+        ),
+    });
+  }
+
+  return (
+    <section aria-labelledby="todo-title">
+      <div className="section-title">
+        <h2 id="todo-title">À faire</h2>
+      </div>
+      {todos.length === 0 ? (
+        <p className={styles.allClear}>
+          <Check aria-hidden /> Rien à faire. Tout est rangé et la piste est dégagée.
+        </p>
+      ) : (
+        <ul className={[styles.todos, 'stagger'].join(' ')}>
+          {todos.map((t) => (
+            <li key={t.key}>
+              <Link to={t.to} className={[styles.todo, t.tone === 'alert' ? styles.todoAlert : ''].join(' ')}>
+                <span className={styles.todoIcon} aria-hidden>
+                  {t.icon}
+                </span>
+                <span className={styles.todoText}>{t.text}</span>
+                <ChevronRight className={styles.todoChevron} aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function EnvelopesPreview({ data }: { data: Overview }) {
+  const spending = data.envelopes.filter((e) => !e.isSavings);
+  // Les plus serrées d'abord : part du budget déjà dépensée.
+  const tension = (e: (typeof spending)[number]) => (e.monthlyTarget ? e.spentThisMonth / e.monthlyTarget : e.spentThisMonth > 0 ? 0.5 : -1);
+  const shown = [...spending].sort((a, b) => tension(b) - tension(a)).slice(0, HOME_ENVELOPES);
+  const [detail, setDetail] = useState<EnvelopeWithBalance | null>(null);
+
+  return (
+    <section aria-labelledby="envelopes-title">
+      <div className="section-title">
+        <h2 id="envelopes-title">Enveloppes</h2>
+        <Link to="/budget" className="section-link">
+          {spending.length > HOME_ENVELOPES ? `Voir les ${spending.length}` : 'Voir le budget'} →
+        </Link>
+      </div>
+      {shown.length === 0 ? (
+        <EmptyState
+          icon={<WalletCards />}
+          title="Aucune enveloppe"
+          description="Une enveloppe est une part de ton argent réservée à un usage : courses, loyer, sorties."
+          action={<ButtonLink to="/budget">Créer une enveloppe</ButtonLink>}
+        />
+      ) : (
+        <>
+          <EnvelopeRowHeader />
+          <div className="ledger stagger">
+          {shown.map((e) => (
+            <EnvelopeRow key={e.id} envelope={e} onOpen={() => setDetail(e)} />
+          ))}
           </div>
         </>
-      ) : (
-        <SkeletonRows rows={5} />
       )}
+      <EnvelopeDetailDialog envelope={detail} onClose={() => setDetail(null)} />
+    </section>
+  );
+}
 
-      <Dialog open={dialog !== null} onClose={() => setDialog(null)} title={dialog === 'allocate' ? 'Allouer de l’argent' : 'Nouvelle opération'}>
-        {dialog ? (
-          <TransactionForm
-            key={dialog}
-            kinds={dialog === 'allocate' ? ['allocation'] : undefined}
-            submitLabel={dialog === 'allocate' ? 'Allouer' : 'Enregistrer'}
-            onSubmit={(input) => create.mutate(input)}
-            onCancel={() => setDialog(null)}
-            submitting={create.isPending}
-            serverError={create.error ? errorMessage(create.error) : null}
-          />
-        ) : null}
-      </Dialog>
+function AccountsStrip({ data }: { data: Overview }) {
+  return (
+    <section aria-labelledby="accounts-title" className={styles.accounts}>
+      <div className="section-title">
+        <h2 id="accounts-title">Comptes</h2>
+        <span className={styles.netWorth}>
+          Total <Amount cents={data.netWorth} tone="neutral" />
+        </span>
+      </div>
+      <ul className={styles.accountList}>
+        {data.accounts.map((a) => (
+          <li key={a.id} className={styles.account}>
+            <span className={styles.accountName}>
+              {a.name}
+              {!a.onBudget ? <span className={styles.accountKind}>Épargne</span> : null}
+            </span>
+            <Amount cents={a.balance} size="lg" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function HomeSkeleton() {
+  return (
+    <div className="page" aria-busy>
+      <div className={styles.header}>
+        <Skeleton width={140} height={14} />
+        <Skeleton width={260} height={40} />
+      </div>
+      <div className={styles.hero}>
+        <div className={styles.heroMain}>
+          <Skeleton width={120} height={12} />
+          <Skeleton width={280} height={64} />
+          <Skeleton height={10} />
+        </div>
+        <div className={styles.stats}>
+          <Skeleton width={140} height={48} />
+          <Skeleton width={140} height={48} />
+        </div>
+      </div>
+      <div className="stack">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} height={44} />
+        ))}
+      </div>
     </div>
   );
 }

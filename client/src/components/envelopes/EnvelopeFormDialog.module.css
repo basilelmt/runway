@@ -71,3 +71,27 @@
   gap: var(--s-2);
   margin-top: var(--s-2);
 }
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.check input {
+  margin-top: 3px;
+  accent-color: var(--ink);
+  width: 16px;
+  height: 16px;
+}
+
+.checkHint {
+  display: block;
+  font-weight: 400;
+  color: var(--ink-mute);
+  font-size: var(--text-xs);
+}

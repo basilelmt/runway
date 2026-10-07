@@ -1,0 +1,39 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import type { EnvelopeWithBalance } from '@shared/api-types';
+import { EnvelopeRow } from './EnvelopeRow';
+
+const courses: EnvelopeWithBalance = {
+  id: 1,
+  name: 'Courses',
+  color: '#4f8a5b',
+  monthlyTarget: 400_00,
+  sortOrder: 0,
+  archived: false,
+  isSavings: false,
+  balance: 250_00,
+  allocatedThisMonth: 400_00,
+  spentThisMonth: 150_00,
+  toFundThisMonth: 0,
+};
+
+describe('EnvelopeRow', () => {
+  it('affiche le dépensé face au budget et le disponible', () => {
+    render(<EnvelopeRow envelope={courses} />);
+    expect(screen.getByRole('progressbar', { name: 'Courses : 150,00 € dépensés sur 400,00 €' })).toBeInTheDocument();
+    expect(screen.getByText('250,00 €')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('un clic sur la ligne ouvre le détail, sans gêner les actions', async () => {
+    const onOpen = vi.fn();
+    const onEdit = vi.fn();
+    render(<EnvelopeRow envelope={courses} onOpen={onOpen} actions={<button onClick={onEdit}>Modifier</button>} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les dépenses de Courses' }));
+    expect(onOpen).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+    expect(onEdit).toHaveBeenCalledOnce();
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+});

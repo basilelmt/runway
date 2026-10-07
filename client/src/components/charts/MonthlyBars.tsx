@@ -4,9 +4,11 @@ import { formatMonth } from '@shared/dates';
 import { axisEuros, ChartTooltip } from './ChartTooltip';
 import styles from './chart.module.css';
 
+// Palette retenue : l'épargne, ce qu'on cherche à faire grandir, porte le seul accent.
 const SERIES = [
-  { key: 'income', name: 'Revenus', color: 'var(--positive)' },
-  { key: 'expense', name: 'Dépenses', color: 'var(--negative)' },
+  { key: 'income', name: 'Revenus', color: 'var(--ink-mute)' },
+  { key: 'expense', name: 'Dépenses', color: 'var(--ink)' },
+  { key: 'saved', name: 'Mis de côté', color: 'var(--marking)' },
 ] as const;
 
 const shortFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'short', year: '2-digit' });
@@ -22,7 +24,7 @@ export function MonthlyBars({ data, height = 240 }: { data: MonthlyReport; heigh
     <div>
       <div className={styles.wrap} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} barGap={2} barCategoryGap="28%">
+          <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} barGap={2} barCategoryGap="24%">
             <CartesianGrid vertical={false} />
             <XAxis dataKey="month" tickFormatter={shortMonth} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
             <YAxis tickFormatter={axisEuros} width={64} tickLine={false} axisLine={false} />
@@ -38,7 +40,7 @@ export function MonthlyBars({ data, height = 240 }: { data: MonthlyReport; heigh
               }
             />
             {SERIES.map((s) => (
-              <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} isAnimationActive={false} maxBarSize={28} />
+              <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[3, 3, 0, 0]} isAnimationActive={false} maxBarSize={18} />
             ))}
           </BarChart>
         </ResponsiveContainer>

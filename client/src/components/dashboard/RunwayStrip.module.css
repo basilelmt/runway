@@ -26,11 +26,6 @@
   color: var(--negative);
 }
 
-.link {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
 /* La piste : fond encre, ligne centrale en marquages jaunes, graduations hebdomadaires. */
 .strip {
   position: relative;
@@ -56,19 +51,6 @@
   transform: translateY(-50%);
   background: repeating-linear-gradient(90deg, var(--marking) 0 22px, transparent 22px 36px);
   opacity: 0.9;
-  animation: taxi 1.6s linear infinite;
-}
-
-@keyframes taxi {
-  to {
-    background-position: 36px 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .centerline {
-    animation: none;
-  }
 }
 
 .danger {
@@ -162,5 +144,60 @@
 @media (max-width: 767px) {
   .statusText {
     font-size: var(--text-md);
+  }
+}
+
+/* L'avion : roule depuis aujourd'hui, s'arrête avant le rouge ou décolle en bout de piste */
+.plane {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  color: var(--tarmac-ink);
+  transform: translate(-50%, -50%) rotate(45deg);
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.5));
+}
+
+.plane :global(svg) {
+  width: 20px;
+  height: 20px;
+}
+
+.halt {
+  animation: taxi 1.6s 300ms cubic-bezier(0.3, 0, 0.2, 1) forwards;
+}
+
+.takeoff {
+  animation: takeoff 2.2s 300ms cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+
+@keyframes taxi {
+  to {
+    left: var(--stop);
+  }
+}
+
+@keyframes takeoff {
+  70% {
+    left: 82%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    opacity: 1;
+  }
+  to {
+    left: 100%;
+    transform: translate(-50%, -160%) rotate(30deg) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halt {
+    animation: none;
+    left: var(--stop);
+  }
+
+  .takeoff {
+    display: none;
   }
 }

@@ -1,22 +1,60 @@
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Upload } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { Transaction } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useAccounts, useConfirmTransaction, useEnvelopes, useTransactions } from '@/api/hooks';
+import { useAccounts, useConfirmTransaction, useEnvelopes, useOverview, useTransactions } from '@/api/hooks';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuickAdd } from '@/components/layout/quick-add-context';
 import { TransactionEditDialog } from '@/components/transactions/TransactionEditDialog';
 import { filtersFromParams, filtersToParams, toApiFilter, TransactionFilters, type FiltersState } from '@/components/transactions/TransactionFilters';
 import { TransactionRow } from '@/components/transactions/TransactionRow';
+import { UnsortedList } from '@/components/transactions/UnsortedList';
 import { signedAmount } from '@/components/transactions/signed';
-import { Amount, EmptyState, SkeletonRows, useToast } from '@/components/ui';
+import { Amount, Button, ButtonLink, EmptyState, SkeletonRows, Tabs, useToast } from '@/components/ui';
 import { plural, relativeDay } from '@/lib/format';
-import styles from './Transactions.module.css';
+import styles from './Operations.module.css';
 
-export function TransactionsPage() {
+type View = 'toutes' | 'a-ranger';
+
+export function OperationsPage() {
+  const [params, setParams] = useSearchParams();
+  const overview = useOverview();
+  const view: View = params.get('vue') === 'a-ranger' ? 'a-ranger' : 'toutes';
+  const unsorted = overview.data?.unsortedCount ?? 0;
+
+  return (
+    <div className="page">
+      <PageHeader
+        title="Opérations"
+        subtitle="Tout ce qui passe sur tes comptes. La synchronisation bancaire les ajoute toute seule."
+        actions={
+          <ButtonLink to="/operations/importer" icon={<Upload />}>
+            Importer un relevé
+          </ButtonLink>
+        }
+      />
+      <div className={styles.body}>
+        <Tabs<View>
+          label="Vue des opérations"
+          value={view}
+          onChange={(v) => setParams(v === 'a-ranger' ? { vue: 'a-ranger' } : {}, { replace: true })}
+          items={[
+            { value: 'toutes', label: 'Toutes' },
+            { value: 'a-ranger', label: 'À ranger', count: unsorted },
+          ]}
+        />
+        {view === 'a-ranger' ? <UnsortedList /> : <AllTransactions />}
+      </div>
+    </div>
+  );
+}
+
+function AllTransactions() {
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => filtersFromParams(params), [params]);
   const setFilters = useCallback((next: FiltersState) => setParams(filtersToParams(next), { replace: true }), [setParams]);
+  const openQuickAdd = useQuickAdd();
 
   const accounts = useAccounts(true);
   const envelopes = useEnvelopes(true);
@@ -28,46 +66,66 @@ export function TransactionsPage() {
   const accountMap = useMemo(() => new Map((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const envelopeMap = useMemo(() => new Map((envelopes.data ?? []).map((e) => [e.id, e])), [envelopes.data]);
 
+  // Les répartitions ne touchent aucun compte : elles n'apparaissent que quand on regarde une enveloppe.
+  const visible = useMemo(() => (transactions.data ?? []).filter((t) => t.kind !== 'allocation' || filters.envelope !== undefined), [transactions.data, filters.envelope]);
+
   const groups = useMemo(() => {
     const byDay = new Map<string, Transaction[]>();
-    for (const t of transactions.data ?? []) {
+    for (const t of visible) {
       const list = byDay.get(t.date) ?? [];
       list.push(t);
       byDay.set(t.date, list);
     }
     return [...byDay.entries()];
-  }, [transactions.data]);
+  }, [visible]);
 
-  const total = useMemo(
-    () => (transactions.data ?? []).filter((t) => t.kind !== 'allocation' && t.status === 'confirmed').reduce((s, t) => s + signedAmount(t, filters.account), 0),
-    [transactions.data, filters.account],
-  );
+  const totals = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const t of visible) {
+      if (t.kind === 'allocation' || t.status !== 'confirmed') continue;
+      const s = signedAmount(t, filters.account);
+      if (s > 0) income += s;
+      else expense -= s;
+    }
+    return { income, expense };
+  }, [visible, filters.account]);
 
   return (
-    <div className="page">
-      <PageHeader
-        title="Opérations"
-        subtitle={
-          transactions.data ? (
-            <>
-              {plural(transactions.data.length, 'opération')}, net <Amount cents={total} tone="always" />
-            </>
-          ) : undefined
-        }
-      />
-
+    <div className={styles.all}>
       <TransactionFilters value={filters} onChange={setFilters} accounts={(accounts.data ?? []).filter((a) => !a.archived)} envelopes={(envelopes.data ?? []).filter((e) => !e.archived)} />
 
+      {visible.length > 0 ? (
+        <p className={styles.summary}>
+          <span>{plural(visible.length, 'opération')}</span>
+          <span>
+            Entrées <Amount cents={totals.income} tone="neutral" />
+          </span>
+          <span>
+            Sorties <Amount cents={totals.expense} tone="neutral" />
+          </span>
+        </p>
+      ) : null}
+
       {transactions.isPending ? (
-        <SkeletonRows rows={6} />
+        <SkeletonRows rows={8} />
       ) : transactions.error ? (
         <p className={styles.error} role="alert">
           {errorMessage(transactions.error)}
         </p>
       ) : groups.length === 0 ? (
-        <EmptyState icon={<ArrowLeftRight />} title="Aucune opération" description="Rien sur cette période avec ces filtres. Appuie sur n pour en saisir une." />
+        <EmptyState
+          icon={<ArrowLeftRight />}
+          title="Aucune opération"
+          description="Rien sur cette période avec ces filtres."
+          action={
+            <Button variant="secondary" onClick={openQuickAdd}>
+              Saisir une opération
+            </Button>
+          }
+        />
       ) : (
-        <div className={styles.groups}>
+        <div className={[styles.groups, 'stagger'].join(' ')}>
           {groups.map(([date, list]) => (
             <section key={date} className={styles.group}>
               <h2 className={styles.day}>{relativeDay(date)}</h2>

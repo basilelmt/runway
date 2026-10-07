@@ -16,9 +16,12 @@ import type {
 import type {
   Account,
   AccountInput,
+  AccountPatch,
   BankLinkInput,
   Envelope,
+  EnvelopeFund,
   EnvelopeInput,
+  EnvelopePatch,
   ImportRecord,
   RecurringRule,
   RecurringRuleInput,
@@ -50,6 +53,7 @@ export const keys = {
   netWorth: (months: number, horizon: number) => ['reports', 'net-worth', months, horizon] as const,
   imports: ['imports'] as const,
   bankSync: ['bank-sync'] as const,
+  bankSyncRun: ['bank-sync', 'run'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -105,7 +109,7 @@ export function useCreateAccount(opts?: MutOpts<Account, AccountInput>) {
   return useMutation({ ...opts, mutationFn: (input) => api.post<Account>('/api/accounts', input), onSuccess: (...a) => { invalidate(['accounts']); opts?.onSuccess?.(...a); } });
 }
 
-export function useUpdateAccount(opts?: MutOpts<Account, { id: number } & Partial<AccountInput> & { archived?: boolean }>) {
+export function useUpdateAccount(opts?: MutOpts<Account, { id: number } & AccountPatch>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: ({ id, ...input }) => api.patch<Account>(`/api/accounts/${id}`, input), onSuccess: (...a) => { invalidate(['accounts']); opts?.onSuccess?.(...a); } });
 }
@@ -120,9 +124,14 @@ export function useCreateEnvelope(opts?: MutOpts<Envelope, EnvelopeInput>) {
   return useMutation({ ...opts, mutationFn: (input) => api.post<Envelope>('/api/envelopes', input), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });
 }
 
-export function useUpdateEnvelope(opts?: MutOpts<Envelope, { id: number } & Partial<EnvelopeInput> & { archived?: boolean }>) {
+export function useUpdateEnvelope(opts?: MutOpts<Envelope, { id: number } & EnvelopePatch>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: ({ id, ...input }) => api.patch<Envelope>(`/api/envelopes/${id}`, input), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });
+}
+
+export function useFundEnvelopes(opts?: MutOpts<Transaction[], EnvelopeFund>) {
+  const invalidate = useInvalidate();
+  return useMutation({ ...opts, mutationFn: (input) => api.post<Transaction[]>('/api/envelopes/fund', input), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
 }
 
 export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
@@ -292,6 +301,7 @@ export function useRunBankSync(opts?: MutOpts<BankSyncRunResult, number | undefi
   const invalidate = useInvalidate();
   return useMutation({
     ...opts,
+    mutationKey: keys.bankSyncRun,
     mutationFn: (onlyIfStaleMinutes) => api.post<BankSyncRunResult>('/api/bank-sync/run', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}),
     onSuccess: (...a) => {
       if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts']);

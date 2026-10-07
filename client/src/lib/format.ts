@@ -5,8 +5,8 @@ import type { TransactionKind } from '@shared/schemas';
 export const KIND_LABELS: Record<TransactionKind, string> = {
   expense: 'Dépense',
   income: 'Revenu',
-  transfer: 'Transfert',
-  allocation: 'Allocation',
+  transfer: 'Virement',
+  allocation: 'Répartition',
 };
 
 export const FREQUENCY_LABELS = {
@@ -27,6 +27,11 @@ export function relativeDay(iso: string): string {
 }
 
 export { formatDateLong, formatDateShort };
+
+/** Date courte, avec l'année quand ce n'est pas l'année en cours : « 5 oct. », « 22 déc. 2025 ». */
+export function formatDateCompact(iso: string): string {
+  return iso.slice(0, 4) === today().slice(0, 4) ? formatDateShort(iso) : `${formatDateShort(iso)} ${iso.slice(0, 4)}`;
+}
 
 export function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
   return `${n} ${n > 1 ? pluralForm : singular}`;

@@ -32,7 +32,7 @@ function renderForm(onSubmit = vi.fn()) {
 describe('TransactionForm', () => {
   it('refuse un transfert vers le même compte et affiche le message', async () => {
     const onSubmit = renderForm();
-    await userEvent.click(screen.getByRole('radio', { name: 'Transfert' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Virement' }));
     await userEvent.type(screen.getByLabelText('Montant'), '10');
     await userEvent.type(screen.getByLabelText('Libellé'), 'Épargne');
     const from = await screen.findByLabelText('Depuis le compte');

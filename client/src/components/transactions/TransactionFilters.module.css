@@ -4,8 +4,16 @@
   gap: var(--s-3);
 }
 
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
 .search {
   position: relative;
+  flex: 1 1 280px;
 }
 
 .searchIcon {
@@ -33,20 +41,13 @@
   width: auto;
 }
 
-.selects {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex-wrap: wrap;
-}
-
-.selects > :global(select) {
+.line > .select {
   width: auto;
-  min-width: 160px;
+  min-width: 180px;
 }
 
 @media (max-width: 767px) {
-  .selects > :global(select) {
+  .line > .select {
     flex: 1 1 calc(50% - var(--s-1));
     min-width: 0;
   }

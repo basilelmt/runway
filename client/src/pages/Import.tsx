@@ -1,13 +1,14 @@
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import type { ImportPreviewRow } from '@shared/api-types';
 import { errorMessage } from '@/api/client';
-import { useAccounts, useCommitImport, useEnvelopes, useImports, usePreviewImport, type ImportPreviewWithFile } from '@/api/hooks';
+import { useAccounts, useCommitImport, useEnvelopes, usePreviewImport, type ImportPreviewWithFile } from '@/api/hooks';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { BankSyncCard } from '@/components/import/BankSyncCard';
 import { DropZone } from '@/components/import/DropZone';
 import { ImportPreview } from '@/components/import/ImportPreview';
-import { Card, EmptyState, Field, Select, SkeletonRows, useToast } from '@/components/ui';
-import { formatDateLong, plural } from '@/lib/format';
+import { Card, Field, Select, useToast } from '@/components/ui';
+import { plural } from '@/lib/format';
 import styles from './Import.module.css';
 
 type Draft = { file: File; preview: ImportPreviewWithFile; rows: ImportPreviewRow[] };
@@ -16,7 +17,6 @@ export function ImportPage() {
   const toast = useToast();
   const accounts = useAccounts();
   const envelopes = useEnvelopes();
-  const imports = useImports();
   const [draft, setDraft] = useState<Draft | null>(null);
 
   const preview = usePreviewImport({
@@ -60,9 +60,15 @@ export function ImportPage() {
 
   return (
     <div className="page">
-      <PageHeader title="Import" subtitle="Synchronisation bancaire ou relevés CSV et PDF de La Banque Postale. Les doublons sont ignorés, les opérations prévues sont rapprochées, les virements entre tes comptes sont reconnus." />
-
-      <BankSyncCard />
+      <div className={styles.head}>
+        <Link to="/operations" className={styles.back}>
+          <ArrowLeft aria-hidden /> Opérations
+        </Link>
+        <PageHeader
+          title="Importer un relevé"
+          subtitle="Relevés CSV ou PDF de La Banque Postale. Utile pour l’historique ancien : au quotidien, la synchronisation bancaire s’en charge. Les doublons sont ignorés et les opérations prévues sont rapprochées."
+        />
+      </div>
 
       {draft === null ? (
         <DropZone busy={preview.isPending} onFile={(file) => preview.mutate({ file })} />
@@ -142,37 +148,6 @@ export function ImportPage() {
         </Card>
       )}
 
-      <section>
-        <div className="section-title">
-          <h2>Historique</h2>
-        </div>
-        {imports.isPending ? (
-          <SkeletonRows rows={3} />
-        ) : imports.data && imports.data.length > 0 ? (
-          <div className={['ledger', styles.history].join(' ')}>
-            <div className={[styles.historyRow, styles.historyHead].join(' ')} aria-hidden>
-              <span>Date</span>
-              <span>Fichier</span>
-              <span>Compte</span>
-              <span className={styles.num}>Nouvelles</span>
-              <span className={styles.num}>Rapprochées</span>
-              <span className={styles.num}>Doublons</span>
-            </div>
-            {imports.data.map((imp) => (
-              <div key={imp.id} className={styles.historyRow}>
-                <span className="mono">{formatDateLong(imp.importedAt.slice(0, 10))}</span>
-                <span className={styles.file}>{imp.fileName}</span>
-                <span>{accountName(imp.accountId)}</span>
-                <span className={['mono', styles.num].join(' ')}>{imp.newCount}</span>
-                <span className={['mono', styles.num].join(' ')}>{imp.matchedCount}</span>
-                <span className={['mono', styles.num, 'muted'].join(' ')}>{imp.duplicateCount}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="Aucun import pour le moment" description="Le premier relevé importé apparaîtra ici avec son nombre d'opérations." />
-        )}
-      </section>
     </div>
   );
 }

@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { today } from '@shared/dates';
-import { recurringRuleInputSchema, transactionKinds, type Frequency, type RecurringRule, type RecurringRuleInput, type TransactionKind } from '@shared/schemas';
+import { recurringRuleInputSchema, type Frequency, type RecurringRule, type RecurringRuleInput, type TransactionKind } from '@shared/schemas';
 import { useAccounts, useEnvelopes } from '@/api/hooks';
 import { Button, DateInput, Field, Input, MoneyInput, Segmented, Select } from '@/components/ui';
 import { FREQUENCY_LABELS, KIND_LABELS } from '@/lib/format';
 import styles from './RecurringRuleForm.module.css';
 
+/** Le budget mensuel des enveloppes remplace les règles d'allocation. */
+type RuleKind = Exclude<TransactionKind, 'allocation'>;
+
 type Values = {
   name: string;
-  kind: TransactionKind;
+  kind: RuleKind;
   amount: number | null;
   label: string;
   accountId: number | null;
@@ -30,15 +33,15 @@ type Props = {
   onCancel: () => void;
 };
 
-const TO_ALLOCATE = 'to-allocate';
-const KIND_OPTIONS = transactionKinds.map((k) => ({ value: k, label: KIND_LABELS[k] }));
+const RULE_KINDS: RuleKind[] = ['expense', 'income', 'transfer'];
+const KIND_OPTIONS = RULE_KINDS.map((k) => ({ value: k, label: KIND_LABELS[k] }));
 const FREQUENCY_OPTIONS = (Object.keys(FREQUENCY_LABELS) as Frequency[]).map((f) => ({ value: f, label: FREQUENCY_LABELS[f] }));
 
 function initialValues(initial?: RecurringRule): Values {
   const start = initial?.startDate ?? today();
   return {
     name: initial?.name ?? '',
-    kind: initial?.kind ?? 'expense',
+    kind: initial && initial.kind !== 'allocation' ? initial.kind : 'expense',
     amount: initial?.amount ?? null,
     label: initial?.label ?? '',
     accountId: initial?.accountId ?? null,
@@ -53,23 +56,23 @@ function initialValues(initial?: RecurringRule): Values {
   };
 }
 
-function toInput(v: Values): unknown {
+function toInput(v: Values, active: boolean): unknown {
   const monthly = v.frequency === 'monthly' || v.frequency === 'yearly';
   return {
     name: v.name.trim(),
     kind: v.kind,
     amount: v.amount ?? 0,
     label: v.label.trim() || v.name.trim(),
-    accountId: v.kind === 'allocation' ? null : v.accountId,
+    accountId: v.accountId,
     toAccountId: v.kind === 'transfer' ? v.toAccountId : null,
-    envelopeId: v.kind === 'expense' || v.kind === 'allocation' ? v.envelopeId : null,
-    fromEnvelopeId: v.kind === 'allocation' ? v.fromEnvelopeId : null,
+    envelopeId: v.kind === 'expense' ? v.envelopeId : null,
+    fromEnvelopeId: null,
     frequency: v.frequency,
     interval: Number(v.interval) || 1,
     dayOfMonth: monthly ? Number(v.dayOfMonth) || null : null,
     startDate: v.startDate,
     endDate: v.endDate || null,
-    active: true,
+    active,
   };
 }
 
@@ -90,7 +93,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
 
   function submit(e: { preventDefault(): void }) {
     e.preventDefault();
-    const parsed = recurringRuleInputSchema.safeParse(toInput(effective));
+    const parsed = recurringRuleInputSchema.safeParse(toInput(effective, initial?.active ?? true));
     if (!parsed.success) {
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
@@ -134,57 +137,36 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
         {(id, by) => <Input id={id} aria-describedby={by} value={values.label} onChange={(e) => set('label', e.target.value)} placeholder={values.name || 'Loyer'} />}
       </Field>
 
-      {values.kind !== 'allocation' ? (
-        <div className={styles.grid}>
-          <Field label={values.kind === 'transfer' ? 'Depuis le compte' : 'Compte'} error={errors.accountId}>
+      <div className={styles.grid}>
+        <Field label={values.kind === 'transfer' ? 'Depuis le compte' : 'Compte'} error={errors.accountId}>
+          {(id, by) => (
+            <Select id={id} aria-describedby={by} value={effective.accountId ?? ''} onChange={(e) => set('accountId', e.target.value ? Number(e.target.value) : null)}>
+              <option value="">Choisir</option>
+              {accountOptions}
+            </Select>
+          )}
+        </Field>
+        {values.kind === 'transfer' ? (
+          <Field label="Vers le compte" error={errors.toAccountId}>
             {(id, by) => (
-              <Select id={id} aria-describedby={by} value={effective.accountId ?? ''} onChange={(e) => set('accountId', e.target.value ? Number(e.target.value) : null)}>
+              <Select id={id} aria-describedby={by} value={values.toAccountId ?? ''} onChange={(e) => set('toAccountId', e.target.value ? Number(e.target.value) : null)}>
                 <option value="">Choisir</option>
                 {accountOptions}
               </Select>
             )}
           </Field>
-          {values.kind === 'transfer' ? (
-            <Field label="Vers le compte" error={errors.toAccountId}>
-              {(id, by) => (
-                <Select id={id} aria-describedby={by} value={values.toAccountId ?? ''} onChange={(e) => set('toAccountId', e.target.value ? Number(e.target.value) : null)}>
-                  <option value="">Choisir</option>
-                  {accountOptions}
-                </Select>
-              )}
-            </Field>
-          ) : null}
-          {values.kind === 'expense' ? (
-            <Field label="Enveloppe" error={errors.envelopeId}>
-              {(id, by) => (
-                <Select id={id} aria-describedby={by} value={values.envelopeId ?? ''} onChange={(e) => set('envelopeId', e.target.value ? Number(e.target.value) : null)}>
-                  <option value="">À trier</option>
-                  {envelopeOptions}
-                </Select>
-              )}
-            </Field>
-          ) : null}
-        </div>
-      ) : (
-        <div className={styles.grid}>
-          <Field label="Depuis" error={errors.fromEnvelopeId}>
-            {(id, by) => (
-              <Select id={id} aria-describedby={by} value={values.fromEnvelopeId ?? TO_ALLOCATE} onChange={(e) => set('fromEnvelopeId', e.target.value === TO_ALLOCATE ? null : Number(e.target.value))}>
-                <option value={TO_ALLOCATE}>À répartir</option>
-                {envelopeOptions}
-              </Select>
-            )}
-          </Field>
-          <Field label="Vers l'enveloppe" error={errors.envelopeId}>
+        ) : null}
+        {values.kind === 'expense' ? (
+          <Field label="Enveloppe" error={errors.envelopeId}>
             {(id, by) => (
               <Select id={id} aria-describedby={by} value={values.envelopeId ?? ''} onChange={(e) => set('envelopeId', e.target.value ? Number(e.target.value) : null)}>
-                <option value="">Choisir</option>
+                <option value="">À ranger</option>
                 {envelopeOptions}
               </Select>
             )}
           </Field>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       <fieldset className={styles.fieldset}>
         <legend className="eyebrow">Fréquence</legend>
@@ -230,7 +212,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
           Annuler
         </Button>
         <Button type="submit" variant="primary" loading={submitting}>
-          {initial ? 'Enregistrer' : 'Créer la règle'}
+          {initial ? 'Enregistrer' : 'Ajouter'}
         </Button>
       </div>
     </form>

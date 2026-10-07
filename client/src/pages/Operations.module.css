@@ -1,7 +1,37 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.all {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-6);
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
+}
+
+.summary > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.summary :global(.num) {
+  color: var(--ink);
+}
+
 .groups {
   display: flex;
   flex-direction: column;
-  gap: var(--s-5);
+  gap: var(--s-8);
 }
 
 .day {
@@ -11,7 +41,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-mute);
-  margin-bottom: var(--s-1);
+  margin-bottom: var(--s-2);
 }
 
 .list {

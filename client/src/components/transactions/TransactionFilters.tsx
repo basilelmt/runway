@@ -103,24 +103,24 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
 
   return (
     <div className={styles.filters}>
-      <div className={styles.search}>
-        <Search className={styles.searchIcon} aria-hidden />
-        <Input type="search" placeholder="Rechercher un libellé (/)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" className={styles.searchInput} />
+      <div className={styles.line}>
+        <div className={styles.search}>
+          <Search className={styles.searchIcon} aria-hidden />
+          <Input type="search" placeholder="Rechercher un libellé (/)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" className={styles.searchInput} />
+        </div>
+        <Segmented
+          label="Période"
+          value={value.period}
+          onChange={(period) => onChange({ ...value, period })}
+          options={[
+            { value: 'month', label: 'Ce mois' },
+            { value: 'last-month', label: 'Mois dernier' },
+            { value: '30d', label: '30 jours' },
+            { value: 'all', label: 'Tout' },
+            { value: 'custom', label: 'Dates' },
+          ]}
+        />
       </div>
-
-      <Segmented
-        label="Période"
-        size="sm"
-        value={value.period}
-        onChange={(period) => onChange({ ...value, period })}
-        options={[
-          { value: 'month', label: 'Ce mois' },
-          { value: 'last-month', label: 'Mois dernier' },
-          { value: '30d', label: '30 jours' },
-          { value: 'all', label: 'Tout' },
-          { value: 'custom', label: 'Dates' },
-        ]}
-      />
 
       {value.period === 'custom' ? (
         <div className={styles.dates}>
@@ -130,8 +130,8 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
         </div>
       ) : null}
 
-      <div className={styles.selects}>
-        <Select aria-label="Compte" value={value.account ?? ''} onChange={(e) => onChange({ ...value, account: e.target.value ? Number(e.target.value) : undefined })}>
+      <div className={styles.line}>
+        <Select aria-label="Compte" value={value.account ?? ''} onChange={(e) => onChange({ ...value, account: e.target.value ? Number(e.target.value) : undefined })} className={styles.select}>
           <option value="">Tous les comptes</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
@@ -139,7 +139,7 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
             </option>
           ))}
         </Select>
-        <Select aria-label="Enveloppe" value={value.envelope ?? ''} onChange={(e) => onChange({ ...value, envelope: e.target.value ? Number(e.target.value) : undefined })}>
+        <Select aria-label="Enveloppe" value={value.envelope ?? ''} onChange={(e) => onChange({ ...value, envelope: e.target.value ? Number(e.target.value) : undefined })} className={styles.select}>
           <option value="">Toutes les enveloppes</option>
           {envelopes.map((env) => (
             <option key={env.id} value={env.id}>
@@ -149,17 +149,16 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
         </Select>
         <Segmented
           label="Statut"
-          size="sm"
           value={value.status ?? 'all'}
           onChange={(s) => onChange({ ...value, status: s === 'all' ? undefined : s })}
           options={[
             { value: 'all', label: 'Toutes' },
-            { value: 'confirmed', label: 'Confirmées' },
+            { value: 'confirmed', label: 'Passées' },
             { value: 'planned', label: 'Prévues' },
           ]}
         />
         {!isDefault ? (
-          <Button variant="ghost" size="sm" icon={<X />} onClick={() => onChange(DEFAULT_FILTERS)}>
+          <Button variant="ghost" icon={<X />} onClick={() => onChange(DEFAULT_FILTERS)}>
             Réinitialiser
           </Button>
         ) : null}

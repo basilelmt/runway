@@ -74,10 +74,16 @@ button {
   background: var(--marking-soft);
 }
 
-/* Montants : toujours en mono, chiffres alignés */
+/* Métadonnées techniques (dates compactes, IBAN, motifs) */
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* Chiffres alignés en colonne, dans la police du texte */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
 .muted {
@@ -124,7 +130,15 @@ button {
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--s-6);
+  gap: var(--s-10);
+  animation: page-in var(--dur-slow) var(--ease-out);
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 .page-header {
@@ -137,13 +151,14 @@ button {
 
 .page-header h1 {
   font-size: var(--text-2xl);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .page-header .subtitle {
   color: var(--ink-mute);
-  margin-top: var(--s-1);
+  margin-top: var(--s-2);
+  max-width: 62ch;
 }
 
 .eyebrow {
@@ -165,6 +180,100 @@ button {
   border-bottom: 1px solid var(--rule);
 }
 
+ul.ledger,
+ol.ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Apparition en cascade des lignes d'une liste (les 12 premières, les suivantes arrivent avec la dernière) */
+.stagger > * {
+  animation: row-in 420ms var(--ease-out) both;
+  animation-delay: 420ms;
+}
+
+.stagger > :nth-child(1) {
+  animation-delay: 35ms;
+}
+
+.stagger > :nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.stagger > :nth-child(3) {
+  animation-delay: 105ms;
+}
+
+.stagger > :nth-child(4) {
+  animation-delay: 140ms;
+}
+
+.stagger > :nth-child(5) {
+  animation-delay: 175ms;
+}
+
+.stagger > :nth-child(6) {
+  animation-delay: 210ms;
+}
+
+.stagger > :nth-child(7) {
+  animation-delay: 245ms;
+}
+
+.stagger > :nth-child(8) {
+  animation-delay: 280ms;
+}
+
+.stagger > :nth-child(9) {
+  animation-delay: 315ms;
+}
+
+.stagger > :nth-child(10) {
+  animation-delay: 350ms;
+}
+
+.stagger > :nth-child(11) {
+  animation-delay: 385ms;
+}
+
+.stagger > :nth-child(12) {
+  animation-delay: 420ms;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger > * {
+    animation: none;
+  }
+}
+
+/* Ligne survolable : le fond déborde légèrement sur les côtés sans décaler les filets du registre */
+.hover-row {
+  position: relative;
+  isolation: isolate;
+}
+
+.hover-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 calc(-1 * var(--s-2));
+  z-index: -1;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition: background var(--dur) var(--ease-out);
+}
+
+.hover-row:hover::before {
+  background: color-mix(in oklab, var(--paper-sunken) 60%, transparent);
+}
+
 .section-title {
   display: flex;
   align-items: baseline;
@@ -175,7 +284,19 @@ button {
 
 .section-title h2 {
   font-size: var(--text-lg);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.section-title .section-link {
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease-out);
+}
+
+.section-title .section-link:hover {
+  color: var(--ink);
 }
 
 @media (max-width: 767px) {

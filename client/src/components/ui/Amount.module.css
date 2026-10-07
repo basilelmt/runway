@@ -10,15 +10,21 @@
   font-size: var(--text-md);
 }
 
+.lg,
+.xl {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
 .lg {
   font-size: var(--text-xl);
-  font-weight: 500;
 }
 
 .xl {
-  font-size: var(--text-3xl);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-size: var(--text-4xl);
+  line-height: 1;
+  letter-spacing: -0.04em;
 }
 
 .negative {
@@ -27,4 +33,10 @@
 
 .positive {
   color: var(--positive);
+}
+
+@media (max-width: 767px) {
+  .xl {
+    font-size: var(--text-3xl);
+  }
 }

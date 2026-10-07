@@ -9,7 +9,7 @@ type ChartTooltipProps = {
   entries: TooltipEntry[];
 };
 
-/** Infobulle commune à tous les graphiques : titre discret, une ligne par série, montants en mono. */
+/** Infobulle commune à tous les graphiques : titre discret, une ligne par série, chiffres alignés. */
 export function ChartTooltip({ title, entries }: ChartTooltipProps) {
   return (
     <div className={styles.tooltip} role="presentation">
@@ -20,7 +20,7 @@ export function ChartTooltip({ title, entries }: ChartTooltipProps) {
             {e.color ? <span className={styles.swatch} style={{ background: e.color }} aria-hidden /> : null}
             {e.name}
           </span>
-          <span className="mono">{formatEuros(e.value)}</span>
+          <span className="num">{formatEuros(e.value)}</span>
         </div>
       ))}
     </div>

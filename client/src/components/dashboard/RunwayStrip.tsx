@@ -1,4 +1,5 @@
-import { Link } from 'react-router';
+import { Plane } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { ForecastResponse } from '@shared/api-types';
 import { addDays, daysBetween, formatDateLong, formatDateShort } from '@shared/dates';
 import { formatEuros } from '@shared/money';
@@ -21,12 +22,14 @@ export function RunwayStrip({ forecast }: { forecast: ForecastResponse }) {
   const firstNegative = alerts[0]?.firstNegativeDate ?? null;
   const redFrom = firstNegative ? Math.max(0, daysBetween(today, firstNegative)) / horizonDays : null;
 
+  // Une graduation par semaine, ou toutes les quatre semaines sur un long horizon.
+  const step = horizonDays <= 120 ? 7 : 28;
   const weeks: { date: string; offset: number }[] = [];
-  for (let d = 7; d < horizonDays; d += 7) weeks.push({ date: addDays(today, d), offset: d / horizonDays });
+  for (let d = step; d < horizonDays; d += step) weeks.push({ date: addDays(today, d), offset: d / horizonDays });
 
-  // Les événements d'un même jour sont regroupés sous un seul marqueur.
+  // Les mouvements d'argent réels d'un même jour sont regroupés sous un seul marqueur (les répartitions de budget n'en sont pas).
   const byDay = new Map<string, typeof events>();
-  for (const e of events) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]);
+  for (const e of events) if (e.kind !== 'allocation') byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]);
   const markers = [...byDay.entries()].slice(0, MAX_MARKERS).map(([date, list]) => {
     const net = list.reduce((s, e) => s + (e.kind === 'income' ? e.amount : e.kind === 'expense' ? -e.amount : 0), 0);
     const title = `${formatDateLong(date)}\n${list.map((e) => `${e.label} ${formatEuros(e.kind === 'income' ? e.amount : -e.amount)}`).join('\n')}`;
@@ -37,9 +40,6 @@ export function RunwayStrip({ forecast }: { forecast: ForecastResponse }) {
     <section className={styles.section} aria-label="Piste des prochains jours">
       <div className={styles.status}>
         <p className={[styles.statusText, status.tone === 'alert' ? styles.alert : styles.clear].join(' ')}>{status.text}</p>
-        <Link to="/prevision" className={styles.link}>
-          Voir la prévision
-        </Link>
       </div>
       <div className={styles.strip} role="img" aria-label={status.text}>
         <div className={styles.tarmac} />
@@ -54,6 +54,14 @@ export function RunwayStrip({ forecast }: { forecast: ForecastResponse }) {
         {markers.map((m) => (
           <span key={m.date} className={[styles.marker, styles[m.tone]].join(' ')} style={{ left: `${m.offset * 100}%` }} title={m.title} />
         ))}
+        {/* L'avion roule jusqu'au premier découvert, ou décolle en bout de piste si elle est dégagée. */}
+        <span
+          className={[styles.plane, redFrom === null ? styles.takeoff : styles.halt].join(' ')}
+          style={{ '--stop': `${Math.max(4, (redFrom ?? 1) * 100 - 3)}%` } as CSSProperties}
+          aria-hidden
+        >
+          <Plane />
+        </span>
         <div className={[styles.threshold, styles.end].join(' ')} title={`Fin de l'horizon, ${formatDateLong(addDays(today, horizonDays))}`} />
       </div>
       <div className={styles.scale}>

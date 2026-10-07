@@ -11,6 +11,15 @@
 .dialog::backdrop {
   background: rgb(20 32 28 / 0.45);
   backdrop-filter: blur(2px);
+  animation: fade-in 200ms var(--ease-out);
+}
+
+.closing::backdrop {
+  animation: fade-out 160ms var(--ease-out) forwards;
+}
+
+.closing .panel {
+  animation: pop-out 160ms var(--ease-out) forwards;
 }
 
 .sm {
@@ -34,7 +43,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   color: var(--ink);
-  animation: pop var(--dur) var(--ease-out);
+  animation: pop 220ms var(--ease-out);
 }
 
 .header {
@@ -72,7 +81,26 @@
 @keyframes pop {
   from {
     opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+@keyframes pop-out {
+  to {
+    opacity: 0;
     transform: translateY(6px) scale(0.98);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
   }
 }
 
@@ -92,5 +120,29 @@
   .panel {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     max-height: 92dvh;
+    animation-name: sheet-up;
+  }
+
+  .closing .panel {
+    animation-name: sheet-down;
+  }
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes sheet-down {
+    to {
+      transform: translateY(100%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .dialog::backdrop {
+    animation: none;
   }
 }

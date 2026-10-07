@@ -6,8 +6,8 @@ import type { ImportPreviewRow } from '@shared/api-types';
 import { ImportPreview } from './ImportPreview';
 
 const envelopes = [
-  { id: 1, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false },
-  { id: 2, name: 'Loisirs', color: '#c2703d', monthlyTarget: null, sortOrder: 1, archived: false },
+  { id: 1, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false, isSavings: false },
+  { id: 2, name: 'Loisirs', color: '#c2703d', monthlyTarget: null, sortOrder: 1, archived: false, isSavings: false },
 ];
 
 const rows: ImportPreviewRow[] = [
