@@ -21,7 +21,7 @@
 }
 
 /*
- * Survol : le pied reste en place, la ligne garde ses angles à 45° mais file vers le haut et s'épaissit
+ * Survol : le pied reste en place, la ligne file vers le haut en se redressant et s'épaissit
  * progressivement jusqu'à une pointe énorme qui déborde du cadre sans toucher le libellé.
  */
 
@@ -48,12 +48,12 @@
 
   :global(a:is(:hover, :focus-visible)) > .arrow .line {
     d: path(
-      'M2.619 17.619L7.907 12.779L10.869 16.131A1.6 1.6 0 0 0 13.131 16.131L35.626 -5.374A2.3 2.3 0 0 0 32.374 -8.626L11.905 12.785L8.884 10.116A1.25 1.25 0 0 0 7.116 10.116L1.381 16.381A0.875 0.875 0 0 0 2.619 17.619Z'
+      'M2.619 17.619L7.907 12.779L10.869 16.131A1.6 1.6 0 0 0 13.258 15.988L35.808 -11.579A2.3 2.3 0 0 0 32.192 -14.421L11.763 12.659L8.884 10.116A1.25 1.25 0 0 0 7.116 10.116L1.381 16.381A0.875 0.875 0 0 0 2.619 17.619Z'
     );
   }
 
   :global(a:is(:hover, :focus-visible)) > .arrow .head {
-    d: path('M23 -7H34V4');
+    d: path('M23.078 -11.689L34 -13L35.311 -2.078');
     stroke-width: 4.6;
   }
 }

@@ -34,7 +34,7 @@ export function LiftoffArrow({ className }: { className?: string }) {
         stroke="none"
         d="M2.619 17.619L8.5 11.737L12.881 16.119A0.875 0.875 0 0 0 14.119 16.119L22.619 7.619A0.875 0.875 0 0 0 21.381 6.381L13.5 14.263L9.119 9.881A0.875 0.875 0 0 0 7.881 9.881L1.381 16.381A0.875 0.875 0 0 0 2.619 17.619Z"
       />
-      <path className={styles.head} d="M16 7H22V13" data-tip />
+      <path className={styles.head} d="M16 7L22 7L22 13" data-tip />
     </svg>
   );
 }
