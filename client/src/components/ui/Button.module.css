@@ -82,6 +82,15 @@
   background: var(--negative-soft);
 }
 
+.danger-quiet {
+  background: transparent;
+  color: var(--negative);
+}
+
+.danger-quiet:hover:not(:disabled) {
+  background: var(--negative-soft);
+}
+
 .marking {
   background: var(--marking);
   color: #2b2000;

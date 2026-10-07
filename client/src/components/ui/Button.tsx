@@ -3,7 +3,7 @@ import { Link, type LinkProps } from 'react-router';
 import styles from './Button.module.css';
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'marking';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-quiet' | 'marking';
   size?: 'sm' | 'md';
   icon?: ReactNode;
   loading?: boolean;
