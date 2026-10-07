@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { PortfolioRange } from '@shared/api-types';
+import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { usePortfolio } from '@/api/hooks';
 import { AddHoldingDialog } from '@/components/invest/AddHoldingDialog';
@@ -10,9 +11,11 @@ import { HoldingList } from '@/components/invest/HoldingList';
 import { IdeasSection } from '@/components/invest/IdeasSection';
 import { PortfolioChart } from '@/components/invest/PortfolioChart';
 import { PortfolioSummary, PortfolioSummarySkeleton } from '@/components/invest/PortfolioSummary';
+import { ToTheMoon } from '@/components/invest/ToTheMoon';
 import { useAutoBinanceSync } from '@/components/invest/useAutoBinanceSync';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button, EmptyState } from '@/components/ui';
+import { formatPct } from '@/lib/invest';
 
 export function InvestPage() {
   const [range, setRange] = useState<PortfolioRange>('6m');
@@ -40,6 +43,13 @@ export function InvestPage() {
   return (
     <div className="page">
       <PageHeader title="Investir" subtitle="Ton portefeuille, et des idées tirées de l’actualité." actions={data && data.holdings.length > 0 ? addButton : null} />
+      <ToTheMoon>
+        {data && data.totals.gainPct !== null ? (
+          <p className="num">
+            {formatPct(data.totals.gainPct, { signed: true })} depuis ton premier achat · {formatEuros(data.totals.gain, { signed: true })}
+          </p>
+        ) : null}
+      </ToTheMoon>
 
       {portfolio.isError ? (
         <EmptyState title="Impossible de charger le portefeuille" description={errorMessage(portfolio.error)} action={<Button onClick={() => portfolio.refetch()}>Réessayer</Button>} />

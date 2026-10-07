@@ -1,0 +1,56 @@
+/* Toujours sombre : c'est le ciel lunaire, en mode clair comme en mode sombre */
+.banner {
+  position: relative;
+  overflow: hidden;
+  height: 300px;
+  border-radius: var(--radius-lg);
+  background: #030408;
+  color: #f7f4ee;
+}
+
+.art {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Cadré sur la Terre et l'horizon : le haut du ciel et le bas du sol sortent du bandeau. */
+  transform: translateY(-8%);
+}
+
+.overlay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  height: 100%;
+  padding: var(--s-6) var(--s-8);
+  background: linear-gradient(90deg, rgb(3 4 8 / 0.85) 0%, rgb(3 4 8 / 0.4) 45%, transparent 70%);
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.overlay p:not(.eyebrow) {
+  color: #cfcac1;
+  font-size: var(--text-md);
+}
+
+@media (max-width: 767px) {
+  .banner {
+    height: 200px;
+  }
+
+  .overlay {
+    padding: var(--s-5);
+  }
+
+  .eyebrow {
+    font-size: var(--text-xl);
+  }
+}
