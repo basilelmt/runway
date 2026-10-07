@@ -305,7 +305,8 @@ export const tradeInputSchema = z.object({
 });
 export type TradeInput = z.infer<typeof tradeInputSchema>;
 
-export const tradePatchSchema = tradeInputSchema.partial();
+/** Modification partielle : sans valeur par défaut, un champ absent reste inchangé (les frais ne retombent pas à zéro). */
+export const tradePatchSchema = tradeInputSchema.extend({ fees: centsSchema.min(0, 'Frais négatifs') }).partial();
 export type TradePatch = z.infer<typeof tradePatchSchema>;
 
 export const holdingInputSchema = z.object({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recurringRuleInputSchema, transactionInputSchema } from './schemas';
+import { recurringRuleInputSchema, tradePatchSchema, transactionInputSchema } from './schemas';
 
 const base = { date: '2026-03-01', amount: 1000, label: 'Test' };
 
@@ -80,5 +80,15 @@ describe('recurringRuleInputSchema', () => {
 
   it('refuse une fin avant le début', () => {
     expect(recurringRuleInputSchema.safeParse({ ...rule, endDate: '2025-12-01' }).success).toBe(false);
+  });
+});
+
+describe('tradePatchSchema', () => {
+  it('laisse les frais absents au lieu de les remettre à zéro', () => {
+    expect(tradePatchSchema.parse({ amount: 100 })).toEqual({ amount: 100 });
+  });
+
+  it('accepte une quantité à virgule', () => {
+    expect(tradePatchSchema.parse({ quantity: '0,5' })).toEqual({ quantity: '0.5' });
   });
 });
