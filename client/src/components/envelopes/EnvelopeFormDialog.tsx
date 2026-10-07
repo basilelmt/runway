@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { envelopeInputSchema, type Envelope } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useCreateEnvelope, useUpdateEnvelope } from '@/api/hooks';
-import { Button, Dialog, Field, Input, MoneyInput, useToast } from '@/components/ui';
+import { Button, Checkbox, Dialog, DialogFooter, Field, Input, MoneyInput, useToast } from '@/components/ui';
 import styles from './EnvelopeFormDialog.module.css';
 
 export const ENVELOPE_COLORS = ['#4f8a5b', '#c2703d', '#3f6fae', '#9a4f9c', '#b8961a', '#2a8f8a', '#b74a5e', '#6b7280'];
@@ -13,6 +13,7 @@ type EnvelopeFormDialogProps = { open: boolean; envelope?: Envelope; onClose: ()
 
 export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDialogProps) {
   const toast = useToast();
+  const formId = useId();
   const [form, setForm] = useState<FormState>({
     name: envelope?.name ?? '',
     color: envelope?.color ?? ENVELOPE_COLORS[0]!,
@@ -57,13 +58,13 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
 
   return (
     <Dialog open={open} onClose={onClose} title={envelope ? 'Modifier l’enveloppe' : 'Nouvelle enveloppe'} size="sm">
-      <form className={styles.form} onSubmit={submit} noValidate>
+      <form id={formId} className={styles.form} onSubmit={submit} noValidate>
         <Field label="Nom" error={errors.name}>
           {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Courses" autoFocus />}
         </Field>
         <Field label="Couleur" error={errors.color}>
-          {(id) => (
-            <div className={styles.colors} role="group" aria-labelledby={id}>
+          {(id, _describedBy, labelId) => (
+            <div className={styles.colors} role="group" aria-labelledby={labelId}>
               {ENVELOPE_COLORS.map((c) => (
                 <button
                   key={c}
@@ -75,8 +76,8 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
                   aria-pressed={form.color === c}
                 />
               ))}
-              <label className={styles.custom} title="Couleur personnalisée">
-                <input id={id} type="color" value={form.color} onChange={(e) => set('color', e.target.value)} />
+              <label className={[styles.custom, ENVELOPE_COLORS.includes(form.color) ? '' : styles.swatchActive].join(' ')} title="Couleur personnalisée">
+                <input id={id} type="color" value={form.color} onChange={(e) => set('color', e.target.value)} aria-label="Couleur personnalisée" />
                 <span style={{ background: form.color }} />
               </label>
             </div>
@@ -85,26 +86,25 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
         <Field label="Budget mensuel" hint="Ce que tu prévois d’y mettre chaque mois. « Répartir » le propose automatiquement et la prévision en tient compte." error={errors.monthlyTarget}>
           {(id, describedBy) => <MoneyInput id={id} aria-describedby={describedBy} value={form.monthlyTarget} onChange={(c) => set('monthlyTarget', c)} placeholder="Facultatif" />}
         </Field>
-        <label className={styles.check}>
-          <input type="checkbox" checked={form.isSavings} onChange={(e) => set('isSavings', e.target.checked)} />
-          <span>
-            Enveloppe d’épargne
-            <span className={styles.checkHint}>Ce qui en sort (versement vers un courtier, un PEA) compte comme mis de côté, pas comme une dépense.</span>
-          </span>
-        </label>
+        <Checkbox
+          label="Enveloppe d’épargne"
+          hint="Ce qui en sort (versement vers un courtier, un PEA) compte comme mis de côté, pas comme une dépense."
+          checked={form.isSavings}
+          onChange={(e) => set('isSavings', e.target.checked)}
+        />
         {serverError ? (
           <p className={styles.error} role="alert">
             {errorMessage(serverError)}
           </p>
         ) : null}
-        <div className={styles.actions}>
+        <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
-          <Button type="submit" variant="primary" loading={create.isPending || update.isPending}>
+          <Button type="submit" form={formId} variant="primary" loading={create.isPending || update.isPending}>
             {envelope ? 'Enregistrer' : 'Créer l’enveloppe'}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </Dialog>
   );

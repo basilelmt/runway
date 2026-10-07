@@ -12,7 +12,7 @@ import { FundDialog } from '@/components/budget/FundDialog';
 import { AllocateDialog } from '@/components/envelopes/AllocateDialog';
 import { EnvelopeFormDialog } from '@/components/envelopes/EnvelopeFormDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Amount, Button, Dialog, Dot, EmptyState, Skeleton, useToast } from '@/components/ui';
+import { Amount, Button, ConfirmDialog, Dialog, Dot, EmptyState, Skeleton, useToast } from '@/components/ui';
 import { budgetOverIncome } from '@/lib/budget';
 import styles from './Budget.module.css';
 
@@ -264,32 +264,26 @@ export function BudgetPage() {
       <EnvelopeDetailDialog envelope={detail} onClose={() => setDetail(null)} />
       {creating ? <EnvelopeFormDialog open onClose={() => setCreating(false)} /> : null}
       {editing ? <EnvelopeFormDialog key={editing.id} open envelope={editing} onClose={() => setEditing(null)} /> : null}
-      <Dialog
+      <ConfirmDialog
         open={archiving !== null}
         onClose={() => setArchiving(null)}
+        onConfirm={() => archiving && archive.mutate({ id: archiving.id, archived: true })}
         title="Archiver cette enveloppe ?"
         description="Elle disparaît du budget et son solde revient dans « Pas encore réparti ». Les dépenses déjà rangées dedans sont conservées."
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setArchiving(null)}>
-              Annuler
-            </Button>
-            <Button variant="danger" loading={archive.isPending} onClick={() => archiving && archive.mutate({ id: archiving.id, archived: true })}>
-              Archiver
-            </Button>
-          </>
-        }
+        confirmLabel="Archiver"
+        loading={archive.isPending}
       >
-        <p className={styles.dialogName}>
-          {archiving ? <Dot color={archiving.color} /> : null} {archiving?.name}
-        </p>
-        {archiving && archiving.balance !== 0 ? (
-          <p className={styles.hint}>
-            Solde actuel : <Amount cents={archiving.balance} size="sm" />
-          </p>
+        {archiving ? (
+          <>
+            <Dot color={archiving.color} /> {archiving.name}
+            {archiving.balance !== 0 ? (
+              <span className={styles.archiveBalance}>
+                Solde actuel : <Amount cents={archiving.balance} size="sm" />
+              </span>
+            ) : null}
+          </>
         ) : null}
-      </Dialog>
+      </ConfirmDialog>
     </div>
   );
 }
