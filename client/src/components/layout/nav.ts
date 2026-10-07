@@ -5,8 +5,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   badge?: 'unsorted' | 'toAllocate';
-  /** Au survol, l'icône s'envole hors de l'entrée en passant au vert, avec un clin d'œil à côté du libellé. */
-  liftoff?: { tagline: string };
+  /** Au survol, l'icône s'envole hors de l'entrée en passant au vert. */
+  liftoff?: boolean;
 };
 
 /** Les cinq destinations principales, dans l'ordre d'usage. */
@@ -15,7 +15,7 @@ export const NAV: NavItem[] = [
   { to: '/budget', label: 'Budget', icon: WalletCards, badge: 'toAllocate' },
   { to: '/operations', label: 'Opérations', icon: ArrowLeftRight, badge: 'unsorted' },
   { to: '/analyse', label: 'Analyse', icon: ChartNoAxesColumn },
-  { to: '/investir', label: 'Investir', icon: TrendingUp, liftoff: { tagline: 'to the moon !' } },
+  { to: '/investir', label: 'Investir', icon: TrendingUp, liftoff: true },
 ];
 
 export const SETTINGS_NAV: NavItem = { to: '/reglages', label: 'Réglages', icon: Settings };

@@ -148,25 +148,6 @@
 }
 
 /* Clin d'œil discret de l'entrée Investir, qui apparaît au survol et sur l'écran actif */
-.tagline {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.02em;
-  color: var(--ink-mute);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition:
-    opacity var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-out);
-}
-
-.link:hover .tagline,
-.active .tagline {
-  opacity: 1;
-  transform: none;
-}
-
 .count {
   min-width: 20px;
   height: 20px;
