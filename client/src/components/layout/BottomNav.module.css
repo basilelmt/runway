@@ -41,8 +41,8 @@
     color: var(--ink);
   }
 
-  /* Pas de survol au doigt : la flèche de l'entrée Investir passe au vert quand l'écran est ouvert */
-  .active .liftoff {
+  /* Pas de survol au doigt : la pointe de la flèche d'Investir passe au vert quand l'écran est ouvert */
+  .active .liftoff g {
     color: var(--positive);
   }
 

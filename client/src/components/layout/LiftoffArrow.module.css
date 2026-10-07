@@ -1,0 +1,24 @@
+.arrow {
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+/* Le segment montant grandit depuis son pied, la pointe file vers le haut à droite */
+.tip {
+  transform-box: view-box;
+  transform-origin: 13.5px 15.5px;
+  transition:
+    transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    color var(--dur) var(--ease-out);
+}
+
+:global(a:hover) > .arrow .tip {
+  color: var(--positive);
+  transform: scale(2.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(a:hover) > .arrow .tip {
+    transform: none;
+  }
+}

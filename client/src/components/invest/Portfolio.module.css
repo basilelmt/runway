@@ -94,26 +94,6 @@
   margin: 0;
 }
 
-/* « to the moon » en pixels, qui suit le curseur à distance et s'efface quand il sort */
-.cursorText {
-  position: absolute;
-  top: 0;
-  left: 0;
-  color: var(--marking);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(calc(var(--cursor-x, 0px) + 16px), calc(var(--cursor-y, 0px) + 18px));
-  transition:
-    transform 140ms var(--ease-out),
-    opacity var(--dur-slow) var(--ease-out);
-}
-
-@media (hover: hover) {
-  .hero:hover .cursorText {
-    opacity: 0.6;
-  }
-}
-
 .positive {
   color: var(--positive);
 }

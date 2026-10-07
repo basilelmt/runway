@@ -1,21 +1,19 @@
 import { Ascii } from 'ascii.rest/react';
 import * as earthrise from 'ascii.rest/pieces/earthrise';
-import { useRef, type PointerEvent } from 'react';
 import type { PortfolioView } from '@shared/api-types';
 import { Amount, Skeleton } from '@/components/ui';
 import { formatPct, gainTone } from '@/lib/invest';
 import { formatDateCompact } from '@/lib/format';
-import { PixelText } from './PixelText';
+import { MoonTrail } from './MoonTrail';
 import styles from './Portfolio.module.css';
 
 /**
  * Valeur totale, montant investi et plus-value, sur fond de Terre qui se lève au-dessus de la Lune (ascii.rest).
- * La seule surface en relief de l'écran ; au survol, « to the moon » en pixels suit le curseur.
+ * La seule surface en relief de l'écran ; au survol, une fusée en pixels traîne « TO THE MOON » derrière le curseur.
  */
 export function PortfolioSummary({ portfolio }: { portfolio: PortfolioView }) {
   const { totals } = portfolio;
   const tone = gainTone(totals.gain);
-  const ref = useRef<HTMLElement>(null);
   const staleDate = portfolio.stale
     ? portfolio.holdings
         .map((h) => (h.price?.stale ? h.price.date : null))
@@ -23,15 +21,8 @@ export function PortfolioSummary({ portfolio }: { portfolio: PortfolioView }) {
         .sort()[0]
     : null;
 
-  // Position du curseur en variables CSS : aucun rendu React à chaque mouvement.
-  const follow = (e: PointerEvent<HTMLElement>) => {
-    const box = e.currentTarget.getBoundingClientRect();
-    ref.current?.style.setProperty('--cursor-x', `${e.clientX - box.left}px`);
-    ref.current?.style.setProperty('--cursor-y', `${e.clientY - box.top}px`);
-  };
-
   return (
-    <section ref={ref} className={styles.hero} aria-label="Portefeuille" onPointerMove={follow}>
+    <section className={styles.hero} aria-label="Portefeuille">
       <Ascii piece={earthrise} className={styles.heroArt} label="La Terre qui se lève sur l’horizon de la Lune, en ascii art" />
       <div className={styles.heroMain}>
         <p className="eyebrow">Valeur du portefeuille</p>
@@ -58,7 +49,7 @@ export function PortfolioSummary({ portfolio }: { portfolio: PortfolioView }) {
         </dl>
         {staleDate ? <p className={styles.stale}>Cours du {formatDateCompact(staleDate)} : Yahoo Finance ne répond pas pour l’instant.</p> : null}
       </div>
-      <PixelText text="to the moon" className={styles.cursorText} />
+      <MoonTrail />
     </section>
   );
 }

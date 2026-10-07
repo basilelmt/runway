@@ -4,6 +4,7 @@ import { NavLink, useLocation } from 'react-router';
 import { useOverview } from '@/api/hooks';
 import { budgetNeedsAttention } from '@/lib/budget';
 import { useActiveIndicator } from '@/lib/motion';
+import { LiftoffArrow } from './LiftoffArrow';
 import { NAV, SETTINGS_NAV, type NavItem } from './nav';
 import { useQuickAdd } from './quick-add-context';
 import styles from './SideNav.module.css';
@@ -19,7 +20,7 @@ export function SideNav() {
 
   const link = (item: NavItem) => (
     <NavLink to={item.to} end={item.to === '/'} className={({ isActive }) => [styles.link, isActive ? styles.active : ''].join(' ')}>
-      <item.icon className={[styles.icon, item.liftoff ? styles.liftoff : ''].join(' ')} aria-hidden strokeWidth={1.75} />
+      {item.liftoff ? <LiftoffArrow className={styles.icon} /> : <item.icon className={styles.icon} aria-hidden strokeWidth={1.75} />}
       <span className={styles.label}>{item.label}</span>
       {item.liftoff ? (
         <span className={styles.tagline} aria-hidden>

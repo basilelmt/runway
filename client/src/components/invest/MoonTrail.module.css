@@ -1,0 +1,65 @@
+.trail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.trail[data-on] {
+  opacity: 1;
+}
+
+.rocket,
+.letter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.letter {
+  display: flex;
+  color: var(--marking);
+  opacity: 0.7;
+}
+
+.rocketSvg {
+  display: block;
+}
+
+.body {
+  fill: #f2efe8;
+}
+
+.window {
+  fill: #4386d3;
+}
+
+/* Flamme : deux images qui alternent, en jaune de piste et orange */
+.flameA,
+.flameB {
+  animation: flicker 180ms steps(1, end) infinite;
+}
+
+.flameA {
+  fill: var(--marking);
+}
+
+.flameB {
+  fill: #ef6f58;
+  animation-delay: 90ms;
+}
+
+@keyframes flicker {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flameA,
+  .flameB {
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router';
 import { useOverview } from '@/api/hooks';
 import { budgetNeedsAttention } from '@/lib/budget';
+import { LiftoffArrow } from './LiftoffArrow';
 import { NAV } from './nav';
 import styles from './BottomNav.module.css';
 
@@ -15,7 +16,7 @@ export function BottomNav() {
         const dot = (item.badge === 'unsorted' && unsorted > 0) || (item.badge === 'toAllocate' && budgetDot);
         return (
           <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => [styles.link, isActive ? styles.active : ''].join(' ')}>
-            <item.icon aria-hidden strokeWidth={1.75} className={item.liftoff ? styles.liftoff : undefined} />
+            {item.liftoff ? <LiftoffArrow className={styles.liftoff} /> : <item.icon aria-hidden strokeWidth={1.75} />}
             <span>{item.label}</span>
             {dot ? <span className={styles.dot} aria-label={item.badge === 'unsorted' ? `${unsorted} à ranger` : 'Argent à répartir'} /> : null}
           </NavLink>
