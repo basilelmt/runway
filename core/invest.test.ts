@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addQty, cmpQty, hasOversell, fromUnits, ideasSummary, isZeroQty, portfolioSeries, position, priceOn, qtyToNumber,
+  addQty, cmpQty, hasOversell, normalizeQty, fromUnits, ideasSummary, isZeroQty, portfolioSeries, position, priceOn, qtyToNumber,
   simpleReturn, subQty, toEur, toUnits, valueCents, type Trade,
 } from './invest';
 
@@ -19,6 +19,7 @@ describe('quantités décimales', () => {
     expect(isZeroQty('0.000')).toBe(true);
     expect(qtyToNumber('0.04512')).toBeCloseTo(0.04512);
     expect(fromUnits(toUnits('12.3400'))).toBe('12.34');
+    expect(normalizeQty('0.01000000')).toBe('0.01');
   });
   it('ne descend jamais sous zéro', () => {
     expect(subQty('1', '2')).toBe('0');

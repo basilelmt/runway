@@ -80,7 +80,7 @@ export function createApp({ db, now = today, exec, importDeps, bankDeps, investD
   app.route('/api/reports', reportRoutes);
   app.route('/api/imports', importRoutes(importDeps));
   app.route('/api/bank-sync', bankSyncRoutes(bankDeps));
-  app.route('/api/invest', investRoutes({ prices }));
+  app.route('/api/invest', investRoutes({ prices, ...investDeps }));
   app.route('/api', exportRoutes);
 
   return app;

@@ -150,3 +150,6 @@ export function hasOversell(trades: Trade[]): boolean {
   }
   return false;
 }
+
+/** Écriture canonique d'une quantité (« 0.01000000 » devient « 0.01 »). */
+export const normalizeQty = (q: string): string => fromUnits(toUnits(q));

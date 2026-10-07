@@ -1,15 +1,16 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { holdingInputSchema, tradeInputSchema, tradePatchSchema } from '@shared/schemas';
+import { binanceKeysSchema, binanceSyncSchema, holdingInputSchema, tradeInputSchema, tradePatchSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import type { Db } from '../db/client';
 import { AppError } from '../errors';
 import { addTrade, createHolding, deleteHolding, deleteTrade, getHolding, getTrade, listTrades, updateTrade } from '../repos/invest';
-import { assertNoOversell, buildPortfolio } from '../services/portfolio';
-import type { Prices } from '../services/prices';
+import { disconnectBinance, saveBinanceKeys, syncBinance } from '../services/binance-sync';
+import { assertNoOversell, binanceState, buildPortfolio } from '../services/portfolio';
+import type { HttpFetch, Prices } from '../services/prices';
 import { validate } from '../validate';
 
-export type InvestDeps = { prices: Prices };
+export type InvestDeps = { prices: Prices; fetch?: HttpFetch; now?: () => Date };
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const portfolioQuery = z.object({ range: z.enum(['1m', '6m', '1y', 'all']).default('6m') });
@@ -18,7 +19,7 @@ const searchQuery = z.object({ q: z.string().trim().min(1, 'Recherche vide').max
 const syncedHolding = () => new AppError('Position synchronisée avec Binance', 400, 'synced_holding');
 const syncedTrade = () => new AppError('Mouvement importé de Binance', 400, 'synced_trade');
 
-export function investRoutes({ prices }: InvestDeps) {
+export function investRoutes({ prices, ...net }: InvestDeps) {
   return new Hono<AppEnv>()
     .get('/portfolio', validate('query', portfolioQuery), async (c) => {
       return c.json(await buildPortfolio(c.get('db'), prices, c.get('today'), c.req.valid('query').range));
@@ -66,5 +67,14 @@ export function investRoutes({ prices }: InvestDeps) {
       assertNoOversell(listTrades(db, trade.holdingId).filter((t) => t.id !== trade.id));
       deleteTrade(db, trade.id);
       return c.body(null, 204);
+    })
+    .get('/binance', (c) => c.json(binanceState(c.get('db'))))
+    .put('/binance', validate('json', binanceKeysSchema), async (c) => c.json(await saveBinanceKeys(c.get('db'), c.req.valid('json'), net)))
+    .delete('/binance', (c) => {
+      disconnectBinance(c.get('db'));
+      return c.body(null, 204);
+    })
+    .post('/binance/sync', validate('json', binanceSyncSchema), async (c) => {
+      return c.json(await syncBinance(c.get('db'), prices, net, c.req.valid('json')));
     });
 }
