@@ -137,13 +137,19 @@ function budgetEvents(state: State, today: ISODate, end: ISODate): ForecastEvent
     source: 'budget',
     sourceId: envelopeId,
   });
+  // Allocations déjà datées de chaque mois futur (salaire de fin de mois réparti d'avance, par exemple).
+  const futureMonths: { month: ISODate; allocated: Map<number, number> }[] = [];
+  for (let month = addMonths(startOfMonth(today), 1); month <= end; month = addMonths(month, 1)) {
+    futureMonths.push({ month, allocated: monthActivity(state.transactions, month).allocated });
+  }
   for (const env of state.envelopes) {
     if (env.archived || !env.monthlyTarget) continue;
     const label = `Budget ${env.name}`;
     const rest = remainingToFund(env, allocated.get(env.id) ?? 0);
     if (rest > 0) events.push(event(today, env.id, label, rest));
-    for (let month = addMonths(startOfMonth(today), 1); month <= end; month = addMonths(month, 1)) {
-      events.push(event(month, env.id, label, env.monthlyTarget));
+    for (const { month, allocated: already } of futureMonths) {
+      const amount = remainingToFund(env, already.get(env.id) ?? 0);
+      if (amount > 0) events.push(event(month, env.id, label, amount));
     }
   }
   return events;

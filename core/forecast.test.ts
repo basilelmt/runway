@@ -76,6 +76,22 @@ describe('forecast', () => {
     expect(r.events).toEqual([]);
   });
 
+  it('un mois futur déjà réparti ne prévoit que le reste de son budget', () => {
+    const courant = account({ name: 'Courant', initialBalance: 3000_00 });
+    const courses = envelope({ name: 'Courses', monthlyTarget: 300_00 });
+    const r = forecast(
+      { accounts: [courant], envelopes: [courses], transactions: [tx({ kind: 'allocation', amount: 200_00, envelopeId: courses.id, date: '2026-10-01' })] },
+      [],
+      '2026-09-28',
+      48,
+    );
+    expect(r.events.filter((e) => e.source === 'budget').map((e) => [e.date, e.amount])).toEqual([
+      ['2026-09-28', 300_00],
+      ['2026-10-01', 100_00],
+      ['2026-11-01', 300_00],
+    ]);
+  });
+
   it('ne renvoie aucune alerte quand tout reste positif', () => {
     const courant = account({ name: 'Courant', initialBalance: 5000_00 });
     const r = forecast({ accounts: [courant], envelopes: [], transactions: [] }, [], '2026-03-10', 90);
