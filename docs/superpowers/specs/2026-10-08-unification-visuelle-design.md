@@ -22,7 +22,7 @@ Un audit du client (8 octobre 2026) montre que les tokens sont bien utilisés, m
 ## Principes
 
 1. Une version par besoin : pas de variante locale d'un composant partagé.
-2. Filets plutôt que cartes : une carte seulement pour des objets parcourus en grille (les idées) et pour la piste sombre d'Investir.
+2. Filets plutôt que cartes : une carte seulement pour des objets parcourus en grille (les idées) et pour le fond sombre d'Investir.
 3. Un seul jaune par écran : la tâche à faire et le bouton qui la règle.
 4. Les montants parlent en premier : Bricolage pour les grands montants, chiffres tabulaires ailleurs, mono réservé aux identifiants techniques.
 5. Calme au repos : les actions secondaires d'une ligne vivent dans un menu.
@@ -41,10 +41,12 @@ Un audit du client (8 octobre 2026) montre que les tokens sont bien utilisés, m
 | `--text-2xs` | `0.6875rem` | touches clavier et libellés de la barre du bas |
 | `--row-h` | `56px` | hauteur de ligne de liste |
 | `--row-h-compact` | `44px` | ligne dans un dialogue ou un panneau |
+| `--night`… | voir plus bas | couleurs en dur d'Investir |
 
 Les tailles hors échelle disparaissent : le titre de Dialog passe à `--text-xl`, AmountHero utilise `--text-4xl` et `--text-3xl`, `10px` de RunwayStrip passe à `--text-2xs`.
 Les rayons en px passent par `--radius-sm` ou `--radius-pill`.
-La piste d'Investir utilise `--tarmac`, `--tarmac-ink` et les couleurs du mode sombre via des tokens, plus aucune valeur en dur (MoonTrail compris).
+Le fond sombre d'Investir garde son rendu actuel (presque noir, encre chaude) via des tokens « nuit » : `--night`, `--night-ink`, `--night-ink-soft`, `--night-ink-mute`, `--night-positive`, `--night-negative`, `--night-warning`, `--night-sky`.
+Plus aucune valeur en dur dans Portfolio et MoonTrail.
 
 ### Typographie
 
@@ -94,7 +96,7 @@ Remplace `.netWorth` (Accueil), `.total` (Comptes), `.savedLine` (Budget) et le 
 
 Props : `label`, `amount` (ou `value` pour un pourcentage), `tone?`, `context?` (« sur 2 401,00 € prévus »), `caption?`, `children?` (barre de progression), `aside?` (StatGroup vertical ou bouton).
 Écart fixe de `s-3` entre le libellé et le montant.
-Sans cadre sur toutes les pages, sauf Investir qui garde la piste sombre via `variant="tarmac"` (décision 2 : A).
+Sans cadre sur toutes les pages, sauf Investir qui garde son fond sombre via `variant="night"` (décision 2 : A).
 L'Accueil perd sa carte claire.
 Utilisé par l'Accueil, le Budget, l'Analyse (dépensé et taux d'épargne), Investir.
 Demander garde un montant `lg` mais passe par le même composant en `size="compact"`.
@@ -211,7 +213,7 @@ Les `window.confirm` (Règles de tri, BankSyncPanel), les confirmations en ligne
 - **Budget** : KeyFigure « Pas encore réparti » avec bouton `marking`, enveloppes en ListRow + RowMenu, FixedCharges avec SectionHeader, StatGroup et ListRow, archivées en Disclosure.
 - **Opérations** : Total pour le résumé, GroupLabel par jour, ListRow avec EnvelopeTag, ErrorState, squelettes exacts. UnsortedList sur Notice et ListRow.
 - **Analyse** : KeyFigure, barres sur `ProgressBar` (la copie locale disparaît), plus grosses dépenses en ListRow, taux d'épargne en KeyFigure, Upcoming sur SectionHeader, ColumnHeader et ListRow.
-- **Investir** : KeyFigure `tarmac`, tokens de piste au lieu des couleurs en dur, positions en ListRow + ColumnHeader, Notice pour les erreurs Binance.
+- **Investir** : KeyFigure `night`, tokens « nuit » au lieu des couleurs en dur, positions en ListRow + ColumnHeader, Notice pour les erreurs Binance.
   Idées : en-tête en SectionHeader, cartes allégées (titre, horizon, action visée, performance face au S&P 500, verdict en Badge), raisonnement complet dans un dialogue `IdeaDialog` ouvert au clic (contexte, puces, « déjà dans les prix », sources), idées closes en Disclosure.
 - **Import** : PageHeader avec `back`, DropZone et ImportPreview sur EmptyState, Disclosure, ListRow et Badge, compteurs hors mono.
 - **Réglages** : une colonne pour les 4 onglets, chaque bloc en SectionHeader (titre, description, action), formulaires limités à 480 px, Comptes et Règles de tri en ListRow + RowMenu.
