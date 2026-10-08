@@ -34,16 +34,16 @@ export function domainOf(url: string): string {
   }
 }
 
-/** « +18,0 % sur 3 mois (S&P 500 +4,0 %) » : ce que le cours avait déjà fait quand l'idée a été proposée. */
+/** « Avant l'idée : +18,0 % sur 3 mois (S&P 500 +4,0 %) » : ce que le cours avait déjà fait quand l'idée a été proposée. */
 export function formatMarketContext(m: { perf3m: number; benchPerf3m: number }): string {
-  return `${formatPct(m.perf3m, { signed: true })} sur 3 mois (S&P 500 ${formatPct(m.benchPerf3m, { signed: true })})`;
+  return `Avant l’idée\u{a0}: ${formatPct(m.perf3m, { signed: true })} sur 3 mois (S&P 500 ${formatPct(m.benchPerf3m, { signed: true })})`;
 }
 
 /** Résultat d'une fournée en une ligne. */
 export function runOutcome(run: { acceptedCount: number; candidateCount: number }): string {
   if (run.candidateCount === 0) return 'Aucune piste trouvée';
   const pistes = plural(run.candidateCount, 'piste');
-  if (run.acceptedCount === 0) return `Rien de convaincant cette semaine · ${pistes} ${run.candidateCount > 1 ? 'écartées' : 'écartée'}`;
+  if (run.acceptedCount === 0) return `Rien de convaincant cette fois · ${pistes} ${run.candidateCount > 1 ? 'écartées' : 'écartée'}`;
   return `${plural(run.acceptedCount, 'idée retenue', 'idées retenues')} sur ${pistes}`;
 }
 

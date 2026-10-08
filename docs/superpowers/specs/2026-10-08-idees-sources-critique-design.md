@@ -118,14 +118,14 @@ Les écartées sont closes à l'horizon par `closeDueIdeas`, exactement comme le
 Carte d'idée :
 - toutes les sources en liens, par nom de domaine, après l'événement ;
 - ligne « Ce qui peut mal tourner » avec le risque, sous « Déjà dans les prix ? », si présent ;
-- contexte de marché si présent : « +18 % sur 3 mois (S&P 500 +4 %) ».
+- contexte de marché si présent : « Avant l’idée : +18 % sur 3 mois (S&P 500 +4 %) ».
 
 Fournée en cours, message selon la phase :
 - `research` : « 4 chercheurs fouillent l'actualité. Ça prend plusieurs minutes, tu peux continuer ailleurs. »
 - `review` : « Claude passe les pistes au crible. »
 
 Rapport de fin :
-- « 2 idées retenues sur 9 pistes », ou « Rien de convaincant cette semaine · 9 pistes écartées » ;
+- « 2 idées retenues sur 9 pistes », ou « Rien de convaincant cette fois · 9 pistes écartées » ;
 - chercheurs en échec signalés : « Le chercheur International n'a pas répondu. » ;
 - « Voir pourquoi » liste les rejets et écartées (ticker et raison), sans carte.
 

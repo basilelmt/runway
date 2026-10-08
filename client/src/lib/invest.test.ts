@@ -25,14 +25,14 @@ describe('format invest', () => {
     expect(domainOf('pas une url')).toBe('pas une url');
   });
   it('formatMarketContext', () => {
-    expect(formatMarketContext({ perf3m: 0.18, benchPerf3m: 0.04 })).toBe('+18,0 % sur 3 mois (S&P 500 +4,0 %)');
-    expect(formatMarketContext({ perf3m: -0.052, benchPerf3m: 0.01 })).toBe('-5,2 % sur 3 mois (S&P 500 +1,0 %)');
+    expect(formatMarketContext({ perf3m: 0.18, benchPerf3m: 0.04 })).toBe('Avant l’idée : +18,0 % sur 3 mois (S&P 500 +4,0 %)');
+    expect(formatMarketContext({ perf3m: -0.052, benchPerf3m: 0.01 })).toBe('Avant l’idée : -5,2 % sur 3 mois (S&P 500 +1,0 %)');
   });
   it('runOutcome', () => {
     expect(runOutcome({ acceptedCount: 2, candidateCount: 9 })).toBe('2 idées retenues sur 9 pistes');
     expect(runOutcome({ acceptedCount: 1, candidateCount: 1 })).toBe('1 idée retenue sur 1 piste');
-    expect(runOutcome({ acceptedCount: 0, candidateCount: 9 })).toBe('Rien de convaincant cette semaine · 9 pistes écartées');
-    expect(runOutcome({ acceptedCount: 0, candidateCount: 1 })).toBe('Rien de convaincant cette semaine · 1 piste écartée');
+    expect(runOutcome({ acceptedCount: 0, candidateCount: 9 })).toBe('Rien de convaincant cette fois · 9 pistes écartées');
+    expect(runOutcome({ acceptedCount: 0, candidateCount: 1 })).toBe('Rien de convaincant cette fois · 1 piste écartée');
     expect(runOutcome({ acceptedCount: 0, candidateCount: 0 })).toBe('Aucune piste trouvée');
   });
   it('failedAnglesText', () => {

@@ -47,7 +47,7 @@ describe('IdeaCard', () => {
     render(<IdeaCard idea={{ ...open, risk: 'La fête peut être annulée.', marketContext: { perf3m: 0.18, benchPerf3m: 0.04 } }} />);
     expect(screen.getByText('Ce qui peut mal tourner')).toBeInTheDocument();
     expect(screen.getByText(/La fête peut être annulée\./)).toBeInTheDocument();
-    expect(screen.getByText('+18,0 % sur 3 mois (S&P 500 +4,0 %)')).toBeInTheDocument();
+    expect(screen.getByText('Avant l’idée : +18,0 % sur 3 mois (S&P 500 +4,0 %)')).toBeInTheDocument();
   });
 
   it('une idée d’avant la critique n’a ni risque ni contexte de marché', () => {
