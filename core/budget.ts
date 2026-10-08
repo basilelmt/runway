@@ -1,5 +1,7 @@
+import type { BudgetedEnvelope } from '@shared/api-types';
 import { endOfMonth, startOfMonth, type ISODate } from '@shared/dates';
-import type { Account, Envelope, Transaction } from '@shared/schemas';
+import type { Account, Envelope, RecurringRule, Transaction } from '@shared/schemas';
+import { monthlyEquivalent } from './recurrence';
 
 export type MonthActivity = {
   /** Argent réparti dans chaque enveloppe sur le mois, net des déplacements sortants. */
@@ -26,9 +28,34 @@ export function monthActivity(transactions: Transaction[], date: ISODate): Month
   return { allocated, spent };
 }
 
+/**
+ * Une règle est une charge de son enveloppe : dépense active, rattachée à une enveloppe,
+ * et pas terminée avant le mois de `today`.
+ */
+export function isEnvelopeCharge(rule: Pick<RecurringRule, 'kind' | 'active' | 'envelopeId' | 'endDate'>, today: ISODate): boolean {
+  return rule.kind === 'expense' && rule.active && rule.envelopeId != null && (rule.endDate == null || rule.endDate >= startOfMonth(today));
+}
+
+/**
+ * Budget du mois de chaque enveloppe : ses charges fixes ramenées au mois, plus son complément.
+ * Une charge trimestrielle de 10,80 € compte 3,60 € par mois : l'enveloppe accumule de quoi la payer.
+ */
+export function withBudgets(envelopes: Envelope[], rules: RecurringRule[], today: ISODate): BudgetedEnvelope[] {
+  const charges = new Map<number, number>();
+  for (const rule of rules) {
+    const id = rule.envelopeId;
+    if (id == null || !isEnvelopeCharge(rule, today)) continue;
+    charges.set(id, (charges.get(id) ?? 0) + monthlyEquivalent(rule));
+  }
+  return envelopes.map((e) => {
+    const monthlyCharges = charges.get(e.id) ?? 0;
+    return { ...e, monthlyCharges, monthlyBudget: monthlyCharges + (e.monthlyExtra ?? 0) };
+  });
+}
+
 /** Ce qu'il manque à une enveloppe pour atteindre son budget du mois (0 si atteint ou sans budget). */
-export function remainingToFund(envelope: Pick<Envelope, 'monthlyTarget'>, allocatedThisMonth: number): number {
-  return envelope.monthlyTarget ? Math.max(0, envelope.monthlyTarget - allocatedThisMonth) : 0;
+export function remainingToFund(envelope: Pick<BudgetedEnvelope, 'monthlyBudget'>, allocatedThisMonth: number): number {
+  return Math.max(0, envelope.monthlyBudget - allocatedThisMonth);
 }
 
 export type FundingPlan = { items: { envelopeId: number; amount: number }[]; shortfallCount: number };
@@ -37,8 +64,8 @@ export type FundingPlan = { items: { envelopeId: number; amount: number }[]; sho
  * Répartition automatique : chaque enveloppe active qui a un budget reçoit ce qui lui manque pour le mois,
  * dans l'ordre de la page Budget, tant qu'il reste de l'argent. Le surplus reste à répartir.
  */
-export function planAutoFunding(envelopes: Envelope[], allocated: Map<number, number>, available: number): FundingPlan {
-  const ordered = envelopes.filter((e) => !e.archived && e.monthlyTarget).sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+export function planAutoFunding(envelopes: BudgetedEnvelope[], allocated: Map<number, number>, available: number): FundingPlan {
+  const ordered = envelopes.filter((e) => !e.archived && e.monthlyBudget > 0).sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
   const items: FundingPlan['items'] = [];
   let left = Math.max(0, available);
   let shortfallCount = 0;

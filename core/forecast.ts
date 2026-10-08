@@ -2,7 +2,7 @@ import type { ForecastAlert, ForecastDay, ForecastEvent, ForecastResult } from '
 import { addDays, addMonths, daysBetween, startOfMonth, type ISODate } from '@shared/dates';
 import type { RecurringRule } from '@shared/schemas';
 import { applyOperation, computeBalances, rolloverEnvelopes, type AccountMap, type EnvelopeMap } from './balances';
-import { monthActivity, remainingToFund } from './budget';
+import { monthActivity, remainingToFund, withBudgets } from './budget';
 import { expandRule } from './recurrence';
 import type { State } from './types';
 
@@ -10,7 +10,8 @@ import type { State } from './types';
  * Projette les soldes jour par jour sur `horizonDays` à partir de `today`.
  * Point de départ : soldes confirmés, plus les prévues antérieures à aujourd'hui (non rapprochées, elles sont dues).
  * Entrées futures : prévues datées d'aujourd'hui ou après, occurrences de règles non encore matérialisées,
- * et budget mensuel des enveloppes (le reste à répartir ce mois-ci aujourd'hui, puis le budget complet chaque 1er du mois).
+ * et budget mensuel des enveloppes (charges fixes + complément) : le reste à répartir ce mois-ci aujourd'hui (budget calculé pour le mois de `today`),
+ * puis le budget complet chaque 1er du mois, recalculé pour ce mois-là (une charge terminée ne compte plus).
  * Chaque 1er du mois, les enveloppes dépassées repartent de zéro avant les opérations du jour, comme dans `computeBalances`.
  */
 export function forecast(state: State, rules: RecurringRule[], today: ISODate, horizonDays: number): ForecastResult {
@@ -117,14 +118,18 @@ export function collectEvents(state: State, rules: RecurringRule[], today: ISODa
     }
   }
 
-  events.push(...budgetEvents(state, today, end));
+  events.push(...budgetEvents(state, rules, today, end));
 
   events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   return events;
 }
 
-/** Répartitions attendues d'après le budget mensuel de chaque enveloppe, sur [today, end]. */
-function budgetEvents(state: State, today: ISODate, end: ISODate): ForecastEvent[] {
+/**
+ * Répartitions attendues d'après le budget mensuel de chaque enveloppe, sur [today, end].
+ * Le mois en cours garde le budget déjà calculé par l'appelant (`state.envelopes`) ; chaque mois futur
+ * recalcule le budget de chaque enveloppe pour ce mois-là, pour qu'une charge terminée ne compte plus.
+ */
+function budgetEvents(state: State, rules: RecurringRule[], today: ISODate, end: ISODate): ForecastEvent[] {
   const events: ForecastEvent[] = [];
   const { allocated } = monthActivity(state.transactions, today);
   const event = (date: ISODate, envelopeId: number, label: string, amount: number): ForecastEvent => ({
@@ -139,19 +144,18 @@ function budgetEvents(state: State, today: ISODate, end: ISODate): ForecastEvent
     source: 'budget',
     sourceId: envelopeId,
   });
-  // Allocations déjà datées de chaque mois futur (salaire de fin de mois réparti d'avance, par exemple).
-  const futureMonths: { month: ISODate; allocated: Map<number, number> }[] = [];
-  for (let month = addMonths(startOfMonth(today), 1); month <= end; month = addMonths(month, 1)) {
-    futureMonths.push({ month, allocated: monthActivity(state.transactions, month).allocated });
-  }
   for (const env of state.envelopes) {
-    if (env.archived || !env.monthlyTarget) continue;
-    const label = `Budget ${env.name}`;
+    if (env.archived || env.monthlyBudget <= 0) continue;
     const rest = remainingToFund(env, allocated.get(env.id) ?? 0);
-    if (rest > 0) events.push(event(today, env.id, label, rest));
-    for (const { month, allocated: already } of futureMonths) {
+    if (rest > 0) events.push(event(today, env.id, `Budget ${env.name}`, rest));
+  }
+  for (let month = addMonths(startOfMonth(today), 1); month <= end; month = addMonths(month, 1)) {
+    // Allocations déjà datées de ce mois futur (salaire de fin de mois réparti d'avance, par exemple).
+    const already = monthActivity(state.transactions, month).allocated;
+    for (const env of withBudgets(state.envelopes, rules, month)) {
+      if (env.archived || env.monthlyBudget <= 0) continue;
       const amount = remainingToFund(env, already.get(env.id) ?? 0);
-      if (amount > 0) events.push(event(month, env.id, label, amount));
+      if (amount > 0) events.push(event(month, env.id, `Budget ${env.name}`, amount));
     }
   }
   return events;

@@ -55,7 +55,15 @@ export type ForecastResponse = ForecastResult & {
 
 export type AccountWithBalance = Account & { balance: Cents; lastImport: ImportRecord | null };
 
-export type EnvelopeWithBalance = Envelope & {
+/** Enveloppe avec son budget du mois, calculé à partir de ses charges fixes. */
+export type BudgetedEnvelope = Envelope & {
+  /** Charges fixes ramenées au mois. */
+  monthlyCharges: Cents;
+  /** monthlyCharges + (monthlyExtra ?? 0) ; 0 = pas de budget. */
+  monthlyBudget: Cents;
+};
+
+export type EnvelopeWithBalance = BudgetedEnvelope & {
   balance: Cents;
   allocatedThisMonth: Cents;
   spentThisMonth: Cents;

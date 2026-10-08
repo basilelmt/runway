@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { withBudgets } from './budget';
 import { forecast } from './forecast';
 import { account, envelope, resetIds, rule, tx } from './test-fixtures';
 
@@ -42,16 +43,20 @@ describe('forecast', () => {
     const alert = r.alerts.find((a) => a.kind === 'envelope');
     // Le 1er avril, l'enveloppe repart de zéro : le creux est celui de mars.
     expect(alert).toMatchObject({ id: courses.id, firstNegativeDate: '2026-03-23', minBalance: -80_00, minBalanceDate: '2026-03-30' });
-    expect(r.days.find((d) => d.date === '2026-04-01')?.envelopes[courses.id]).toBe(0);
+    // La règle hebdomadaire est aussi une charge de l'enveloppe : son budget d'avril (260,00 €) est réparti le 1er,
+    // une fois le découvert de mars remis à zéro (sans le rebond, ce serait -80,00 € + 260,00 €).
+    expect(r.days.find((d) => d.date === '2026-04-01')?.envelopes[courses.id]).toBe(260_00);
     expect(r.alerts.find((a) => a.kind === 'account')).toBeUndefined();
   });
 
   it('compte le budget mensuel : le reste du mois aujourd’hui, puis le budget complet chaque 1er', () => {
     const courant = account({ name: 'Courant', initialBalance: 5000_00 });
-    const logement = envelope({ name: 'Logement', monthlyTarget: 800_00 });
+    const logement = envelope({ name: 'Logement' });
     const loyer = rule({ kind: 'expense', amount: 800_00, accountId: courant.id, envelopeId: logement.id, frequency: 'monthly', dayOfMonth: 5, startDate: '2026-01-01', lastGeneratedDate: '2026-03-05' });
+    // Le budget de Logement vient de sa charge : aucun montant saisi à la main.
+    const [budgeted] = withBudgets([logement], [loyer], '2026-03-10');
     const dejaReparti = tx({ kind: 'allocation', amount: 300_00, envelopeId: logement.id, date: '2026-03-02' });
-    const r = forecast({ accounts: [courant], envelopes: [logement], transactions: [dejaReparti] }, [loyer], '2026-03-10', 60);
+    const r = forecast({ accounts: [courant], envelopes: [budgeted!], transactions: [dejaReparti] }, [loyer], '2026-03-10', 60);
 
     const budget = r.events.filter((e) => e.source === 'budget');
     expect(budget.map((e) => [e.date, e.amount])).toEqual([
@@ -67,8 +72,8 @@ describe('forecast', () => {
   it('n’ajoute rien pour une enveloppe sans budget, archivée ou déjà remplie', () => {
     const courant = account({ name: 'Courant', initialBalance: 100_00 });
     const sansBudget = envelope({ name: 'Divers' });
-    const archivee = envelope({ name: 'Ancienne', monthlyTarget: 50_00, archived: true });
-    const remplie = envelope({ name: 'Courses', monthlyTarget: 200_00 });
+    const archivee = envelope({ name: 'Ancienne', monthlyExtra: 50_00, archived: true });
+    const remplie = envelope({ name: 'Courses', monthlyExtra: 200_00 });
     const r = forecast(
       { accounts: [courant], envelopes: [sansBudget, archivee, remplie], transactions: [tx({ kind: 'allocation', amount: 200_00, envelopeId: remplie.id, date: '2026-03-01' })] },
       [],
@@ -80,7 +85,7 @@ describe('forecast', () => {
 
   it('un mois futur déjà réparti ne prévoit que le reste de son budget', () => {
     const courant = account({ name: 'Courant', initialBalance: 3000_00 });
-    const courses = envelope({ name: 'Courses', monthlyTarget: 300_00 });
+    const courses = envelope({ name: 'Courses', monthlyExtra: 300_00 });
     const r = forecast(
       { accounts: [courant], envelopes: [courses], transactions: [tx({ kind: 'allocation', amount: 200_00, envelopeId: courses.id, date: '2026-10-01' })] },
       [],
@@ -91,6 +96,21 @@ describe('forecast', () => {
       ['2026-09-28', 300_00],
       ['2026-10-01', 100_00],
       ['2026-11-01', 300_00],
+    ]);
+  });
+
+  it('une charge qui se termine le mois prochain ne compte plus le mois suivant', () => {
+    const courant = account({ name: 'Courant', initialBalance: 5000_00 });
+    const abonnement = envelope({ name: 'Abonnement' });
+    // Se termine le 15 avril : compte encore en avril, plus du tout en mai.
+    const rules = [rule({ kind: 'expense', amount: 60_00, accountId: courant.id, envelopeId: abonnement.id, frequency: 'monthly', dayOfMonth: 15, startDate: '2026-01-01', endDate: '2026-04-15', lastGeneratedDate: '2026-03-15' })];
+    const [budgeted] = withBudgets([abonnement], rules, '2026-03-10');
+    const r = forecast({ accounts: [courant], envelopes: [budgeted!], transactions: [] }, rules, '2026-03-10', 65);
+
+    const budget = r.events.filter((e) => e.source === 'budget' && e.envelopeId === abonnement.id);
+    expect(budget.map((e) => [e.date, e.amount])).toEqual([
+      ['2026-03-10', 60_00],
+      ['2026-04-01', 60_00],
     ]);
   });
 
