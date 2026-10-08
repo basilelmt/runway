@@ -21,6 +21,11 @@
   gap: var(--s-2);
 }
 
+.heading {
+  display: flex;
+  flex-direction: column;
+}
+
 .title {
   /* Première ligne centrée sur le bouton (30 px), même quand le titre passe à la ligne. */
   min-height: 30px;

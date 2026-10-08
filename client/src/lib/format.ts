@@ -62,9 +62,13 @@ export function syncSummary(result: BankSyncRunResult): string | null {
 }
 
 /**
- * Empêche un montant écrit en texte libre de se couper en fin de ligne : espaces des milliers
- * en espace fine insécable, espace avant l'unité en espace insécable (« 1 223,17 € »).
+ * Empêche les coupures malvenues dans un texte libre : espaces des milliers en espace fine insécable,
+ * espace avant l'unité et espaces intérieures des guillemets en espace insécable (« 1 223,17 € »).
  */
-export function keepAmountsTogether(text: string): string {
-  return text.replace(/(\d) (?=\d{3}(?!\d))/g, '$1 ').replace(/(\d) (€|k€|%)/g, '$1 $2');
+export function keepTogether(text: string): string {
+  return text
+    .replace(/(\d) (?=\d{3}(?!\d))/g, '$1 ')
+    .replace(/(\d) (€|k€|%)/g, '$1 $2')
+    .replace(/« /g, '« ')
+    .replace(/ »/g, ' »');
 }

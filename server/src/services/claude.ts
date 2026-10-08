@@ -118,7 +118,7 @@ Consignes :
  */
 export async function runClaude(args: string[], timeoutMs: number, exec: Exec): Promise<unknown> {
   const result = await exec(args, timeoutMs);
-  if (result.exitCode === 127) throw new ClaudeError("Claude Code n'est pas installé (binaire `claude` introuvable)", 'claude_not_installed', 503);
+  if (result.exitCode === 127) throw claudeNotInstalled();
   if (result.exitCode === 124) throw new ClaudeError('Claude a mis trop de temps à répondre', 'claude_timeout', 504);
 
   let parsed: unknown;
@@ -133,10 +133,12 @@ export async function runClaude(args: string[], timeoutMs: number, exec: Exec): 
   return envelope.structured_output;
 }
 
+export const claudeNotInstalled = () => new ClaudeError('Claude Code n’est pas installé (commande « claude » introuvable)', 'claude_not_installed', 503);
+
 /** Erreur portée par l'enveloppe de résultat de `claude -p` (non connecté, erreur signalée), ou null. */
 export function claudeErrorFromResult(envelope: { is_error?: boolean; result?: string }): ClaudeError | null {
   if (typeof envelope.result === 'string' && /not logged in/i.test(envelope.result)) {
-    return new ClaudeError('Claude Code n\'est pas connecté : lance `claude` dans un terminal et fais /login', 'claude_not_logged_in', 503);
+    return new ClaudeError('Claude Code n’est pas connecté : lance « claude » dans un terminal puis /login', 'claude_not_logged_in', 503);
   }
   if (envelope.is_error) return new ClaudeError(`Claude a renvoyé une erreur : ${envelope.result ?? 'inconnue'}`, 'claude_error');
   return null;

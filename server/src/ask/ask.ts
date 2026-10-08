@@ -9,7 +9,7 @@ import { askAnswerSchema, type AskRequest } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { listAccounts } from '../repos/accounts';
 import { listEnvelopes } from '../repos/envelopes';
-import { ClaudeError, claudeErrorFromResult, spawnClaudeStream, type StreamExec } from '../services/claude';
+import { ClaudeError, claudeErrorFromResult, claudeNotInstalled, spawnClaudeStream, type StreamExec } from '../services/claude';
 import { validateActions } from './actions';
 import { answerJsonSchema, buildAskSystemPrompt, stepText } from './prompt';
 import { openReadOnly, runReadOnlyQuery } from './query';
@@ -98,7 +98,7 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
     });
     if (dataUnavailable) throw new ClaudeError('Runway n’a pas pu ouvrir ta base pour Claude (serveur de données injoignable)', 'ask_data_unavailable', 503);
     if (exitCode === 130) return;
-    if (exitCode === 127) throw new ClaudeError("Claude Code n'est pas installé (binaire `claude` introuvable)", 'claude_not_installed', 503);
+    if (exitCode === 127) throw claudeNotInstalled();
     if (exitCode === 124) throw new ClaudeError('Claude a mis trop de temps à répondre', 'claude_timeout', 504);
     const result = final as ResultEvent | null;
     const resultError = result ? claudeErrorFromResult(result) : null;

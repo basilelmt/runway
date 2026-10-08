@@ -7,7 +7,7 @@ import { errorMessage } from '@/api/client';
 import { useApplySorting, useCreateRecurringRule, useCreateTransaction, useUpdateEnvelope } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
 import { Button, Checkbox } from '@/components/ui';
-import { plural } from '@/lib/format';
+import { keepTogether, plural } from '@/lib/format';
 import styles from './ActionCard.module.css';
 
 function describe(action: AskActionView): { title: string; detail: string | null } {
@@ -68,10 +68,12 @@ export function ActionCard({ action }: { action: AskActionView }) {
   return (
     <li className={styles.card} data-done={done || undefined}>
       <div className={styles.body}>
-        <p className={styles.title}>{title}</p>
-        {detail ? <p className={styles.detail}>{detail}</p> : null}
+        <div className={styles.heading}>
+          <p className={styles.title}>{keepTogether(title)}</p>
+          {detail ? <p className={styles.detail}>{keepTogether(detail)}</p> : null}
+        </div>
         {action.type === 'sort' && action.rulePattern ? (
-          <Checkbox label={`Créer aussi la règle « ${action.rulePattern} »`} checked={withRule} disabled={done} onChange={(e) => setWithRule(e.target.checked)} />
+          <Checkbox label={keepTogether(`Créer aussi la règle « ${action.rulePattern} »`)} checked={withRule} disabled={done} onChange={(e) => setWithRule(e.target.checked)} />
         ) : null}
         {mutation.error ? (
           <p className={styles.error} role="alert">
