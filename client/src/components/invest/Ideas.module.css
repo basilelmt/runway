@@ -165,6 +165,13 @@
   color: var(--ink-mute);
 }
 
+/* Ce que le cours avait déjà fait, rangé sous l'actif */
+.market {
+  margin-top: calc(-1 * var(--s-2));
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+}
+
 .pricedIn {
   font-size: var(--text-sm);
   color: var(--ink-mute);

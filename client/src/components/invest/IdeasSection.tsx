@@ -1,10 +1,12 @@
 import { ChevronDown, Lightbulb, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { IdeaRunView } from '@shared/api-types';
+import { IDEA_ANGLES } from '@shared/invest';
 import { errorMessage } from '@/api/client';
 import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
 import { Button, EmptyState, Skeleton } from '@/components/ui';
 import { plural } from '@/lib/format';
+import { failedAnglesText, runOutcome } from '@/lib/invest';
 import { IdeaCard } from './IdeaCard';
 import { IdeasScore } from './IdeasScore';
 import styles from './Ideas.module.css';
@@ -40,7 +42,7 @@ export function IdeasSection() {
       <div className={styles.head}>
         <div className={styles.headText}>
           <h2 id="ideas-title">Idées</h2>
-          <p className={styles.subtitle}>Tirées de l’actualité par Claude, suivies face au S&P 500.</p>
+          <p className={styles.subtitle}>Trouvées par {IDEA_ANGLES.length} chercheurs, passées au crible par un critique, suivies face au S&P 500.</p>
         </div>
         <Button icon={<Sparkles />} onClick={() => start.mutate('manual')} disabled={running}>
           Trouver des idées
@@ -50,7 +52,9 @@ export function IdeasSection() {
       {running ? (
         <p className={styles.running} role="status">
           <span className={styles.pulse} aria-hidden />
-          Claude lit l’actualité et cherche des idées. Ça prend quelques minutes, tu peux continuer ailleurs.
+          {current?.phase === 'review'
+            ? 'Claude passe les pistes au crible. Encore quelques minutes.'
+            : `${IDEA_ANGLES.length} chercheurs fouillent l’actualité. Ça prend plusieurs minutes, tu peux continuer ailleurs.`}
         </p>
       ) : current && current.id === runId ? (
         <RunReport run={current} onRetry={() => start.mutate('manual')} />
@@ -71,7 +75,11 @@ export function IdeasSection() {
       ) : (
         <>
           {data.open.length === 0 && !running ? (
-            <EmptyState icon={<Lightbulb />} title="Pas encore d’idées" description="Claude cherche dans l’actualité des événements à venir et ce qu’ils pourraient faire monter." />
+            <EmptyState
+              icon={<Lightbulb />}
+              title="Pas encore d’idées"
+              description="Quatre chercheurs fouillent l’actualité, un critique ne garde que ce que le marché n’a pas encore vu."
+            />
           ) : (
             <div className={[styles.grid, 'stagger'].join(' ')}>
               {data.open.map((i) => (
@@ -116,10 +124,8 @@ function RunReport({ run, onRetry }: { run: IdeaRunView; onRetry: () => void }) 
   }
   return (
     <div className={styles.report} role="status">
-      <span>
-        {run.acceptedCount === 0 ? 'Aucune nouvelle idée retenue' : plural(run.acceptedCount, 'idée ajoutée', 'idées ajoutées')}
-        {run.rejected.length > 0 ? ` · ${plural(run.rejected.length, 'écartée', 'écartées')}` : ''}
-      </span>
+      <span>{runOutcome(run)}</span>
+      {run.failedAngles.length > 0 ? <span>{failedAnglesText(run.failedAngles)}</span> : null}
       {run.rejected.length > 0 ? (
         <details className={styles.rejected}>
           <summary>Voir pourquoi</summary>

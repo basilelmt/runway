@@ -42,4 +42,17 @@ describe('IdeaCard', () => {
     rerender(<IdeaCard idea={{ ...open, status: 'closed', return: -0.1, benchReturn: 0.05 }} />);
     expect(screen.getByText('N’a pas battu le S&P 500')).toBeInTheDocument();
   });
+
+  it('montre le risque et ce que le cours avait déjà fait', () => {
+    render(<IdeaCard idea={{ ...open, risk: 'La fête peut être annulée.', marketContext: { perf3m: 0.18, benchPerf3m: 0.04 } }} />);
+    expect(screen.getByText('Ce qui peut mal tourner')).toBeInTheDocument();
+    expect(screen.getByText(/La fête peut être annulée\./)).toBeInTheDocument();
+    expect(screen.getByText('+18,0 % sur 3 mois (S&P 500 +4,0 %)')).toBeInTheDocument();
+  });
+
+  it('une idée d’avant la critique n’a ni risque ni contexte de marché', () => {
+    render(<IdeaCard idea={open} />);
+    expect(screen.queryByText('Ce qui peut mal tourner')).not.toBeInTheDocument();
+    expect(screen.queryByText(/sur 3 mois/)).not.toBeInTheDocument();
+  });
 });

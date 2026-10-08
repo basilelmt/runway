@@ -2,7 +2,7 @@ import { ArrowUpRight } from 'lucide-react';
 import type { IdeaView } from '@shared/api-types';
 import { BENCHMARK_NAME } from '@shared/invest';
 import { formatDateCompact } from '@/lib/format';
-import { domainOf, formatPct, gainTone, platformLabel } from '@/lib/invest';
+import { domainOf, formatMarketContext, formatPct, gainTone, platformLabel } from '@/lib/invest';
 import styles from './Ideas.module.css';
 
 /** Une idée : l'événement, la déduction, l'actif, et ce qu'elle a donné face au S&P 500. */
@@ -42,9 +42,17 @@ export function IdeaCard({ idea }: { idea: IdeaView }) {
         <span className={styles.where}>{where}</span>
       </div>
 
+      {idea.marketContext ? <p className={styles.market}>{formatMarketContext(idea.marketContext)}</p> : null}
+
       <p className={styles.pricedIn}>
         <span className={styles.pricedInLabel}>Déjà dans les prix ?</span> {idea.pricedIn}
       </p>
+
+      {idea.risk ? (
+        <p className={styles.pricedIn}>
+          <span className={styles.pricedInLabel}>Ce qui peut mal tourner</span> {idea.risk}
+        </p>
+      ) : null}
 
       <footer className={styles.perf}>
         <div className={styles.perfFigure}>

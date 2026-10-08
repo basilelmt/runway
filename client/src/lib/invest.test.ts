@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { domainOf, formatPct, formatQty, gainTone } from './invest';
+import { domainOf, failedAnglesText, formatMarketContext, formatPct, formatQty, gainTone, runOutcome } from './invest';
 
 describe('format invest', () => {
   it('formatPct', () => {
@@ -23,5 +23,20 @@ describe('format invest', () => {
   it('domainOf', () => {
     expect(domainOf('https://www.lesechos.fr/a/b')).toBe('lesechos.fr');
     expect(domainOf('pas une url')).toBe('pas une url');
+  });
+  it('formatMarketContext', () => {
+    expect(formatMarketContext({ perf3m: 0.18, benchPerf3m: 0.04 })).toBe('+18,0 % sur 3 mois (S&P 500 +4,0 %)');
+    expect(formatMarketContext({ perf3m: -0.052, benchPerf3m: 0.01 })).toBe('-5,2 % sur 3 mois (S&P 500 +1,0 %)');
+  });
+  it('runOutcome', () => {
+    expect(runOutcome({ acceptedCount: 2, candidateCount: 9 })).toBe('2 idées retenues sur 9 pistes');
+    expect(runOutcome({ acceptedCount: 1, candidateCount: 1 })).toBe('1 idée retenue sur 1 piste');
+    expect(runOutcome({ acceptedCount: 0, candidateCount: 9 })).toBe('Rien de convaincant cette semaine · 9 pistes écartées');
+    expect(runOutcome({ acceptedCount: 0, candidateCount: 1 })).toBe('Rien de convaincant cette semaine · 1 piste écartée');
+    expect(runOutcome({ acceptedCount: 0, candidateCount: 0 })).toBe('Aucune piste trouvée');
+  });
+  it('failedAnglesText', () => {
+    expect(failedAnglesText([{ label: 'International' }])).toBe('Le chercheur International n’a pas répondu.');
+    expect(failedAnglesText([{ label: 'International' }, { label: 'Calendrier' }])).toBe('Les chercheurs International et Calendrier n’ont pas répondu.');
   });
 });
