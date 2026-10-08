@@ -352,13 +352,24 @@ export const binanceSyncSchema = z.object({ onlyIfStaleMinutes: z.number().int()
 
 export const ideaRunStartSchema = z.object({ trigger: z.enum(['manual', 'weekly']) });
 
+const validSourceUrl = z.url({ protocol: /^https?$/, error: 'Lien http(s) attendu' });
+/** Ticker normalisé en majuscules : les comparaisons (doublon, déjà détenu, verdict) ignorent la casse. */
+const tickerSchema = z.string().trim().min(1).max(32).transform((s) => s.toUpperCase());
+
 /** Une piste telle qu'un chercheur la propose, avant vérification du ticker. */
 export const ideaCandidateSchema = z.object({
   title: z.string().trim().min(1).max(200),
   event: z.string().trim().min(1).max(1000),
-  sources: z.array(z.url({ protocol: /^https?$/, error: 'Lien http(s) attendu' })).min(1).max(8),
+  /** Un lien invalide (ex. `javascript:`) n'écarte pas toute la piste : seules les URL http(s) valides sont gardées, dédoublonnées, dans la limite de 8. */
+  sources: z
+    .array(z.string())
+    .transform((urls) => {
+      const valid = urls.filter((u) => validSourceUrl.safeParse(u).success);
+      return [...new Set(valid)].slice(0, 8);
+    })
+    .refine((urls) => urls.length > 0, 'Format invalide'),
   reasoning: z.array(z.string().trim().min(1).max(400)).min(1).max(5),
-  ticker: z.string().trim().min(1).max(32),
+  ticker: tickerSchema,
   assetName: z.string().trim().min(1).max(120),
   whereToBuy: z.enum(platforms),
   horizon: isoDateSchema,
@@ -368,13 +379,13 @@ export type IdeaCandidate = z.infer<typeof ideaCandidateSchema>;
 /** Sortie brute d'un chercheur : chaque piste est validée séparément pour ne pas tout rejeter pour une seule. */
 export const ideaBatchSchema = z.object({ ideas: z.array(z.unknown()) });
 
-/** Verdict du critique sur une piste. */
+/** Verdict du critique sur une piste ; "pricedIn" et "risk" peuvent être vides (pas d'avis particulier). */
 export const ideaReviewSchema = z.object({
-  ticker: z.string().trim().min(1).max(32),
+  ticker: tickerSchema,
   verdict: z.enum(['kept', 'dropped']),
   reason: z.string().trim().min(1).max(600),
-  pricedIn: z.string().trim().min(1).max(600),
-  risk: z.string().trim().min(1).max(600),
+  pricedIn: z.string().trim().max(600),
+  risk: z.string().trim().max(600),
 });
 export type IdeaReview = z.infer<typeof ideaReviewSchema>;
 
@@ -383,7 +394,7 @@ export const ideaReviewBatchSchema = z.object({ reviews: z.array(z.unknown()) })
 
 export const askRequestSchema = z.object({
   question: z.string().trim().min(1, 'Question vide').max(500, 'Question trop longue'),
-  sessionId: z.string().uuid().nullable(),
+  sessionId: z.uuid().nullable(),
 });
 export type AskRequest = z.infer<typeof askRequestSchema>;
 
