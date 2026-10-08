@@ -71,7 +71,7 @@ export function buildResearchPrompt(input: {
   const label = IDEA_ANGLES.find((a) => a.key === input.angle)!.label;
   const holdings = input.holdings.length ? input.holdings.map((h) => `- ${h.name} (${h.ticker})`).join('\n') : '(aucune)';
   const recent = input.recent.length ? input.recent.map((i) => `- ${i.title} (${i.ticker})${i.dropped ? ', écartée' : ''}`).join('\n') : '(aucune)';
-  return `Nous sommes le ${input.today}. Tu es l'un des quatre chercheurs qui aident un particulier français à trouver des idées d'investissement tirées de l'actualité.
+  return `Nous sommes le ${input.today}. Tu es l'un des ${IDEA_ANGLES.length} chercheurs qui aident un particulier français à trouver des idées d'investissement tirées de l'actualité.
 Ton angle : ${label}. ${ANGLE_FOCUS[input.angle]}
 
 Positions déjà détenues :
