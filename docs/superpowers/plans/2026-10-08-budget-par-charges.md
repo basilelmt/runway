@@ -51,6 +51,12 @@ Spec : `docs/superpowers/specs/2026-10-08-budget-par-charges-design.md`.
 | `client/src/components/recurring/frequency.ts` | `describeRhythm` |
 | `client/src/components/envelopes/EnvelopeFormDialog.tsx` (+ `.module.css`, `.test.tsx`) | champ « En plus des charges » et détail des charges |
 
+
+## Amendements après relecture (prioritaires sur le reste du plan)
+
+- Libellé du champ du formulaire d'enveloppe : « En plus des charges » seulement quand l'enveloppe porte au moins une charge ; sinon « Budget mensuel » avec l'aide actuelle « Ce que tu prévois d'y mettre chaque mois ». Une nouvelle enveloppe affiche donc « Budget mensuel ». Ajouter un test pour chaque cas.
+- Prévision : ne pas figer le budget du mois courant sur les mois futurs. Pour chaque mois futur, recalculer les budgets avec `withBudgets(envelopes, rules, month)` (premier jour du mois), pour qu'une charge terminée ne compte plus. `forecast` reçoit déjà les règles ; ajouter un test avec une charge qui se termine le mois prochain.
+
 ---
 
 ### Task 1: Modèle de données - colonne `monthly_extra` et migration 0009

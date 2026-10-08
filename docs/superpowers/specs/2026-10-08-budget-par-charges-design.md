@@ -54,7 +54,7 @@ Ainsi toutes les fonctions du moteur lisent `monthlyBudget` sans connaître les 
 Tout ce qui lisait `monthlyTarget` lit `monthlyBudget`, avec 0 à la place de null :
 
 - `remainingToFund`, `planAutoFunding` (`core/budget.ts`) ;
-- les événements de budget de la prévision (`core/forecast.ts`) ;
+- les événements de budget de la prévision (`core/forecast.ts`), avec un budget recalculé pour chaque mois futur (une charge terminée ne compte plus les mois suivants) ;
 - la vue d'ensemble (`server/src/services/overview.ts`) ;
 - le rapport de dépenses (`server/src/services/reports.ts`), dont `byEnvelope[].monthlyTarget` devient `monthlyBudget` ;
 - le dialogue « Répartir » (`FundDialog`), la ligne d'enveloppe (`EnvelopeRow`), le détail d'une enveloppe et l'Analyse ;
@@ -75,7 +75,7 @@ Les tickets de métro de l'enveloppe Transports comptent donc dans le rythme, le
 
 Dans `EnvelopeFormDialog` :
 
-- le champ « Budget mensuel » devient « En plus des charges » ;
+- le champ s'appelle « En plus des charges » quand l'enveloppe porte des charges, et reste « Budget mensuel » sinon ;
 - s'il y a des charges, le formulaire affiche le détail sous le champ, une ligne par charge puis le total :
   « Navigo 40,00 € + 90,00 € = 130,00 € par mois » ;
 - une charge non mensuelle est affichée avec son rythme : « Cotisation compte LBP 3,60 € (10,80 € tous les 3 mois) » ;
