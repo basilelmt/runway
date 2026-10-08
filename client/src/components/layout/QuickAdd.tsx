@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useCreateTransaction } from '@/api/hooks';
 import { errorMessage } from '@/api/client';
 import { QuickEntry } from '@/components/transactions/QuickEntry';
+import { useAsk } from '@/components/ask/ask-context';
 import { Dialog, useToast } from '@/components/ui';
 import { QuickAddContext } from './quick-add-context';
 import styles from './QuickAdd.module.css';
@@ -14,13 +15,14 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 /**
  * Saisie rapide d'une opération : bouton flottant sur mobile, `useQuickAdd()` ailleurs,
- * et raccourcis clavier globaux : `n` nouvelle opération, `/` recherche.
+ * et raccourcis clavier globaux : `n` nouvelle opération, `k` Demander, `/` recherche.
  */
 export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const toast = useToast();
   const create = useCreateTransaction();
+  const { toggle: toggleAsk } = useAsk();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -28,6 +30,10 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       if (e.key === 'n') {
         e.preventDefault();
         setOpen(true);
+      }
+      if (e.key === 'k') {
+        e.preventDefault();
+        toggleAsk();
       }
       if (e.key === '/') {
         const search = document.querySelector<HTMLInputElement>('input[type="search"]');
@@ -39,7 +45,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [toggleAsk]);
 
   return (
     <QuickAddContext.Provider value={() => setOpen(true)}>

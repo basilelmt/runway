@@ -65,6 +65,7 @@
 
   --sidenav-width: 232px;
   --bottomnav-height: 60px;
+  --ask-width: 420px;
   --content-max: 1040px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);

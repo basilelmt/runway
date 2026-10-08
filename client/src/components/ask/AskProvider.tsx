@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { errorMessage } from '@/api/client';
 import { streamAsk } from '@/api/ask';
 import { AskContext, type AskApi, type AskTurn } from './ask-context';
+import { AskPanel } from './AskPanel';
 
 /**
  * Fil de la conversation avec Claude et état d'ouverture du panneau.
@@ -78,10 +79,17 @@ export function AskProvider({ children }: { children: ReactNode }) {
     setTurns([]);
   }, []);
 
+  const toggle = useCallback(() => setOpen((o) => !o), []);
+
   const api = useMemo<AskApi>(
-    () => ({ open, setOpen, toggle: () => setOpen((o) => !o), turns, pending: turns.some((t) => t.status === 'pending'), send, stop, retry, reset }),
-    [open, turns, send, stop, retry, reset],
+    () => ({ open, setOpen, toggle, turns, pending: turns.some((t) => t.status === 'pending'), send, stop, retry, reset }),
+    [open, toggle, turns, send, stop, retry, reset],
   );
 
-  return <AskContext.Provider value={api}>{children}</AskContext.Provider>;
+  return (
+    <AskContext.Provider value={api}>
+      {children}
+      <AskPanel />
+    </AskContext.Provider>
+  );
 }

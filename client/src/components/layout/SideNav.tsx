@@ -1,7 +1,8 @@
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { useRef } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useOverview } from '@/api/hooks';
+import { useAsk } from '@/components/ask/ask-context';
 import { budgetNeedsAttention } from '@/lib/budget';
 import { useActiveIndicator } from '@/lib/motion';
 import { LiftoffArrow } from './LiftoffArrow';
@@ -12,6 +13,7 @@ import styles from './SideNav.module.css';
 export function SideNav() {
   const overview = useOverview();
   const openQuickAdd = useQuickAdd();
+  const ask = useAsk();
   const unsorted = overview.data?.unsortedCount ?? 0;
   const budgetDot = overview.data ? budgetNeedsAttention(overview.data) : false;
   const navRef = useRef<HTMLElement>(null);
@@ -43,6 +45,12 @@ export function SideNav() {
         <Plus aria-hidden strokeWidth={2} />
         <span>Nouvelle opération</span>
         <kbd>N</kbd>
+      </button>
+
+      <button type="button" className={[styles.askButton, ask.open ? styles.askButtonOpen : ''].join(' ')} aria-expanded={ask.open} onClick={ask.toggle}>
+        <Sparkles aria-hidden strokeWidth={2} />
+        <span>Demander</span>
+        <kbd>K</kbd>
       </button>
 
       <ul className={styles.list}>
