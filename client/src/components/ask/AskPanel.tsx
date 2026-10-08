@@ -25,6 +25,11 @@ export function AskPanel() {
     return () => returnFocus.current?.focus();
   }, [open]);
 
+  // Une fois la réponse arrivée, le champ (désactivé pendant l'attente) reprend le focus pour enchaîner.
+  useEffect(() => {
+    if (open && !pending) inputRef.current?.focus();
+  }, [open, pending]);
+
   // Le fil défile vers le bas à chaque question, étape ou réponse.
   const last = turns.at(-1);
   useEffect(() => {

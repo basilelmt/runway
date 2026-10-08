@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BankSyncConnectionResult, BankSyncRunResult } from '@shared/api-types';
-import { syncSummary } from './format';
+import { keepAmountsTogether, syncSummary } from './format';
 
 function run(...counts: { created: number; matched: number }[]): BankSyncRunResult {
   const connections: BankSyncConnectionResult[] = counts.map((c, i) => ({ connectionId: i + 1, status: 'active', duplicates: 0, skipped: 0, error: null, ...c }));
@@ -23,5 +23,16 @@ describe('syncSummary', () => {
 
   it('additionne les connexions', () => {
     expect(syncSummary(run({ created: 2, matched: 0 }, { created: 1, matched: 2 }))).toBe('3 opérations synchronisées, 2 rapprochées');
+  });
+});
+
+describe('keepAmountsTogether', () => {
+  it('rend insécables les espaces des montants', () => {
+    expect(keepAmountsTogether('Octobre en est à 1 223,17 € au 8, soit 12 % de plus.')).toBe('Octobre en est à 1 223,17 € au 8, soit 12 % de plus.');
+    expect(keepAmountsTogether('32 047,71 € et 1 234 567 €')).toBe('32 047,71 € et 1 234 567 €');
+  });
+
+  it('ne touche pas aux nombres séparés par du texte', () => {
+    expect(keepAmountsTogether('les mois 3 et 4 puis 2026 1234')).toBe('les mois 3 et 4 puis 2026 1234');
   });
 });

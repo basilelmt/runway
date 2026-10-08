@@ -22,6 +22,10 @@
 }
 
 .title {
+  /* Première ligne centrée sur le bouton (30 px), même quand le titre passe à la ligne. */
+  min-height: 30px;
+  display: flex;
+  align-items: center;
   margin: 0;
   font-size: var(--text-sm);
   font-weight: 500;

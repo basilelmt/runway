@@ -94,6 +94,7 @@ describe('AskPanel', () => {
     expect(screen.getByText('Restos ce mois-ci')).toBeInTheDocument();
     expect(screen.getByText('Restos par mois')).toBeInTheDocument();
     expect(screen.getByLabelText('Ta question')).toBeEnabled();
+    expect(screen.getByLabelText('Ta question')).toHaveFocus();
   });
 
   it('Entrée envoie, Maj+Entrée va à la ligne', async () => {

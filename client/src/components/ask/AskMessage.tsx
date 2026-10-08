@@ -1,5 +1,6 @@
 import { RotateCcw } from 'lucide-react';
 import { Amount, Button } from '@/components/ui';
+import { keepAmountsTogether } from '@/lib/format';
 import type { AskTurn } from './ask-context';
 import { ActionCard } from './ActionCard';
 import { AskChart } from './AskChart';
@@ -37,7 +38,7 @@ export function AskMessage({ turn, onRetry }: AskMessageProps) {
               <Amount cents={turn.answer.highlight.amount} size="lg" tone="neutral" />
             </div>
           ) : null}
-          <p className={styles.text}>{turn.answer.answer}</p>
+          <p className={styles.text}>{keepAmountsTogether(turn.answer.answer)}</p>
           {turn.answer.chart ? <AskChart data={turn.answer.chart} /> : null}
           {turn.answer.actions.length > 0 ? (
             <ul className={styles.actions} aria-label="Actions proposées">

@@ -30,7 +30,7 @@ ${accList || '(aucun)'}
 
 Réponse :
 - answer : 1 à 4 phrases, montants en euros au format français (1 234,56 €), sans Markdown.
-- highlight : le chiffre principal de la réponse en centimes avec un libellé court, ou null.
+- highlight : le chiffre principal tiré des données, en centimes, avec un libellé court ; null quand la réponse se résume à proposer une action (le montant d'une action proposée n'est jamais un highlight, il n'a pas encore eu lieu).
 - chart : seulement si une série aide à comprendre (évolution, comparaison) ; donne une requête SQL agrégée (GROUP BY label, ORDER BY) qui renvoie exactement les colonnes label (texte, par exemple le mois 'YYYY-MM') et value (centimes), une ligne par point et 24 points au plus ; sinon null.
 - actions : propose-en seulement si la question y invite ou si elle découle naturellement de ta réponse, 5 au plus :
   - sort : ranger des dépenses (transactionIds) dans une enveloppe (envelopeId), avec rulePattern (motif court et stable du libellé, sans date ni numéro) si une règle de tri aurait du sens, sinon null ;

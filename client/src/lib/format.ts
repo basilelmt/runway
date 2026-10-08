@@ -60,3 +60,11 @@ export function syncSummary(result: BankSyncRunResult): string | null {
   if (created === 0) return plural(matched, 'opération rapprochée', 'opérations rapprochées');
   return `${plural(created, 'opération synchronisée', 'opérations synchronisées')}, ${plural(matched, 'rapprochée')}`;
 }
+
+/**
+ * Empêche un montant écrit en texte libre de se couper en fin de ligne : espaces des milliers
+ * en espace fine insécable, espace avant l'unité en espace insécable (« 1 223,17 € »).
+ */
+export function keepAmountsTogether(text: string): string {
+  return text.replace(/(\d) (?=\d{3}(?!\d))/g, '$1 ').replace(/(\d) (€|k€|%)/g, '$1 $2');
+}
