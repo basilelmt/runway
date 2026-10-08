@@ -53,7 +53,7 @@ export function IdeasSection() {
         <p className={styles.running} role="status">
           <span className={styles.pulse} aria-hidden />
           {current?.phase === 'review'
-            ? 'Claude passe les pistes au crible. Encore quelques minutes.'
+            ? 'Claude passe les pistes au crible.'
             : `${IDEA_ANGLES.length} chercheurs fouillent l’actualité. Ça prend plusieurs minutes, tu peux continuer ailleurs.`}
         </p>
       ) : current && current.id === runId ? (
@@ -78,7 +78,7 @@ export function IdeasSection() {
             <EmptyState
               icon={<Lightbulb />}
               title="Pas encore d’idées"
-              description="Quatre chercheurs fouillent l’actualité, un critique ne garde que ce que le marché n’a pas encore vu."
+              description={`${IDEA_ANGLES.length} chercheurs fouillent l’actualité, un critique ne garde que ce que le marché n’a pas encore vu.`}
             />
           ) : (
             <div className={[styles.grid, 'stagger'].join(' ')}>
