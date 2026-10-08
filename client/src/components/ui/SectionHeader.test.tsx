@@ -5,10 +5,10 @@ import { SectionHeader, SectionLink, Total } from './SectionHeader';
 
 describe('SectionHeader', () => {
   it('rend un titre de niveau 2 par défaut, identifiable', () => {
-    render(<SectionHeader id="env-title" title="Enveloppes" description="Les plus serrées d'abord." />);
+    render(<SectionHeader id="env-title" title="Enveloppes" description="Les plus serrées d’abord." />);
     const heading = screen.getByRole('heading', { level: 2, name: 'Enveloppes' });
     expect(heading).toHaveAttribute('id', 'env-title');
-    expect(screen.getByText("Les plus serrées d'abord.")).toBeInTheDocument();
+    expect(screen.getByText('Les plus serrées d’abord.')).toBeInTheDocument();
   });
 
   it('accepte un niveau 3 et un élément à droite', () => {

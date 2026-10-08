@@ -30,7 +30,7 @@ describe('KeyFigure', () => {
     expect(screen.getByRole('term')).toHaveTextContent('Marge restante');
   });
 
-  it('cache la décoration aux lecteurs d\'écran', () => {
+  it('cache la décoration aux lecteurs d’écran', () => {
     const { container } = render(<KeyFigure label="Valeur du portefeuille" figure="6 051,12 €" variant="night" decoration={<canvas />} />);
     expect(container.querySelector('canvas')!.parentElement).toHaveAttribute('aria-hidden', 'true');
   });
