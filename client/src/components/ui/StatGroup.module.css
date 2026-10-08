@@ -1,0 +1,52 @@
+.group {
+  display: flex;
+  margin: 0;
+}
+
+.row {
+  flex-wrap: wrap;
+  gap: var(--s-5) var(--s-8);
+}
+
+.column {
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.divided {
+  padding-left: var(--s-8);
+  border-left: 1px solid var(--rule);
+}
+
+.stat {
+  min-width: 0;
+}
+
+.label {
+  margin-bottom: var(--s-1);
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
+}
+
+.value {
+  margin: 0;
+}
+
+/* La stat qui résume les autres */
+.emphasis {
+  padding-left: var(--s-8);
+  border-left: 2px solid var(--marking);
+}
+
+@media (max-width: 767px) {
+  .divided {
+    padding-left: 0;
+    padding-top: var(--s-5);
+    border-left: none;
+    border-top: 1px solid var(--rule);
+  }
+
+  .emphasis {
+    padding-left: var(--s-4);
+  }
+}
