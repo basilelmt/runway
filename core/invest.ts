@@ -122,6 +122,14 @@ export function simpleReturn(start: number, end: number): number | null {
   return start > 0 ? end / start - 1 : null;
 }
 
+/** Variation entre la dernière clôture au plus tard `days` jours avant `today` et la dernière clôture de `series` (triée) ; null si l'historique ne remonte pas assez loin. */
+export function trailingReturn(series: DatedPrice[], today: ISODate, days: number): number | null {
+  const last = series.at(-1);
+  const start = priceOn(series, addDays(today, -days));
+  if (!last || !start) return null;
+  return simpleReturn(start.close, last.close);
+}
+
 export type ClosedIdea = { return: number; benchReturn: number };
 export type IdeasSummaryResult = {
   closedCount: number;
@@ -130,19 +138,29 @@ export type IdeasSummaryResult = {
   hundredEach: { invested: Cents; ideas: Cents; bench: Cents };
 };
 
+const avgExcess = (ideas: ClosedIdea[]): number => ideas.reduce((s, c) => s + c.return - c.benchReturn, 0) / ideas.length;
+
 export function ideasSummary(closed: ClosedIdea[]): IdeasSummaryResult {
   const n = closed.length;
   const hundred = (r: number) => Math.round(100_00 * (1 + r));
   return {
     closedCount: n,
     beatCount: closed.filter((c) => c.return > c.benchReturn).length,
-    avgExcess: n ? closed.reduce((s, c) => s + c.return - c.benchReturn, 0) / n : null,
+    avgExcess: n ? avgExcess(closed) : null,
     hundredEach: {
       invested: n * 100_00,
       ideas: closed.reduce((s, c) => s + hundred(c.return), 0),
       bench: closed.reduce((s, c) => s + hundred(c.benchReturn), 0),
     },
   };
+}
+
+export type FilterSummaryResult = { keptCount: number; keptAvgExcess: number; droppedCount: number; droppedAvgExcess: number };
+
+/** Le tri du critique a-t-il de la valeur ? Écart moyen à la référence des retenues et des écartées ; null tant qu'un des deux groupes est vide. */
+export function filterSummary(kept: ClosedIdea[], dropped: ClosedIdea[]): FilterSummaryResult | null {
+  if (kept.length === 0 || dropped.length === 0) return null;
+  return { keptCount: kept.length, keptAvgExcess: avgExcess(kept), droppedCount: dropped.length, droppedAvgExcess: avgExcess(dropped) };
 }
 
 /** Vrai si une vente dépasse, à sa date, la quantité détenue (mouvements pris dans l'ordre chronologique). */

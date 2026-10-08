@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addQty, cmpQty, hasOversell, normalizeQty, fromUnits, ideasSummary, isZeroQty, portfolioSeries, position, priceOn, qtyToNumber,
-  simpleReturn, subQty, toEur, toUnits, valueCents, type Trade,
+  addQty, cmpQty, filterSummary, hasOversell, normalizeQty, fromUnits, ideasSummary, isZeroQty, portfolioSeries, position, priceOn, qtyToNumber,
+  simpleReturn, subQty, toEur, toUnits, trailingReturn, valueCents, type Trade,
 } from './invest';
 
 const buy = (date: string, quantity: string, amount: number, fees = 0): Trade => ({ side: 'buy', date, quantity, amount, fees });
@@ -109,6 +109,35 @@ describe('rendements des idées', () => {
   });
   it('bilan vide', () => {
     expect(ideasSummary([])).toEqual({ closedCount: 0, beatCount: 0, avgExcess: null, hundredEach: { invested: 0, ideas: 0, bench: 0 } });
+  });
+  it('trailingReturn compare la dernière clôture à celle d\'il y a N jours', () => {
+    const series = [
+      { date: '2026-07-01', close: 10 },
+      { date: '2026-09-07', close: 11 },
+      { date: '2026-10-07', close: 12 },
+    ];
+    expect(trailingReturn(series, '2026-10-07', 30)).toBeCloseTo(12 / 11 - 1);
+    expect(trailingReturn(series, '2026-10-07', 91)).toBeCloseTo(0.2);
+    // Trou de cotation : la dernière clôture connue avant la date de départ.
+    expect(trailingReturn(series, '2026-10-07', 20)).toBeCloseTo(12 / 11 - 1);
+    // Historique trop court ou vide.
+    expect(trailingReturn(series, '2026-10-07', 120)).toBeNull();
+    expect(trailingReturn([], '2026-10-07', 30)).toBeNull();
+  });
+  it('filterSummary compare retenues et écartées face à la référence', () => {
+    const kept = [
+      { return: 0.2, benchReturn: 0.05 },
+      { return: 0, benchReturn: 0.05 },
+    ];
+    const dropped = [{ return: -0.1, benchReturn: 0.02 }];
+    expect(filterSummary(kept, dropped)).toEqual({
+      keptCount: 2,
+      keptAvgExcess: expect.closeTo(0.05),
+      droppedCount: 1,
+      droppedAvgExcess: expect.closeTo(-0.12),
+    });
+    expect(filterSummary([], dropped)).toBeNull();
+    expect(filterSummary(kept, [])).toBeNull();
   });
 });
 
