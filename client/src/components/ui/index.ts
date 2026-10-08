@@ -25,3 +25,4 @@ export { Spinner } from './Spinner';
 export { Tabs, type TabItem } from './Tabs';
 export { ToastProvider } from './Toast';
 export { useToast } from './toast-context';
+export { SectionHeader, SectionLink, Total } from './SectionHeader';
