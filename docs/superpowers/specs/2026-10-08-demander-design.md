@@ -82,7 +82,8 @@ Schéma JSON imposé (`--json-schema`), revalidé avec zod (`askAnswerSchema` da
 ### Graphique
 
 Claude ne recopie pas les chiffres : il fournit la requête du graphique, qui doit renvoyer des colonnes `label` (texte) et `value` (centimes).
-Le serveur l'exécute avec `runReadOnlyQuery` ; si elle échoue ou ne respecte pas ce format, le graphique est simplement omis.
+Le serveur l'exécute avec `runReadOnlyQuery` et additionne les lignes de même libellé : une requête qui oublie son `GROUP BY` (vu en recette, une ligne par dépense) donne quand même les bons totaux.
+Si elle échoue, ne respecte pas ce format, dépasse 1 000 lignes ou 60 points, le graphique est omis plutôt que d'afficher des chiffres faux ou tronqués.
 Le client l'affiche avec Recharts, avec le même langage visuel que les graphiques d'Analyse (`chart.module.css`, `ChartTooltip`, `axisEuros`).
 
 ### Actions
@@ -124,7 +125,10 @@ La réponse est un flux SSE (`streamSSE` de Hono) :
 
 - `step` : `{ text }` à chaque appel de l'outil, avec une phrase courte tirée de la requête (« Je consulte tes opérations… », « Je calcule par mois… ») et, à défaut, « Je vérifie dans tes données… » ;
 - `answer` : `{ sessionId, answer, highlight, chart: { kind, title, rows } | null, actions: AskActionView[] }` ;
-- `error` : `{ message, code }`, avec les codes de `ClaudeError` (`claude_not_installed`, `claude_not_logged_in`, `claude_timeout`, `claude_invalid_output`, `claude_error`).
+- `error` : `{ message, code }`, avec les codes de `ClaudeError` (`claude_not_installed`, `claude_not_logged_in`, `claude_timeout`, `claude_invalid_output`, `claude_error`) et `ask_data_unavailable`.
+
+L'événement `system`/`init` du flux donne l'état des serveurs MCP : si `runway` n'est pas `connected`, le processus est coupé aussitôt et l'erreur `ask_data_unavailable` est émise, plutôt que de laisser Claude répondre sans données (vu en recette avec un chemin de base relatif).
+Le chemin de la base transmis au serveur MCP est donc toujours absolu.
 
 Le serveur lit la sortie `stream-json` ligne à ligne : les blocs `tool_use` de `mcp__runway__query` produisent un `step`, l'événement final `result` porte `structured_output`.
 Si le client ferme la connexion (panneau fermé, nouvelle question), le processus `claude` est tué.

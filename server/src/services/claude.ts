@@ -128,12 +128,69 @@ export async function runClaude(args: string[], timeoutMs: number, exec: Exec): 
     throw new ClaudeError(`Réponse de Claude illisible${result.stderr ? ` : ${result.stderr.slice(0, 200)}` : ''}`, 'claude_invalid_output');
   }
   const envelope = parsed as { is_error?: boolean; result?: string; structured_output?: unknown };
-  if (typeof envelope.result === 'string' && /not logged in/i.test(envelope.result)) {
-    throw new ClaudeError('Claude Code n\'est pas connecté : lance `claude` dans un terminal et fais /login', 'claude_not_logged_in', 503);
-  }
-  if (envelope.is_error) throw new ClaudeError(`Claude a renvoyé une erreur : ${envelope.result ?? 'inconnue'}`, 'claude_error');
+  const error = claudeErrorFromResult(envelope);
+  if (error) throw error;
   return envelope.structured_output;
 }
+
+/** Erreur portée par l'enveloppe de résultat de `claude -p` (non connecté, erreur signalée), ou null. */
+export function claudeErrorFromResult(envelope: { is_error?: boolean; result?: string }): ClaudeError | null {
+  if (typeof envelope.result === 'string' && /not logged in/i.test(envelope.result)) {
+    return new ClaudeError('Claude Code n\'est pas connecté : lance `claude` dans un terminal et fais /login', 'claude_not_logged_in', 503);
+  }
+  if (envelope.is_error) return new ClaudeError(`Claude a renvoyé une erreur : ${envelope.result ?? 'inconnue'}`, 'claude_error');
+  return null;
+}
+
+export type StreamExec = (
+  args: string[],
+  opts: { cwd: string; timeoutMs: number; signal: AbortSignal; onLine: (line: string) => void },
+) => Promise<{ stderr: string; exitCode: number }>;
+
+/** Lance `claude` et transmet sa sortie ligne à ligne (`--output-format stream-json`). 124 = délai dépassé, 130 = interrompu. */
+export const spawnClaudeStream: StreamExec = (args, { cwd, timeoutMs, signal, onLine }) =>
+  new Promise((resolve) => {
+    const child = spawn('claude', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CLAUDECODE: '' } });
+    let buffer = '';
+    let stderr = '';
+    let reason: 'timeout' | 'abort' | null = null;
+    let settled = false;
+    const kill = (why: 'timeout' | 'abort') => {
+      reason = why;
+      child.kill('SIGKILL');
+    };
+    const timer = setTimeout(() => kill('timeout'), timeoutMs);
+    const onAbort = () => kill('abort');
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+    const flush = (all: boolean) => {
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const text = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (text) onLine(text);
+      }
+      if (all && buffer.trim()) onLine(buffer.trim());
+    };
+    child.stdout.on('data', (d: Buffer) => {
+      buffer += d.toString();
+      flush(false);
+    });
+    child.stderr.on('data', (d: Buffer) => (stderr += d.toString()));
+    const done = (exitCode: number) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      flush(true);
+      resolve({ stderr, exitCode: reason === 'timeout' ? 124 : reason === 'abort' ? 130 : exitCode });
+    };
+    child.on('error', (err: NodeJS.ErrnoException) => {
+      stderr = err.message;
+      done(err.code === 'ENOENT' ? 127 : 1);
+    });
+    child.on('close', (code) => done(code ?? 1));
+  });
 
 async function runBatch(batch: ClaudeSortInput, exec: Exec): Promise<SuggestionResult> {
   const args = ['-p', '--tools', '', '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];

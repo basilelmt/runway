@@ -3,6 +3,7 @@ import { today } from '@shared/dates';
 import type { Db } from './db/client';
 import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
+import { askRoutes } from './routes/ask';
 import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
 import { envelopeRoutes } from './routes/envelopes';
 import { fundingRoutes } from './routes/fundings';
@@ -14,7 +15,7 @@ import { settingsRoutes } from './routes/settings';
 import { sortingRoutes } from './routes/sorting';
 import { sortingRuleRoutes } from './routes/sorting-rules';
 import { transactionRoutes } from './routes/transactions';
-import type { Exec } from './services/claude';
+import type { Exec, StreamExec } from './services/claude';
 import type { ImportDeps } from './services/import';
 import { materializeDue } from './services/materialize';
 import { createPrices, type PricesDeps } from './services/prices';
@@ -27,6 +28,9 @@ export type AppOptions = {
   now?: () => string;
   /** Exécuteur du binaire `claude`, injectable pour les tests. */
   exec?: Exec;
+  /** Exécuteur en flux de `claude` pour Demander, et identifiant de session, injectables pour les tests. */
+  askStream?: StreamExec;
+  askSessionId?: () => string;
   /** Extraction du texte des PDF, injectable pour les tests. */
   importDeps?: ImportDeps;
   /** Fournisseur bancaire et horloge, injectables pour les tests. */
@@ -35,7 +39,7 @@ export type AppOptions = {
   investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void };
 };
 
-export function createApp({ db, now = today, exec, importDeps, bankDeps, investDeps = {} }: AppOptions) {
+export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {} }: AppOptions) {
   const app = new Hono<AppEnv>();
   const prices = createPrices(db, investDeps);
 
@@ -76,6 +80,7 @@ export function createApp({ db, now = today, exec, importDeps, bankDeps, investD
   app.route('/api/recurring-rules', recurringRuleRoutes);
   app.route('/api/sorting-rules', sortingRuleRoutes);
   app.route('/api/sorting', sortingRoutes(exec ? { exec } : {}));
+  app.route('/api/ask', askRoutes({ stream: askStream, newSessionId: askSessionId }));
   app.route('/api/settings', settingsRoutes);
   app.route('/api/overview', overviewRoutes);
   app.route('/api/forecast', forecastRoutes);
