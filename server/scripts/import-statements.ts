@@ -12,7 +12,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { computeBalances } from '@core/balances';
 import { fingerprint } from '@core/fingerprint';
-import { daysBetween } from '@shared/dates';
+import { daysBetween, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { openDb } from '../src/db/client';
 import { extractPdfText, parseLbpStatementText, reconcile, type PdfRow, type StatementSection } from '../src/parsers/lbp-pdf';
@@ -161,7 +161,7 @@ async function main() {
 
   // 4. Contrôle final : les soldes de l'app doivent être ceux des derniers relevés.
   const state = loadState(db);
-  const balances = computeBalances(state);
+  const balances = computeBalances(state, today());
   let allGood = true;
   for (const [number, s] of lastClosing) {
     const id = accountIds.get(number)!;

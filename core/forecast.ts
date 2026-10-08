@@ -1,7 +1,7 @@
 import type { ForecastAlert, ForecastDay, ForecastEvent, ForecastResult } from '@shared/api-types';
 import { addDays, addMonths, daysBetween, startOfMonth, type ISODate } from '@shared/dates';
 import type { RecurringRule } from '@shared/schemas';
-import { applyOperation, computeBalances, type AccountMap, type EnvelopeMap } from './balances';
+import { applyOperation, computeBalances, rolloverEnvelopes, type AccountMap, type EnvelopeMap } from './balances';
 import { monthActivity, remainingToFund } from './budget';
 import { expandRule } from './recurrence';
 import type { State } from './types';
@@ -11,12 +11,13 @@ import type { State } from './types';
  * Point de départ : soldes confirmés, plus les prévues antérieures à aujourd'hui (non rapprochées, elles sont dues).
  * Entrées futures : prévues datées d'aujourd'hui ou après, occurrences de règles non encore matérialisées,
  * et budget mensuel des enveloppes (le reste à répartir ce mois-ci aujourd'hui, puis le budget complet chaque 1er du mois).
+ * Chaque 1er du mois, les enveloppes dépassées repartent de zéro avant les opérations du jour, comme dans `computeBalances`.
  */
 export function forecast(state: State, rules: RecurringRule[], today: ISODate, horizonDays: number): ForecastResult {
   const end = addDays(today, horizonDays);
   const events = collectEvents(state, rules, today, end);
 
-  const start = computeBalances(state);
+  const start = computeBalances(state, today);
   const accounts: AccountMap = { ...start.accounts };
   const envelopes: EnvelopeMap = { ...start.envelopes };
 
@@ -34,6 +35,7 @@ export function forecast(state: State, rules: RecurringRule[], today: ISODate, h
 
   const days: ForecastDay[] = [];
   for (let date = today; date <= end; date = addDays(date, 1)) {
+    if (date !== today && date === startOfMonth(date)) rolloverEnvelopes(envelopes);
     for (const e of byDate.get(date) ?? []) applyOperation(e, accounts, envelopes);
     days.push({ date, accounts: { ...accounts }, envelopes: { ...envelopes } });
   }

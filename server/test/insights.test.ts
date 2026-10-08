@@ -50,10 +50,11 @@ describe('GET /api/overview', () => {
     expect(body.month).toEqual({ start: '2026-03-01', end: '2026-03-31', spent: 75_00, budget: 0, variable: { spent: 75_00, budget: 0 }, saved: 500_00, toFund: 0, income: 0, planned: 0 });
     expect(body.unsortedCount).toBe(1);
     expect(body.latePlanned).toEqual([]);
-    // Même date : le solde le plus bas d'abord (sur 90 jours, trois loyers : l'enveloppe plonge à -9 000 €, le compte à -6 575 €).
+    // Même date : le solde le plus bas d'abord. Sur 90 jours, trois loyers font plonger le compte à -6 575 € ;
+    // l'enveloppe repart de zéro chaque mois, son creux est un loyer.
     expect(body.alerts.map((a: any) => [a.kind, a.firstNegativeDate, a.minBalance])).toEqual([
-      ['envelope', '2026-03-20', -9000_00],
       ['account', '2026-03-20', -6575_00],
+      ['envelope', '2026-03-20', -3000_00],
     ]);
   });
 });

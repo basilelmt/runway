@@ -40,7 +40,9 @@ describe('forecast', () => {
       30,
     );
     const alert = r.alerts.find((a) => a.kind === 'envelope');
-    expect(alert).toMatchObject({ id: courses.id, firstNegativeDate: '2026-03-23', minBalance: -140_00 });
+    // Le 1er avril, l'enveloppe repart de zéro : le creux est celui de mars.
+    expect(alert).toMatchObject({ id: courses.id, firstNegativeDate: '2026-03-23', minBalance: -80_00, minBalanceDate: '2026-03-30' });
+    expect(r.days.find((d) => d.date === '2026-04-01')?.envelopes[courses.id]).toBe(0);
     expect(r.alerts.find((a) => a.kind === 'account')).toBeUndefined();
   });
 

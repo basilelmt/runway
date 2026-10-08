@@ -21,7 +21,7 @@ export function autoFund(db: Db, transactionId: number): Funding | null {
 
   const date = rule.fundsNextMonth ? addMonths(startOfMonth(source.date), 1) : source.date;
   const state = loadState(db);
-  const { toAllocate } = computeBalances(state);
+  const { toAllocate } = computeBalances(state, date);
   const plan = planAutoFunding(state.envelopes, monthActivity(state.transactions, date).allocated, toAllocate);
   if (plan.items.length === 0) return null;
 

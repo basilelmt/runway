@@ -14,7 +14,7 @@ import { loadState } from './state';
 
 export function buildOverview(db: Db, today: ISODate): Overview {
   const state = loadState(db);
-  const balances = computeBalances(state);
+  const balances = computeBalances(state, today);
   const horizon = getSettings(db).forecastHorizonDays;
   const { alerts } = forecast(state, state.rules, today, horizon);
 
