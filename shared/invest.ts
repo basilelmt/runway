@@ -1,5 +1,5 @@
 export const BENCHMARK_TICKER = 'SXR8.DE';
-export const BENCHMARK_NAME = 'S&P 500 (iShares, en euros)';
+export const BENCHMARK_NAME = 'S&P 500';
 export const platforms = ['trade_republic', 'binance', 'other'] as const;
 export type Platform = (typeof platforms)[number];
 export const PLATFORM_LABELS: Record<Platform, string> = { trade_republic: 'Trade Republic', binance: 'Binance', other: 'Ailleurs' };
