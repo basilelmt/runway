@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useActiveIndicator } from '@/lib/motion';
+import { CountBadge } from './CountBadge';
 import styles from './Tabs.module.css';
 
 export type TabItem<T extends string> = { value: T; label: string; count?: number; to?: string };
@@ -23,11 +24,7 @@ export function Tabs<T extends string>({ items, value, onChange, label }: TabsPr
   const content = (item: TabItem<T>) => (
     <>
       {item.label}
-      {item.count ? (
-        <span key={item.count} className={['num', styles.count].join(' ')}>
-          {item.count}
-        </span>
-      ) : null}
+      {item.count ? <CountBadge count={item.count} /> : null}
     </>
   );
   return (

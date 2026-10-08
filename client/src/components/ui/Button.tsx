@@ -1,9 +1,10 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { Link, type LinkProps } from 'react-router';
+import { Spinner } from './Spinner';
 import styles from './Button.module.css';
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-quiet' | 'marking';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-quiet' | 'marking' | 'text';
   size?: 'sm' | 'md';
   icon?: ReactNode;
   loading?: boolean;
@@ -22,7 +23,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <span className={styles.spinner} aria-hidden /> : icon ? <span className={styles.icon}>{icon}</span> : null}
+      {loading ? <Spinner /> : icon ? <span className={styles.icon}>{icon}</span> : null}
       {children}
     </button>
   );
