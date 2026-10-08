@@ -1,19 +1,17 @@
 import { RotateCcw } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { Amount, Button } from '@/components/ui';
 import type { AskTurn } from './ask-context';
+import { ActionCard } from './ActionCard';
 import { AskChart } from './AskChart';
 import styles from './AskPanel.module.css';
 
 type AskMessageProps = {
   turn: AskTurn;
   onRetry: () => void;
-  /** Cartes d'action, rendues sous la réponse. */
-  renderActions?: (turn: AskTurn) => ReactNode;
 };
 
 /** Un tour du fil : la question, puis l'attente, la réponse ou l'erreur. */
-export function AskMessage({ turn, onRetry, renderActions }: AskMessageProps) {
+export function AskMessage({ turn, onRetry }: AskMessageProps) {
   return (
     <li className={styles.turn}>
       <p className={styles.question}>{turn.question}</p>
@@ -41,7 +39,13 @@ export function AskMessage({ turn, onRetry, renderActions }: AskMessageProps) {
           ) : null}
           <p className={styles.text}>{turn.answer.answer}</p>
           {turn.answer.chart ? <AskChart data={turn.answer.chart} /> : null}
-          {renderActions?.(turn)}
+          {turn.answer.actions.length > 0 ? (
+            <ul className={styles.actions} aria-label="Actions proposées">
+              {turn.answer.actions.map((action, i) => (
+                <ActionCard key={i} action={action} />
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
     </li>

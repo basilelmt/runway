@@ -1,7 +1,7 @@
 import { ArrowUp, RotateCcw, Sparkles, Square, X } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui';
-import { useAsk, type AskTurn } from './ask-context';
+import { useAsk } from './ask-context';
 import { AskMessage } from './AskMessage';
 import styles from './AskPanel.module.css';
 
@@ -10,7 +10,7 @@ export const ASK_SUGGESTIONS = ['Combien en restos ce mois-ci ?', 'Mes plus gros
 const MAX_INPUT_LINES = 4;
 
 /** Panneau non modal de conversation avec Claude : la page reste visible et utilisable à côté. */
-export function AskPanel({ renderActions }: { renderActions?: (turn: AskTurn) => ReactNode }) {
+export function AskPanel() {
   const { open, setOpen, turns, pending, send, stop, retry, reset } = useAsk();
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -95,7 +95,7 @@ export function AskPanel({ renderActions }: { renderActions?: (turn: AskTurn) =>
         ) : (
           <ol className={styles.turns}>
             {turns.map((turn) => (
-              <AskMessage key={turn.id} turn={turn} onRetry={() => retry(turn.id)} renderActions={renderActions} />
+              <AskMessage key={turn.id} turn={turn} onRetry={() => retry(turn.id)} />
             ))}
           </ol>
         )}

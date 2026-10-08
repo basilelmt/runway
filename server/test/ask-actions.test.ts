@@ -29,7 +29,7 @@ describe('validateActions', () => {
     expect(r).toEqual({ actions: [], rejected: 2 });
   });
 
-  it('enrichit un déplacement, y compris depuis « À répartir »', () => {
+  it('enrichit un déplacement, y compris depuis « Pas encore réparti »', () => {
     const r = validateActions(ctx.db, [
       { type: 'move', fromEnvelopeId: ctx.courses.id, toEnvelopeId: ctx.loisirs.id, amount: 50_00 },
       { type: 'move', fromEnvelopeId: null, toEnvelopeId: ctx.loisirs.id, amount: 10_00 },
@@ -37,7 +37,7 @@ describe('validateActions', () => {
     ]);
     expect(r.actions).toEqual([
       { type: 'move', fromEnvelopeId: ctx.courses.id, fromName: 'Courses', toEnvelopeId: ctx.loisirs.id, toName: 'Loisirs', amount: 50_00 },
-      { type: 'move', fromEnvelopeId: null, fromName: 'À répartir', toEnvelopeId: ctx.loisirs.id, toName: 'Loisirs', amount: 10_00 },
+      { type: 'move', fromEnvelopeId: null, fromName: 'Pas encore réparti', toEnvelopeId: ctx.loisirs.id, toName: 'Loisirs', amount: 10_00 },
     ]);
     expect(r.rejected).toBe(1);
   });

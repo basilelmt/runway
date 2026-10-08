@@ -32,7 +32,7 @@ function enrich(db: Db, action: AskAction, envelopes: Map<number, Envelope>, acc
       const to = envelopes.get(action.toEnvelopeId);
       const from = action.fromEnvelopeId === null ? null : envelopes.get(action.fromEnvelopeId);
       if (!to || from === undefined || from?.id === to.id) return null;
-      return { type: 'move', fromEnvelopeId: from?.id ?? null, fromName: from?.name ?? 'À répartir', toEnvelopeId: to.id, toName: to.name, amount: action.amount };
+      return { type: 'move', fromEnvelopeId: from?.id ?? null, fromName: from?.name ?? 'Pas encore réparti', toEnvelopeId: to.id, toName: to.name, amount: action.amount };
     }
     case 'budget': {
       const env = envelopes.get(action.envelopeId);
