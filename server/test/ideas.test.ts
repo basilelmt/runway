@@ -153,6 +153,7 @@ describe('marketFacts', () => {
     historyEur: async () => null,
     closeEurOn: async () => null,
     quoteEur: async () => null,
+    sharesGrowth: async () => 1,
     isUnknown: () => false,
     ...overrides,
   });
@@ -382,6 +383,56 @@ describe('fournées d’idées', () => {
     expect(view.body.summary.filter).toMatchObject({ keptCount: 1, droppedCount: 1 });
     expect(view.body.summary.filter.keptAvgExcess).toBeCloseTo(0.2);
     expect(view.body.summary.filter.droppedAvgExcess).toBeCloseTo(0.05);
+  });
+
+  it('compte un split survenu pendant l’idée au lieu d’y voir une chute du cours', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea()] }, review: [keep('BAG.PA')] }));
+    await t.runOnce();
+
+    // Yahoo réexprime tout l'historique sur la base post-split : 12 € avant le split valent 6 € après.
+    const bag: [string, number][] = [['2026-10-06', 5.5], ['2026-10-07', 6], ['2026-10-20', 6.3]];
+    const bench: [string, number][] = [['2026-10-06', 700], ['2026-10-07', 700], ['2026-10-20', 714]];
+    t.routes['chart/BAG.PA'] = chart('BAG.PA', 'EUR', bag, undefined, { splits: [['2026-10-15', 2, 1]] });
+    t.routes['chart/SXR8.DE'] = chart('SXR8.DE', 'EUR', bench);
+    t.moveTo('2026-10-20');
+    const open = await t.call('GET', '/api/invest/ideas');
+    expect(open.body.open[0].return).toBeCloseTo(0.05);
+    expect(open.body.open[0].benchReturn).toBeCloseTo(0.02);
+
+    t.routes['chart/BAG.PA'] = chart('BAG.PA', 'EUR', [...bag, ['2026-10-28', 7.2]], undefined, { splits: [['2026-10-15', 2, 1]] });
+    t.routes['chart/SXR8.DE'] = chart('SXR8.DE', 'EUR', [...bench, ['2026-10-28', 721]]);
+    t.moveTo('2026-11-02');
+    const closed = await t.call('GET', '/api/invest/ideas');
+    expect(closed.body.closed[0].return).toBeCloseTo(0.2);
+  });
+
+  it('réinvestit les dividendes détachés pendant l’idée', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea()] }, review: [keep('BAG.PA')] }));
+    await t.runOnce();
+
+    // Dividende de 0,60 € détaché le 15/10 sur un cours de 12 € : le cours perd 5 % sans perte pour l'actionnaire.
+    t.routes['chart/BAG.PA'] = chart('BAG.PA', 'EUR', [['2026-10-07', 12], ['2026-10-14', 12], ['2026-10-20', 11.4]], undefined, {
+      adjclose: [11.4, 11.4, 11.4],
+    });
+    t.moveTo('2026-10-20');
+    const view = await t.call('GET', '/api/invest/ideas');
+    expect(view.body.open[0].return).toBeCloseTo(0);
+  });
+
+  it('ne montre pas de gain sans les ajustements de Yahoo, puis garde les derniers connus', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea()] }, review: [keep('BAG.PA')] }));
+    await t.runOnce();
+
+    const bag = t.routes['chart/BAG.PA'];
+    t.routes['chart/BAG.PA'] = new Error('réseau');
+    expect((await t.call('GET', '/api/invest/ideas')).body.open[0].return).toBeNull();
+
+    t.routes['chart/BAG.PA'] = bag;
+    t.moveTo('2026-10-08');
+    expect((await t.call('GET', '/api/invest/ideas')).body.open[0].return).toBeCloseTo(0);
+    t.routes['chart/BAG.PA'] = new Error('réseau');
+    t.moveTo('2026-10-09');
+    expect((await t.call('GET', '/api/invest/ideas')).body.open[0].return).toBeCloseTo(0);
   });
 
   it('ne clôt pas une idée tant que les cours de l’horizon sont périmés', async () => {

@@ -1,5 +1,8 @@
+/** Clôtures ajustées des dividendes (alignées sur `points`) et splits en [date ISO, numérateur, dénominateur]. */
+type ChartExtras = { adjclose?: (number | null)[]; splits?: [string, number, number][] };
+
 /** Réponse `/v8/finance/chart` minimale ; `points` en [date ISO, clôture]. */
-export function chart(symbol: string, currency: string, points: [string, number | null][], live?: { date: string; price: number }) {
+export function chart(symbol: string, currency: string, points: [string, number | null][], live?: { date: string; price: number }, extras: ChartExtras = {}) {
   const ts = (d: string) => Date.parse(`${d}T16:00:00Z`) / 1000;
   return {
     chart: {
@@ -11,7 +14,12 @@ export function chart(symbol: string, currency: string, points: [string, number 
             regularMarketTime: ts(live?.date ?? points.at(-1)![0]),
           },
           timestamp: points.map(([d]) => ts(d)),
-          indicators: { quote: [{ close: points.map(([, c]) => c) }] },
+          indicators: { quote: [{ close: points.map(([, c]) => c) }], ...(extras.adjclose && { adjclose: [{ adjclose: extras.adjclose }] }) },
+          ...(extras.splits && {
+            events: {
+              splits: Object.fromEntries(extras.splits.map(([d, numerator, denominator]) => [ts(d), { date: ts(d), numerator, denominator, splitRatio: `${numerator}:${denominator}` }])),
+            },
+          }),
         },
       ],
       error: null,

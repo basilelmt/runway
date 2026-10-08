@@ -52,6 +52,27 @@ describe('prices', () => {
     expect(await prices.closeEurOn('SXR8.DE', '2026-10-04')).toMatchObject({ eur: 730, date: '2026-10-02' });
   });
 
+  it('sharesGrowth : splits postérieurs au départ et dividendes réinvestis, Yahoo appelé une fois par quart d’heure', async () => {
+    const { db } = createTestDb();
+    // Split 2:1 avant le départ (ignoré), 3:1 après ; dividende détaché entre le 07/10 et le 14/10 (facteur 0,9 → 1).
+    const body = chart('X', 'EUR', [['2026-10-05', 10], ['2026-10-07', 10], ['2026-10-14', 10], ['2026-10-20', 10]], undefined, {
+      adjclose: [9, 9, 10, 10],
+      splits: [['2026-10-06', 2, 1], ['2026-10-16', 3, 1]],
+    });
+    const fetch = fakeFetch({ 'chart/X': body });
+    const prices = createPrices(db, { fetch, now: at('2026-10-20T10:00:00Z') });
+    expect(await prices.sharesGrowth('X', '2026-10-07', '2026-10-20')).toBeCloseTo(3 / 0.9);
+    expect(await prices.sharesGrowth('X', '2026-10-07', '2026-10-07')).toBeCloseTo(3);
+    expect(fetch.calls).toHaveLength(1);
+    expect(fetch.calls[0]).toContain('events=split&includeAdjustedClose=true');
+  });
+
+  it('sharesGrowth : null si Yahoo est injoignable sans ajustements en mémoire', async () => {
+    const { db } = createTestDb();
+    const prices = createPrices(db, { fetch: fakeFetch({ 'chart/X': new Error('réseau') }), now: at('2026-10-20T10:00:00Z') });
+    expect(await prices.sharesGrowth('X', '2026-10-07', '2026-10-20')).toBeNull();
+  });
+
   it('recherche', async () => {
     const { db } = createTestDb();
     const fetch = fakeFetch({

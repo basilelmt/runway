@@ -261,6 +261,12 @@ async function review(deps: IdeasDeps, today: ISODate, pending: Pending[], bench
   return reviews;
 }
 
+/** Rendement d'un achat au cours `start` le jour `from`, revendu à `end` : splits et dividendes réinvestis compris ; null sans les ajustements de Yahoo. */
+async function totalReturn(prices: Prices, ticker: string, start: number, from: ISODate, end: { eur: number; date: ISODate }): Promise<number | null> {
+  const growth = await prices.sharesGrowth(ticker, from, end.date);
+  return growth === null ? null : simpleReturn(start, end.eur * growth);
+}
+
 /** Clôt les idées dont l'horizon est passé, avec les clôtures du jour de l'horizon (à défaut, la dernière avant). */
 export async function closeDueIdeas(db: Db, prices: Prices, today: ISODate): Promise<void> {
   for (const idea of listIdeas(db, { status: 'open' })) {
@@ -269,8 +275,10 @@ export async function closeDueIdeas(db: Db, prices: Prices, today: ISODate): Pro
     // Le verdict est figé pour toujours : on attend des cours frais et proches de l'horizon.
     const usable = (p: typeof end) => p !== null && !p.stale && daysBetween(p.date, idea.horizon) <= CLOSE_TOLERANCE_DAYS;
     if (!usable(end) || !usable(benchEnd)) continue;
-    const ret = simpleReturn(idea.startPriceEur, end!.eur);
-    const benchRet = simpleReturn(idea.benchStartPriceEur, benchEnd!.eur);
+    const [ret, benchRet] = await Promise.all([
+      totalReturn(prices, idea.ticker, idea.startPriceEur, idea.createdOn, end!),
+      totalReturn(prices, BENCHMARK_TICKER, idea.benchStartPriceEur, idea.createdOn, benchEnd!),
+    ]);
     if (ret !== null && benchRet !== null) closeIdea(db, idea.id, ret, benchRet);
   }
 }
@@ -308,11 +316,11 @@ export async function buildIdeasView(db: Db, prices: Prices, today: ISODate): Pr
   const openViews = await Promise.all(
     open.map(async (row) => {
       const q = await prices.quoteEur(row.ticker);
-      return toView(row, {
-        ret: q ? simpleReturn(row.startPriceEur, q.eur) : null,
-        benchRet: bench ? simpleReturn(row.benchStartPriceEur, bench.eur) : null,
-        date: q?.date ?? null,
-      });
+      const [ret, benchRet] = await Promise.all([
+        q ? totalReturn(prices, row.ticker, row.startPriceEur, row.createdOn, q) : null,
+        bench ? totalReturn(prices, BENCHMARK_TICKER, row.benchStartPriceEur, row.createdOn, bench) : null,
+      ]);
+      return toView(row, { ret, benchRet, date: q?.date ?? null });
     }),
   );
   const closedViews = closed.map((row) => toView(row, { ret: row.finalReturn, benchRet: row.benchFinalReturn, date: row.horizon }));

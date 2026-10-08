@@ -20,6 +20,12 @@ export type Prices = {
   closeEurOn(ticker: string, date: ISODate): Promise<{ eur: number; date: ISODate; stale: boolean } | null>;
   /** Dernier cours en euros. */
   quoteEur(ticker: string): Promise<{ eur: number; date: ISODate; stale: boolean; name: string } | null>;
+  /**
+   * Nombre d'actions détenues à `to`, sur la base de partage actuelle, pour une action détenue le jour `from` :
+   * splits survenus depuis `from` et dividendes détachés entre les deux dates réinvestis. Null si Yahoo est
+   * injoignable et que rien n'est en mémoire.
+   */
+  sharesGrowth(ticker: string, from: ISODate, to: ISODate): Promise<number | null>;
   /** Vrai si Yahoo a répondu que ce ticker n'existe pas (et pas simplement qu'il était injoignable). */
   isUnknown(ticker: string): boolean;
 };
@@ -48,6 +54,12 @@ const chartResultSchema = z.object({
   indicators: z
     .object({
       quote: z.array(z.object({ close: z.array(z.unknown()).optional() })).optional(),
+      adjclose: z.array(z.object({ adjclose: z.array(z.unknown()).optional() })).optional(),
+    })
+    .optional(),
+  events: z
+    .object({
+      splits: z.record(z.string(), z.object({ date: z.number(), numerator: z.number(), denominator: z.number() })).optional(),
     })
     .optional(),
 });
@@ -85,9 +97,9 @@ function exchangeDate(timestamp: number, gmtoffset: number): ISODate {
 
 type ChartResult = { name: string; currency: string; closes: DatedPrice[] };
 
-/** Appel réseau et analyse de la réponse `/v8/finance/chart`. Ne lève jamais : `'unknown'` ou `'error'` en cas d'échec ou de réponse inattendue. */
-async function fetchChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to: ISODate): Promise<ChartResult | 'unknown' | 'error'> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${unixSeconds(from)}&period2=${unixSeconds(to)}&interval=1d`;
+/** Appel réseau à `/v8/finance/chart` (paramètres `extra` en plus). Ne lève jamais : `'unknown'` ou `'error'` en cas d'échec ou de réponse inattendue. */
+async function getChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to: ISODate, extra = ''): Promise<z.infer<typeof chartResultSchema> | 'unknown' | 'error'> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${unixSeconds(from)}&period2=${unixSeconds(to)}&interval=1d${extra}`;
   let res: Response;
   try {
     res = await fetchFn(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10_000) });
@@ -107,11 +119,16 @@ async function fetchChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to:
   // Ticker inconnu : Yahoo renvoie `result: null` et `error` renseigné (vu en HTTP 404).
   if (!result || result.length === 0 || error) return 'unknown';
   if (!res.ok) return 'error';
+  const resultParsed = chartResultSchema.safeParse(result[0]);
+  return resultParsed.success ? resultParsed.data : 'error';
+}
 
+/** Historique des clôtures (le cours courant écrase celle du jour). */
+async function fetchChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to: ISODate): Promise<ChartResult | 'unknown' | 'error'> {
+  const chart = await getChart(fetchFn, ticker, from, to);
+  if (typeof chart === 'string') return chart;
   try {
-    const resultParsed = chartResultSchema.safeParse(result[0]);
-    if (!resultParsed.success) return 'error';
-    const { meta, timestamp, indicators } = resultParsed.data;
+    const { meta, timestamp, indicators } = chart;
     const timestamps = timestamp ?? [];
     const rawCloses = indicators?.quote?.[0]?.close ?? [];
     const byDate = new Map<ISODate, number>();
@@ -133,6 +150,36 @@ async function fetchChart(fetchFn: HttpFetch, ticker: string, from: ISODate, to:
   } catch {
     // Filet de sécurité : un horodatage hors des bornes gérées par `Date` ne doit jamais faire planter l'appelant.
     return 'error';
+  }
+}
+
+/**
+ * Ajustements de Yahoo, dont les clôtures sont réexprimées après coup sur la base de partage actuelle :
+ * `dividendFactors` est, par séance, le rapport clôture ajustée des dividendes / clôture (1 sans dividende à venir).
+ */
+type Adjustments = { dividendFactors: DatedPrice[]; splits: { date: ISODate; ratio: number }[] };
+
+async function fetchAdjustments(fetchFn: HttpFetch, ticker: string, from: ISODate, to: ISODate): Promise<Adjustments | null> {
+  const chart = await getChart(fetchFn, ticker, from, to, '&events=split&includeAdjustedClose=true');
+  if (typeof chart === 'string') return null;
+  try {
+    const { meta, timestamp, indicators, events } = chart;
+    const closes = indicators?.quote?.[0]?.close ?? [];
+    // Sans clôtures ajustées (indice, devise), aucun dividende : le facteur vaut 1.
+    const adjCloses = indicators?.adjclose?.[0]?.adjclose ?? closes;
+    const dividendFactors: DatedPrice[] = [];
+    (timestamp ?? []).forEach((ts, i) => {
+      const close = closes[i];
+      const adj = adjCloses[i];
+      if (typeof ts !== 'number' || typeof close !== 'number' || typeof adj !== 'number' || !(close > 0) || !(adj > 0)) return;
+      dividendFactors.push({ date: exchangeDate(ts, meta.gmtoffset), close: adj / close });
+    });
+    const splits = Object.values(events?.splits ?? {})
+      .filter((s) => s.numerator > 0 && s.denominator > 0)
+      .map((s) => ({ date: exchangeDate(s.date, meta.gmtoffset), ratio: s.numerator / s.denominator }));
+    return { dividendFactors, splits };
+  } catch {
+    return null;
   }
 }
 
@@ -184,6 +231,8 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
   const errorBackoff = new Map<string, number>();
   /** Tickers dont Yahoo a dit qu'ils n'existent pas, lors du dernier appel. */
   const unknown = new Set<string>();
+  /** Ajustements par ticker et date de départ ; les derniers obtenus servent de repli si Yahoo tombe. */
+  const adjustments = new Map<string, { at: number; value: Adjustments }>();
 
   async function history(ticker: string, from: ISODate): Promise<TickerHistory | null> {
     const existing = db.select().from(priceTickers).where(eq(priceTickers.ticker, ticker)).get();
@@ -259,6 +308,22 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     return { eur: last.close, date: last.date, stale: h.stale, name: h.name };
   }
 
+  async function sharesGrowth(ticker: string, from: ISODate, to: ISODate): Promise<number | null> {
+    const key = `${ticker}|${from}`;
+    let cached = adjustments.get(key);
+    if (!cached || now().getTime() - cached.at >= REFRESH_MINUTES * 60_000) {
+      const value = await fetchAdjustments(fetchFn, ticker, addDays(from, -LOOKBACK_DAYS), addDays(toISODate(now()), 1));
+      if (value) adjustments.set(key, (cached = { at: now().getTime(), value }));
+    }
+    if (!cached) return null;
+    const { dividendFactors, splits } = cached.value;
+    const start = priceOn(dividendFactors, from);
+    const end = priceOn(dividendFactors, to);
+    if (!start || !end) return null;
+    const splitRatio = splits.filter((s) => compareISODate(s.date, from) > 0).reduce((r, s) => r * s.ratio, 1);
+    return (splitRatio * end.close) / start.close;
+  }
+
   async function search(query: string): Promise<AssetSearchResult[]> {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0`;
     let json: unknown;
@@ -285,5 +350,5 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     return out;
   }
 
-  return { search, history, historyEur, closeEurOn, quoteEur, isUnknown: (ticker) => unknown.has(ticker) };
+  return { search, history, historyEur, closeEurOn, quoteEur, sharesGrowth, isUnknown: (ticker) => unknown.has(ticker) };
 }
