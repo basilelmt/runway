@@ -93,7 +93,7 @@
 
 .marking {
   background: var(--marking);
-  color: #2b2000;
+  color: var(--marking-on);
 }
 
 .marking:hover:not(:disabled) {

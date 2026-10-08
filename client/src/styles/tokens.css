@@ -30,11 +30,28 @@
 
   --focus: var(--marking);
 
+  /* Texte posé sur le jaune de piste, dans les deux modes (le jaune reste clair en sombre) */
+  --marking-on: #2b2000;
+
+  /* Voile sous les dialogues */
+  --scrim: rgb(20 32 28 / 0.45);
+
+  /* La nuit d'Investir : fond du portefeuille, toujours sombre */
+  --night: #030408;
+  --night-ink: #f2efe8;
+  --night-ink-soft: #cfcac1;
+  --night-ink-mute: #9a978f;
+  --night-positive: #5fc08f;
+  --night-negative: #ef6f58;
+  --night-warning: #e0a04a;
+  --night-sky: #4386d3;
+
   /* Typographie */
   --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
+  --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-md: 0.9375rem;
@@ -45,6 +62,7 @@
   --text-4xl: 4.25rem;
 
   /* Espacement 4px */
+  --s-half: 2px;
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -62,6 +80,11 @@
   --radius-pill: 999px;
 
   --shadow-pop: 0 12px 32px rgb(20 32 28 / 0.18), 0 2px 6px rgb(20 32 28 / 0.08);
+  --shadow-raise: 0 1px 2px rgb(20 32 28 / 0.12);
+
+  /* Hauteurs de ligne de liste */
+  --row-h: 56px;
+  --row-h-compact: 44px;
 
   --sidenav-width: 232px;
   --bottomnav-height: 60px;
@@ -96,6 +119,8 @@
     --info-soft: #1f2d3a;
 
     --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
+    --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.4);
+    --scrim: rgb(0 0 0 / 0.6);
   }
 }
 

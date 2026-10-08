@@ -1,8 +1,8 @@
 .group {
   display: inline-flex;
   align-self: flex-start;
-  padding: 3px;
-  gap: 2px;
+  padding: var(--s-half);
+  gap: var(--s-half);
   border-radius: var(--radius-pill);
   background: var(--paper-sunken);
   max-width: 100%;
@@ -20,13 +20,13 @@
 }
 
 .md .option {
-  height: 32px;
+  height: 34px;
   padding: 0 var(--s-3);
   font-size: var(--text-sm);
 }
 
 .sm .option {
-  height: 26px;
+  height: 28px;
   padding: 0 var(--s-2);
   font-size: var(--text-xs);
 }
@@ -38,5 +38,5 @@
 .active {
   background: var(--paper-raised);
   color: var(--ink);
-  box-shadow: 0 1px 2px rgb(20 32 28 / 0.12);
+  box-shadow: var(--shadow-raise);
 }

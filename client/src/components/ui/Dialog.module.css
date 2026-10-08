@@ -9,7 +9,7 @@
 }
 
 .dialog::backdrop {
-  background: rgb(20 32 28 / 0.45);
+  background: var(--scrim);
   backdrop-filter: blur(2px);
   animation: fade-in 200ms var(--ease-out);
 }
@@ -68,9 +68,9 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: 1.3125rem;
+  font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 

@@ -11,12 +11,12 @@
 
 .sm {
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-pill);
 }
 
 .md {
   height: 10px;
-  border-radius: 5px;
+  border-radius: var(--radius-pill);
 }
 
 .fill {
@@ -39,7 +39,6 @@
   bottom: -4px;
   width: 2px;
   margin-left: -1px;
-  border-radius: 1px;
   background: var(--ink);
 }
 
