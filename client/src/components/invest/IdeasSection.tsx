@@ -5,7 +5,7 @@ import { IDEA_ANGLES } from '@shared/invest';
 import { errorMessage } from '@/api/client';
 import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
 import { Button, EmptyState, Skeleton } from '@/components/ui';
-import { plural } from '@/lib/format';
+import { keepTogether, plural } from '@/lib/format';
 import { failedAnglesText, runOutcome } from '@/lib/invest';
 import { IdeaCard } from './IdeaCard';
 import { IdeasScore } from './IdeasScore';
@@ -132,7 +132,7 @@ function RunReport({ run, onRetry }: { run: IdeaRunView; onRetry: () => void }) 
           <ul>
             {run.rejected.map((r, i) => (
               <li key={i}>
-                <span className="mono">{r.ticker}</span> : {r.reason}
+                <span className="mono">{r.ticker}</span>{keepTogether(` : ${r.reason}`)}
               </li>
             ))}
           </ul>

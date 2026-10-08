@@ -36,6 +36,10 @@ describe('keepTogether', () => {
     expect(keepTogether('la règle « MG BOULOGNE » suffit')).toBe('la règle « MG BOULOGNE » suffit');
   });
 
+  it('garde la ponctuation double collée au mot qui la précède', () => {
+    expect(keepTogether('sur un an ; la baisse : nette ? oui !')).toBe('sur un an ; la baisse : nette ? oui !');
+  });
+
   it('ne touche pas aux nombres séparés par du texte', () => {
     expect(keepTogether('les mois 3 et 4 puis 2026 1234')).toBe('les mois 3 et 4 puis 2026 1234');
   });

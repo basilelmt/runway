@@ -1,7 +1,7 @@
 import { ArrowUpRight } from 'lucide-react';
 import type { IdeaView } from '@shared/api-types';
 import { BENCHMARK_NAME } from '@shared/invest';
-import { formatDateCompact } from '@/lib/format';
+import { formatDateCompact, keepTogether } from '@/lib/format';
 import { domainOf, formatMarketContext, formatPct, gainTone, platformLabel } from '@/lib/invest';
 import styles from './Ideas.module.css';
 
@@ -14,12 +14,12 @@ export function IdeaCard({ idea }: { idea: IdeaView }) {
   return (
     <article className={styles.card}>
       <header className={styles.cardHead}>
-        <h3 className={styles.cardTitle}>{idea.title}</h3>
+        <h3 className={styles.cardTitle}>{keepTogether(idea.title)}</h3>
         <span className={styles.horizon}>{closed ? `Close le ${formatDateCompact(idea.horizon)}` : `D’ici le ${formatDateCompact(idea.horizon)}`}</span>
       </header>
 
       <p className={styles.event}>
-        {idea.event}{' '}
+        {keepTogether(idea.event)}{' '}
         <span className={styles.sources}>
           {idea.sources.map((url) => (
             <a key={url} href={url} target="_blank" rel="noreferrer" className={styles.source}>
@@ -32,7 +32,7 @@ export function IdeaCard({ idea }: { idea: IdeaView }) {
 
       <ol className={styles.chain} aria-label="Déduction">
         {idea.reasoning.map((step, i) => (
-          <li key={i}>{step}</li>
+          <li key={i}>{keepTogether(step)}</li>
         ))}
       </ol>
 
@@ -45,12 +45,12 @@ export function IdeaCard({ idea }: { idea: IdeaView }) {
       {idea.marketContext ? <p className={styles.market}>{formatMarketContext(idea.marketContext)}</p> : null}
 
       <p className={styles.pricedIn}>
-        <span className={styles.pricedInLabel}>Déjà dans les prix ?</span> {idea.pricedIn}
+        <span className={styles.pricedInLabel}>{keepTogether('Déjà dans les prix ?')}</span> {keepTogether(idea.pricedIn)}
       </p>
 
       {idea.risk ? (
         <p className={styles.pricedIn}>
-          <span className={styles.pricedInLabel}>Ce qui peut mal tourner</span> {idea.risk}
+          <span className={styles.pricedInLabel}>Ce qui peut mal tourner</span> {keepTogether(idea.risk)}
         </p>
       ) : null}
 
