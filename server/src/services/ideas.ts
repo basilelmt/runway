@@ -1,7 +1,7 @@
-import { ideasSummary, simpleReturn } from '@core/invest';
+import { filterSummary, ideasSummary, simpleReturn } from '@core/invest';
 import type { IdeaRunStart, IdeaRunView, IdeasView, IdeaView } from '@shared/api-types';
 import { addDays, compareISODate, daysBetween, toISODate, type ISODate } from '@shared/dates';
-import { BENCHMARK_TICKER, platforms } from '@shared/invest';
+import { BENCHMARK_TICKER, IDEA_ANGLES, platforms, type IdeaAngle } from '@shared/invest';
 import { ideaBatchSchema, ideaCandidateSchema, type IdeaCandidate } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { listHoldings } from '../repos/invest';
@@ -87,9 +87,12 @@ export function toRunView(row: IdeaRunRow): IdeaRunView {
     id: row.id,
     trigger: row.trigger,
     status: row.status,
+    phase: row.phase,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
     acceptedCount: row.acceptedCount,
+    candidateCount: row.candidateCount,
+    failedAngles: (JSON.parse(row.failedAngles) as IdeaAngle[]).map((key) => ({ key, label: IDEA_ANGLES.find((a) => a.key === key)?.label ?? key })),
     rejected: JSON.parse(row.rejected) as IdeaRunView['rejected'],
     error: row.error,
   };
@@ -147,7 +150,7 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
   const rejected: { ticker: string; reason: string }[] = [];
   const accepted: { candidate: IdeaCandidate; priceEur: number }[] = [];
   const held = new Set(listHoldings(db).map((h) => h.ticker));
-  const open = new Set(listIdeas(db, { status: 'open' }).map((i) => i.ticker));
+  const open = new Set(listIdeas(db, { status: 'open', shown: true }).map((i) => i.ticker));
   const seen = new Set<string>();
   for (const raw of batch.data.ideas) {
     const parsed = ideaCandidateSchema.safeParse(raw);
@@ -184,7 +187,10 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
 
   db.transaction((tx) => {
     const t = tx as unknown as Db;
-    for (const a of accepted) insertIdea(t, runId, today, a.candidate, { priceEur: a.priceEur, benchPriceEur: bench.eur });
+    for (const a of accepted) {
+      const { sourceUrl, ...rest } = a.candidate;
+      insertIdea(t, runId, today, { ...rest, sources: [sourceUrl], startPriceEur: a.priceEur, benchStartPriceEur: bench.eur });
+    }
     finishRun(t, runId, { status: 'done', finishedAt: now().toISOString(), acceptedCount: accepted.length, rejected });
   });
 }
@@ -209,9 +215,11 @@ function toView(row: IdeaRow, current: { ret: number | null; benchRet: number | 
     createdOn: row.createdOn,
     title: row.title,
     event: row.event,
-    sourceUrl: row.sourceUrl,
+    sources: JSON.parse(row.sources) as string[],
     reasoning: JSON.parse(row.reasoning) as string[],
     pricedIn: row.pricedIn,
+    risk: row.risk,
+    marketContext: row.perf3m !== null && row.benchPerf3m !== null ? { perf3m: row.perf3m, benchPerf3m: row.benchPerf3m } : null,
     ticker: row.ticker,
     assetName: row.assetName,
     whereToBuy: row.whereToBuy,
@@ -226,8 +234,9 @@ function toView(row: IdeaRow, current: { ret: number | null; benchRet: number | 
 
 export async function buildIdeasView(db: Db, prices: Prices, today: ISODate): Promise<IdeasView> {
   await closeDueIdeas(db, prices, today);
-  const open = listIdeas(db, { status: 'open' });
-  const closed = listIdeas(db, { status: 'closed' });
+  const open = listIdeas(db, { status: 'open', shown: true });
+  const closedAll = listIdeas(db, { status: 'closed' });
+  const closed = closedAll.filter((r) => r.verdict !== 'dropped');
 
   const bench = open.length ? await prices.quoteEur(BENCHMARK_TICKER) : null;
   const openViews = await Promise.all(
@@ -241,7 +250,13 @@ export async function buildIdeasView(db: Db, prices: Prices, today: ISODate): Pr
     }),
   );
   const closedViews = closed.map((row) => toView(row, { ret: row.finalReturn, benchRet: row.benchFinalReturn, date: row.horizon }));
-  const summary = ideasSummary(closed.flatMap((r) => (r.finalReturn !== null && r.benchFinalReturn !== null ? [{ return: r.finalReturn, benchReturn: r.benchFinalReturn }] : [])));
+
+  const results = (rows: IdeaRow[]) =>
+    rows.flatMap((r) => (r.finalReturn !== null && r.benchFinalReturn !== null ? [{ return: r.finalReturn, benchReturn: r.benchFinalReturn }] : []));
+  const summary = {
+    ...ideasSummary(results(closed)),
+    filter: filterSummary(results(closedAll.filter((r) => r.verdict === 'kept')), results(closedAll.filter((r) => r.verdict === 'dropped'))),
+  };
   const last = latestRun(db);
 
   return { open: openViews, closed: closedViews, summary, lastRun: last ? toRunView(last) : null };

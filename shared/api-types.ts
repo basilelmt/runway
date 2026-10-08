@@ -1,7 +1,7 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
 import type { Account, BankConnectionStatus, Envelope, ImportRecord, RecurringRuleInput, SortingRule, Transaction } from './schemas';
-import type { Platform } from './invest';
+import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
   accounts: Record<number, Cents>;
@@ -306,9 +306,14 @@ export type IdeaRunView = {
   id: number;
   trigger: 'manual' | 'weekly';
   status: 'running' | 'done' | 'failed';
+  /** Étape en cours : les chercheurs, puis le critique ; null une fois finie. */
+  phase: 'research' | 'review' | null;
   startedAt: string;
   finishedAt: string | null;
   acceptedCount: number;
+  /** Pistes proposées par les chercheurs, avant tout filtre. */
+  candidateCount: number;
+  failedAngles: { key: IdeaAngle; label: string }[];
   rejected: { ticker: string; reason: string }[];
   error: string | null;
 };
@@ -318,9 +323,13 @@ export type IdeaView = {
   createdOn: ISODate;
   title: string;
   event: string;
-  sourceUrl: string;
+  sources: string[];
   reasoning: string[];
   pricedIn: string;
+  /** Ce qui peut mal tourner, selon le critique ; null pour les idées d'avant la critique. */
+  risk: string | null;
+  /** Variation sur 3 mois au moment de l'idée, et celle du S&P 500 ; null si inconnue. */
+  marketContext: { perf3m: number; benchPerf3m: number } | null;
   ticker: string;
   assetName: string;
   whereToBuy: Platform;
@@ -340,6 +349,8 @@ export type IdeasSummary = {
   /** Écart moyen idée - référence, en fraction. */
   avgExcess: number | null;
   hundredEach: { invested: Cents; ideas: Cents; bench: Cents };
+  /** Retenues contre écartées, sur les idées closes passées par le critique ; null tant qu'un des deux groupes est vide. */
+  filter: { keptCount: number; keptAvgExcess: number; droppedCount: number; droppedAvgExcess: number } | null;
 };
 
 export type IdeasView = { open: IdeaView[]; closed: IdeaView[]; summary: IdeasSummary; lastRun: IdeaRunView | null };

@@ -8,7 +8,9 @@ const open: IdeaView = {
   createdOn: '2026-10-07',
   title: 'La fête des nouilles fait vendre des baguettes',
   event: 'La fête des nouilles a lieu le 20 octobre.',
-  sourceUrl: 'https://www.exemple.fr/fete',
+  sources: ['https://www.exemple.fr/fete', 'https://news.exemple.jp/men'],
+  risk: null,
+  marketContext: null,
   reasoning: ['La fête des nouilles approche', 'Les gens vont acheter des baguettes', 'Le fabricant de baguettes va vendre plus'],
   pricedIn: 'En partie.',
   ticker: 'BAG.PA',
@@ -27,6 +29,7 @@ describe('IdeaCard', () => {
     render(<IdeaCard idea={open} />);
     expect(screen.getByRole('list', { name: 'Déduction' }).querySelectorAll('li')).toHaveLength(3);
     expect(screen.getByRole('link', { name: /exemple\.fr/ })).toHaveAttribute('href', 'https://www.exemple.fr/fete');
+    expect(screen.getByRole('link', { name: /news\.exemple\.jp/ })).toHaveAttribute('href', 'https://news.exemple.jp/men');
     expect(screen.getByText('+8,3 %')).toBeInTheDocument();
     expect(screen.getByText('+1,0 %')).toBeInTheDocument();
     expect(screen.getByText('Sur Trade Republic')).toBeInTheDocument();

@@ -20,10 +20,14 @@ export function IdeaCard({ idea }: { idea: IdeaView }) {
 
       <p className={styles.event}>
         {idea.event}{' '}
-        <a href={idea.sourceUrl} target="_blank" rel="noreferrer" className={styles.source}>
-          {domainOf(idea.sourceUrl)}
-          <ArrowUpRight aria-hidden />
-        </a>
+        <span className={styles.sources}>
+          {idea.sources.map((url) => (
+            <a key={url} href={url} target="_blank" rel="noreferrer" className={styles.source}>
+              {domainOf(url)}
+              <ArrowUpRight aria-hidden />
+            </a>
+          ))}
+        </span>
       </p>
 
       <ol className={styles.chain} aria-label="Déduction">

@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { bankConnectionStatuses, fundingStatuses } from '@shared/schemas';
-import { platforms } from '@shared/invest';
+import { platforms, ideaAngleKeys } from '@shared/invest';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
 
@@ -223,6 +223,10 @@ export const ideaRuns = sqliteTable('idea_runs', {
   /** JSON : `[{ ticker, reason }]`. */
   rejected: text('rejected').notNull().default('[]'),
   error: text('error'),
+  phase: text('phase', { enum: ['research', 'review'] }),
+  candidateCount: integer('candidate_count').notNull().default(0),
+  /** JSON : clés des angles dont le chercheur a échoué. */
+  failedAngles: text('failed_angles').notNull().default('[]'),
 });
 
 export const ideas = sqliteTable(
@@ -235,7 +239,8 @@ export const ideas = sqliteTable(
     createdOn: text('created_on').notNull(),
     title: text('title').notNull(),
     event: text('event').notNull(),
-    sourceUrl: text('source_url').notNull(),
+    /** JSON : URL des pages lues qui appuient l'idée. */
+    sources: text('sources').notNull().default('[]'),
     /** JSON : étapes de la déduction. */
     reasoning: text('reasoning').notNull(),
     pricedIn: text('priced_in').notNull(),
@@ -248,6 +253,16 @@ export const ideas = sqliteTable(
     status: text('status', { enum: ['open', 'closed'] }).notNull().default('open'),
     finalReturn: real('final_return'),
     benchFinalReturn: real('bench_final_return'),
+    /** Verdict du critique ; null pour les idées d'avant la critique, traitées comme affichées. */
+    verdict: text('verdict', { enum: ['kept', 'dropped'] }),
+    critique: text('critique'),
+    risk: text('risk'),
+    angle: text('angle', { enum: ideaAngleKeys }),
+    /** Variations de cours vues par le critique, en fraction. */
+    perf1m: real('perf_1m'),
+    perf3m: real('perf_3m'),
+    benchPerf1m: real('bench_perf_1m'),
+    benchPerf3m: real('bench_perf_3m'),
   },
   (t) => [index('ideas_status_idx').on(t.status)],
 );

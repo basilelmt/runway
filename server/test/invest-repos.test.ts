@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { addTrade, createHolding, deleteBinanceHoldings, findBinanceHolding, listHoldings, listTrades, updateTrade } from '../src/repos/invest';
-import { closeIdea, createRun, failInterruptedRuns, finishRun, insertIdea, lastSuccessfulRun, listIdeas, runningRun } from '../src/repos/ideas';
+import { closeIdea, createRun, failInterruptedRuns, finishRun, getRun, insertIdea, lastSuccessfulRun, listIdeas, runningRun, setRunPhase } from '../src/repos/ideas';
 import { readSettingKey, writeSettingKey } from '../src/repos/settings';
 import { createTestDb } from './helpers';
 
-const candidate = {
-  title: 'Fête des nouilles', event: 'La fête approche', sourceUrl: 'https://exemple.fr/a', reasoning: ['a', 'b'],
+const idea = {
+  title: 'Fête des nouilles', event: 'La fête approche', sources: ['https://exemple.fr/a', 'https://exemple.jp/b'], reasoning: ['a', 'b'],
   pricedIn: 'Probablement en partie', ticker: 'BAG.PA', assetName: 'Baguettes SA', whereToBuy: 'trade_republic' as const, horizon: '2026-10-28',
+  startPriceEur: 10, benchStartPriceEur: 700,
 };
 
 describe('repos invest', () => {
@@ -35,12 +36,36 @@ describe('repos idées', () => {
     const { db } = createTestDb();
     const run = createRun(db, 'manual', '2026-10-07T10:00:00Z');
     expect(runningRun(db)?.id).toBe(run.id);
-    const idea = insertIdea(db, run.id, '2026-10-07', candidate, { priceEur: 10, benchPriceEur: 700 });
-    finishRun(db, run.id, { status: 'done', finishedAt: '2026-10-07T10:05:00Z', acceptedCount: 1, rejected: [{ ticker: 'XX', reason: 'inconnu' }] });
+    expect(run.phase).toBe('research');
+    const row = insertIdea(db, run.id, '2026-10-07', idea);
+    expect(JSON.parse(row.sources)).toEqual(['https://exemple.fr/a', 'https://exemple.jp/b']);
+    expect(row.verdict).toBeNull();
+    const done = finishRun(db, run.id, {
+      status: 'done', finishedAt: '2026-10-07T10:05:00Z', acceptedCount: 1, candidateCount: 3, failedAngles: ['supply'], rejected: [{ ticker: 'XX', reason: 'inconnu' }],
+    });
+    expect(done).toMatchObject({ phase: null, candidateCount: 3, failedAngles: '["supply"]' });
     expect(lastSuccessfulRun(db)?.id).toBe(run.id);
     expect(listIdeas(db, { status: 'open' })).toHaveLength(1);
-    closeIdea(db, idea.id, 0.1, 0.02);
+    closeIdea(db, row.id, 0.1, 0.02);
     expect(listIdeas(db, { status: 'closed' })[0]).toMatchObject({ finalReturn: 0.1, benchFinalReturn: 0.02 });
+  });
+
+  it('suit la phase d’une fournée', () => {
+    const { db } = createTestDb();
+    const run = createRun(db, 'manual', '2026-10-07T10:00:00Z');
+    setRunPhase(db, run.id, 'review');
+    expect(getRun(db, run.id).phase).toBe('review');
+  });
+
+  it('n’affiche pas les écartées', () => {
+    const { db } = createTestDb();
+    const run = createRun(db, 'manual', '2026-10-07T10:00:00Z');
+    insertIdea(db, run.id, '2026-10-07', idea);
+    insertIdea(db, run.id, '2026-10-07', { ...idea, ticker: 'KEEP.PA', verdict: 'kept', critique: 'Personne n’en parle', angle: 'calendar' });
+    insertIdea(db, run.id, '2026-10-07', { ...idea, ticker: 'DROP.PA', verdict: 'dropped', critique: 'Déjà dans les prix', angle: 'supply' });
+    expect(listIdeas(db)).toHaveLength(3);
+    expect(listIdeas(db, { shown: true }).map((i) => i.ticker).sort()).toEqual(['BAG.PA', 'KEEP.PA']);
+    expect(listIdeas(db, { status: 'open', shown: true })).toHaveLength(2);
   });
 
   it('marque les fournées interrompues', () => {
