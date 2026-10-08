@@ -65,6 +65,14 @@ Les règles de clé ont été validées en lecture seule sur la vraie base (1 45
 | `client/src/components/transactions/MerchantHeading.tsx` | libellé brut et renommage dans le dialogue |
 | `client/src/pages/settings/MerchantSettings.tsx` | section « Marchands » des Réglages |
 
+
+## Amendements après relecture (prioritaires sur le reste du plan)
+
+- Nom de repli d'une opération saisie à la main : la casse de titre de la clé perd les accents (« Café de Léa » deviendrait « Cafe de Lea »).
+  Le nom de repli devient : si le libellé contient au moins une minuscule et qu'aucun préfixe bancaire connu ne s'y applique, le libellé tel quel (espaces compactés) ; sinon la casse de titre de la clé.
+  « Café de Léa » reste « Café de Léa », « ACHAT CB Uniqlo » donne « Uniqlo ».
+  Le repli se calcule donc à partir du libellé et de la clé, pas de la clé seule ; ajouter les tests de ces deux exemples.
+
 ---
 
 ### Task 1 : clé de marchand et nom de repli (`core`)

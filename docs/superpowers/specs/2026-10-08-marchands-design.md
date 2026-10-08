@@ -144,7 +144,7 @@ Le dialogue d'une opération (`TransactionEditDialog`) affiche :
 - un bouton « Renommer » qui ouvre un champ en place.
   L'aide du champ dit que le nouveau nom vaudra pour toutes les opérations de ce marchand, avec leur nombre (« 52 opérations »).
 
-La saisie rapide garde le libellé tapé : son nom affiché est le même libellé, mis en casse de titre par la clé, sauf si Claude l'a nommé.
+La saisie rapide garde le libellé tapé : tant que Claude ne l'a pas nommé, un libellé avec des minuscules et sans préfixe bancaire s'affiche tel quel, accents compris (« Café de Léa »).
 
 Réglages, page Général, une section « Marchands » :
 
