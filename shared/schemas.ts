@@ -352,13 +352,12 @@ export const binanceSyncSchema = z.object({ onlyIfStaleMinutes: z.number().int()
 
 export const ideaRunStartSchema = z.object({ trigger: z.enum(['manual', 'weekly']) });
 
-/** Une idée telle que Claude la propose, avant vérification du ticker. */
+/** Une piste telle qu'un chercheur la propose, avant vérification du ticker. */
 export const ideaCandidateSchema = z.object({
   title: z.string().trim().min(1).max(200),
   event: z.string().trim().min(1).max(1000),
-  sourceUrl: z.url({ protocol: /^https?$/, error: 'Lien http(s) attendu' }),
+  sources: z.array(z.url({ protocol: /^https?$/, error: 'Lien http(s) attendu' })).min(1).max(8),
   reasoning: z.array(z.string().trim().min(1).max(400)).min(1).max(5),
-  pricedIn: z.string().trim().min(1).max(600),
   ticker: z.string().trim().min(1).max(32),
   assetName: z.string().trim().min(1).max(120),
   whereToBuy: z.enum(platforms),
@@ -366,8 +365,21 @@ export const ideaCandidateSchema = z.object({
 });
 export type IdeaCandidate = z.infer<typeof ideaCandidateSchema>;
 
-/** Sortie brute de Claude : chaque idée est validée séparément pour ne pas tout rejeter pour une seule. */
+/** Sortie brute d'un chercheur : chaque piste est validée séparément pour ne pas tout rejeter pour une seule. */
 export const ideaBatchSchema = z.object({ ideas: z.array(z.unknown()) });
+
+/** Verdict du critique sur une piste. */
+export const ideaReviewSchema = z.object({
+  ticker: z.string().trim().min(1).max(32),
+  verdict: z.enum(['kept', 'dropped']),
+  reason: z.string().trim().min(1).max(600),
+  pricedIn: z.string().trim().min(1).max(600),
+  risk: z.string().trim().min(1).max(600),
+});
+export type IdeaReview = z.infer<typeof ideaReviewSchema>;
+
+/** Sortie brute du critique, validée verdict par verdict. */
+export const ideaReviewBatchSchema = z.object({ reviews: z.array(z.unknown()) });
 
 export const askRequestSchema = z.object({
   question: z.string().trim().min(1, 'Question vide').max(500, 'Question trop longue'),

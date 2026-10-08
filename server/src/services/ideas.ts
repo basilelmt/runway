@@ -1,8 +1,8 @@
-import { filterSummary, ideasSummary, simpleReturn } from '@core/invest';
+import { filterSummary, ideasSummary, simpleReturn, trailingReturn } from '@core/invest';
 import type { IdeaRunStart, IdeaRunView, IdeasView, IdeaView } from '@shared/api-types';
 import { addDays, compareISODate, daysBetween, toISODate, type ISODate } from '@shared/dates';
-import { BENCHMARK_TICKER, IDEA_ANGLES, platforms, type IdeaAngle } from '@shared/invest';
-import { ideaBatchSchema, ideaCandidateSchema, type IdeaCandidate } from '@shared/schemas';
+import { BENCHMARK_TICKER, IDEA_ANGLES, type IdeaAngle } from '@shared/invest';
+import { ideaBatchSchema, ideaCandidateSchema, ideaReviewBatchSchema, ideaReviewSchema, type IdeaCandidate, type IdeaReview } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { listHoldings } from '../repos/invest';
 import {
@@ -14,73 +14,35 @@ import {
   latestRun,
   listIdeas,
   runningRun,
+  setRunPhase,
   type IdeaRow,
   type IdeaRunRow,
 } from '../repos/ideas';
 import { ClaudeError, execClaude, runClaude, type Exec } from './claude';
+import { buildResearchPrompt, buildReviewPrompt, researchJsonSchema, reviewJsonSchema, type MarketFacts } from './idea-prompts';
 import type { Prices } from './prices';
 
-export const IDEAS_TIMEOUT_MS = 600_000;
+export const RESEARCH_TIMEOUT_MS = 600_000;
+export const REVIEW_TIMEOUT_MS = 900_000;
 export const WEEK_DAYS = 7;
+export const NOT_REVIEWED = 'Non évaluée par le critique';
 const RECENT_DAYS = 28;
 const MIN_HORIZON_DAYS = 7;
 const MAX_HORIZON_DAYS = 366;
+/** Historique demandé pour la variation sur 3 mois, avec une marge pour les jours sans cotation. */
+const HISTORY_DAYS = 100;
 /** Après une fournée hebdomadaire en échec, on attend ce délai avant de relancer Claude tout seul. */
 const RETRY_AFTER_FAILURE_HOURS = 24;
 /** Une clôture plus ancienne que ce nombre de jours avant l'horizon ne suffit pas à juger une idée. */
 const CLOSE_TOLERANCE_DAYS = 7;
+const WEB_TOOLS = 'WebSearch,WebFetch';
 
 export type IdeasDeps = { exec?: Exec; prices: Prices; now?: () => Date; model?: string };
 
-/** Schéma imposé à Claude, écrit à la main comme celui du tri (`--json-schema` refuse les schémas zod). */
-const ideasJsonSchema = {
-  type: 'object',
-  properties: {
-    ideas: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          event: { type: 'string' },
-          sourceUrl: { type: 'string' },
-          reasoning: { type: 'array', items: { type: 'string' } },
-          pricedIn: { type: 'string' },
-          ticker: { type: 'string' },
-          assetName: { type: 'string' },
-          whereToBuy: { type: 'string', enum: [...platforms] },
-          horizon: { type: 'string' },
-        },
-        required: ['title', 'event', 'sourceUrl', 'reasoning', 'pricedIn', 'ticker', 'assetName', 'whereToBuy', 'horizon'],
-      },
-    },
-  },
-  required: ['ideas'],
-};
-
-export function buildIdeasPrompt(input: { today: ISODate; holdings: { name: string; ticker: string }[]; recent: { title: string; ticker: string }[] }): string {
-  const holdings = input.holdings.length ? input.holdings.map((h) => `- ${h.name} (${h.ticker})`).join('\n') : '(aucune)';
-  const recent = input.recent.length ? input.recent.map((i) => `- ${i.title} (${i.ticker})`).join('\n') : '(aucune)';
-  return `Nous sommes le ${input.today}. Tu aides un particulier français à trouver des idées d'investissement tirées de l'actualité.
-
-Positions déjà détenues :
-${holdings}
-
-Idées déjà proposées ces 4 dernières semaines :
-${recent}
-
-Consignes :
-- Cherche sur le web l'actualité des derniers jours et les événements datés à venir : fêtes, saisons, sorties de produits, décisions publiques, salons, compétitions sportives, météo, pénuries...
-- Propose 3 à 5 idées. Chacune part d'un événement précis, avec l'URL de l'article que tu as lu dans "sourceUrl".
-- La déduction tient en 2 ou 3 étapes simples dans "reasoning", du type : "La fête des nouilles approche" → "Les gens vont acheter des baguettes" → "Le fabricant de baguettes va vendre plus".
-- Vise un actif coté précis et donne son ticker Yahoo Finance exact, avec le suffixe de place : .PA (Paris), .DE (Xetra), .AS (Amsterdam), .L (Londres), .T (Tokyo), .KS (Séoul), rien pour les actions américaines, -EUR pour une crypto (BTC-EUR), =F pour un contrat à terme (GC=F).
-- "horizon" : la date (YYYY-MM-DD) à laquelle juger l'idée, entre 7 jours et 1 an après aujourd'hui.
-- "whereToBuy" : "trade_republic" pour les actions et ETF européens et américains, "binance" pour les cryptos, sinon "other".
-- "pricedIn" : dis honnêtement si le marché a probablement déjà intégré l'événement dans le cours, en une ou deux phrases.
-- "title" : une phrase courte qui résume l'idée.
-- Ne repropose ni un actif déjà détenu ni une idée récente.
-- Réponds uniquement avec le JSON demandé.`;
-}
+type Rejection = { ticker: string; reason: string };
+type Proposed = { angle: IdeaAngle; raw: unknown };
+/** Piste qui a passé les filtres du serveur, en attente du critique. */
+type Pending = { angle: IdeaAngle; candidate: IdeaCandidate; priceEur: number; market: MarketFacts };
 
 export function toRunView(row: IdeaRunRow): IdeaRunView {
   return {
@@ -135,24 +97,90 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
   const bench = await deps.prices.quoteEur(BENCHMARK_TICKER);
   if (!bench) throw new ClaudeError('Cours du S&P 500 indisponible', 'benchmark_unavailable');
 
-  const prompt = buildIdeasPrompt({
-    today,
-    holdings: listHoldings(db).map(({ name, ticker }) => ({ name, ticker })),
-    recent: listIdeas(db, { since: addDays(today, -RECENT_DAYS) }).map(({ title, ticker }) => ({ title, ticker })),
+  const { proposed, failedAngles } = await research(db, deps, today);
+  const { pending, rejected } = await screen(db, deps.prices, proposed, today);
+
+  let reviews = new Map<string, IdeaReview>();
+  let benchMarket: MarketFacts = { perf1m: null, perf3m: null };
+  if (pending.length > 0) {
+    benchMarket = await marketFacts(deps.prices, BENCHMARK_TICKER, today);
+    setRunPhase(db, runId, 'review');
+    reviews = await review(deps, today, pending, benchMarket);
+  }
+
+  db.transaction((tx) => {
+    const t = tx as unknown as Db;
+    let kept = 0;
+    for (const p of pending) {
+      const r = reviews.get(p.candidate.ticker);
+      if (r?.verdict === 'kept') kept++;
+      else rejected.push({ ticker: p.candidate.ticker, reason: r?.reason ?? NOT_REVIEWED });
+      insertIdea(t, runId, today, {
+        ...p.candidate,
+        angle: p.angle,
+        verdict: r?.verdict ?? 'dropped',
+        critique: r?.reason ?? NOT_REVIEWED,
+        pricedIn: r?.pricedIn ?? '',
+        risk: r?.risk ?? null,
+        perf1m: p.market.perf1m,
+        perf3m: p.market.perf3m,
+        benchPerf1m: benchMarket.perf1m,
+        benchPerf3m: benchMarket.perf3m,
+        startPriceEur: p.priceEur,
+        benchStartPriceEur: bench.eur,
+      });
+    }
+    finishRun(t, runId, { status: 'done', finishedAt: now().toISOString(), acceptedCount: kept, candidateCount: proposed.length, failedAngles, rejected });
   });
-  const args = ['-p', '--tools', 'WebSearch', '--allowedTools', 'WebSearch', '--output-format', 'json', '--json-schema', JSON.stringify(ideasJsonSchema)];
+}
+
+const invalidOutput = () => new ClaudeError('Réponse de Claude invalide (format inattendu)', 'claude_invalid_output');
+
+function claudeArgs(deps: IdeasDeps, schema: object, prompt: string): string[] {
+  const args = ['-p', '--tools', WEB_TOOLS, '--allowedTools', WEB_TOOLS, '--output-format', 'json', '--json-schema', JSON.stringify(schema)];
   if (deps.model) args.push('--model', deps.model);
   args.push(prompt);
+  return args;
+}
 
-  const batch = ideaBatchSchema.safeParse(await runClaude(args, IDEAS_TIMEOUT_MS, deps.exec ?? execClaude));
-  if (!batch.success) throw new ClaudeError('Réponse de Claude invalide (format inattendu)', 'claude_invalid_output');
+/** Lance les quatre chercheurs en parallèle ; la fournée n'échoue que si aucun n'a répondu. */
+async function research(db: Db, deps: IdeasDeps, today: ISODate): Promise<{ proposed: Proposed[]; failedAngles: IdeaAngle[] }> {
+  const context = {
+    today,
+    holdings: listHoldings(db).map(({ name, ticker }) => ({ name, ticker })),
+    recent: listIdeas(db, { since: addDays(today, -RECENT_DAYS) }).map(({ title, ticker, verdict }) => ({ title, ticker, dropped: verdict === 'dropped' })),
+  };
+  const results = await Promise.allSettled(
+    IDEA_ANGLES.map(async ({ key }) => {
+      const out = await runClaude(claudeArgs(deps, researchJsonSchema, buildResearchPrompt({ ...context, angle: key })), RESEARCH_TIMEOUT_MS, deps.exec ?? execClaude);
+      const batch = ideaBatchSchema.safeParse(out);
+      if (!batch.success) throw invalidOutput();
+      return batch.data.ideas.map((raw): Proposed => ({ angle: key, raw }));
+    }),
+  );
+  const proposed: Proposed[] = [];
+  const failedAngles: IdeaAngle[] = [];
+  let firstError: unknown = undefined;
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') proposed.push(...r.value);
+    else {
+      failedAngles.push(IDEA_ANGLES[i]!.key);
+      firstError ??= r.reason;
+    }
+  });
+  if (failedAngles.length === IDEA_ANGLES.length) throw firstError;
+  return { proposed, failedAngles };
+}
 
-  const rejected: { ticker: string; reason: string }[] = [];
-  const accepted: { candidate: IdeaCandidate; priceEur: number }[] = [];
+/** Filtres du serveur (format, horizon, doublon, déjà détenu, déjà ouverte, ticker connu) et faits de marché. */
+async function screen(db: Db, prices: Prices, proposed: Proposed[], today: ISODate): Promise<{ pending: Pending[]; rejected: Rejection[] }> {
+  const rejected: Rejection[] = [];
+  const pending: Pending[] = [];
   const held = new Set(listHoldings(db).map((h) => h.ticker));
+  // Une écartée encore ouverte ne bloque pas : seule une idée affichée occupe l'actif.
   const open = new Set(listIdeas(db, { status: 'open', shown: true }).map((i) => i.ticker));
   const seen = new Set<string>();
-  for (const raw of batch.data.ideas) {
+  for (const { angle, raw } of proposed) {
     const parsed = ideaCandidateSchema.safeParse(raw);
     const rawTicker = (raw as { ticker?: unknown } | null)?.ticker;
     if (!parsed.success) {
@@ -177,22 +205,35 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
       continue;
     }
     seen.add(c.ticker);
-    const quote = await deps.prices.quoteEur(c.ticker);
+    const quote = await prices.quoteEur(c.ticker);
     if (!quote) {
       rejected.push({ ticker: c.ticker, reason: 'Ticker introuvable chez Yahoo' });
       continue;
     }
-    accepted.push({ candidate: c, priceEur: quote.eur });
+    pending.push({ angle, candidate: c, priceEur: quote.eur, market: await marketFacts(prices, c.ticker, today) });
   }
+  return { pending, rejected };
+}
 
-  db.transaction((tx) => {
-    const t = tx as unknown as Db;
-    for (const a of accepted) {
-      const { sourceUrl, ...rest } = a.candidate;
-      insertIdea(t, runId, today, { ...rest, sources: [sourceUrl], startPriceEur: a.priceEur, benchStartPriceEur: bench.eur });
-    }
-    finishRun(t, runId, { status: 'done', finishedAt: now().toISOString(), acceptedCount: accepted.length, rejected });
-  });
+async function marketFacts(prices: Prices, ticker: string, today: ISODate): Promise<MarketFacts> {
+  const h = await prices.historyEur(ticker, addDays(today, -HISTORY_DAYS));
+  if (!h) return { perf1m: null, perf3m: null };
+  return { perf1m: trailingReturn(h.closesEur, today, 30), perf3m: trailingReturn(h.closesEur, today, 91) };
+}
+
+/** Le critique rend un verdict par piste ; un verdict illisible ou sur un actif non soumis est ignoré. */
+async function review(deps: IdeasDeps, today: ISODate, pending: Pending[], bench: MarketFacts): Promise<Map<string, IdeaReview>> {
+  const prompt = buildReviewPrompt({ today, bench, candidates: pending.map((p) => ({ ...p.candidate, market: p.market })) });
+  const out = await runClaude(claudeArgs(deps, reviewJsonSchema, prompt), REVIEW_TIMEOUT_MS, deps.exec ?? execClaude);
+  const batch = ideaReviewBatchSchema.safeParse(out);
+  if (!batch.success) throw invalidOutput();
+  const submitted = new Set(pending.map((p) => p.candidate.ticker));
+  const reviews = new Map<string, IdeaReview>();
+  for (const raw of batch.data.reviews) {
+    const r = ideaReviewSchema.safeParse(raw);
+    if (r.success && submitted.has(r.data.ticker) && !reviews.has(r.data.ticker)) reviews.set(r.data.ticker, r.data);
+  }
+  return reviews;
 }
 
 /** Clôt les idées dont l'horizon est passé, avec les clôtures du jour de l'horizon (à défaut, la dernière avant). */
