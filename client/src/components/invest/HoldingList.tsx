@@ -28,47 +28,54 @@ export function HoldingList({ holdings, onOpen, emptyAction }: Props) {
     );
   }
   return (
-    <ul className={['ledger', 'stagger', styles.holdings].join(' ')}>
-      {holdings.map((h) => (
-        <li key={h.id} className={['hover-row', styles.holding].join(' ')}>
-          <button type="button" className={styles.open} onClick={() => onOpen(h.id)} aria-label={`Voir le détail de ${h.name}`} />
-          <div className={styles.holdingName}>
-            <span className={styles.name}>{h.name}</span>
-            <span className={styles.meta}>
-              <Badge>{platformLabel(h.platform)}</Badge>
-              <span className="num">
-                {formatQty(h.quantity)} {unitOf(h.ticker, h.quantity)}
+    <div className={styles.holdingTable}>
+      <div className={styles.holdingHead}>
+        <span />
+        <span className={styles.headDay}>Aujourd’hui</span>
+        <span className={styles.headFigures}>All time</span>
+      </div>
+      <ul className={['ledger', 'stagger', styles.holdings].join(' ')}>
+        {holdings.map((h) => (
+          <li key={h.id} className={['hover-row', styles.holding].join(' ')}>
+            <button type="button" className={styles.open} onClick={() => onOpen(h.id)} aria-label={`Voir le détail de ${h.name}`} />
+            <div className={styles.holdingName}>
+              <span className={styles.name}>{h.name}</span>
+              <span className={styles.meta}>
+                <Badge>{platformLabel(h.platform)}</Badge>
+                <span className="num">
+                  {formatQty(h.quantity)} {unitOf(h.ticker, h.quantity)}
+                </span>
+                <span className="mono">{h.ticker}</span>
               </span>
-              <span className="mono">{h.ticker}</span>
-            </span>
-            {h.unpricedQuantity ? (
-              <span className={styles.unpriced}>
-                {formatQty(h.unpricedQuantity)} {unitOf(h.ticker, h.unpricedQuantity)} sans prix d’achat
-              </span>
-            ) : null}
-            {h.missingQuantity ? (
-              <span className={styles.unpriced}>
-                {formatQty(h.missingQuantity)} {unitOf(h.ticker, h.missingQuantity)} sortis de Binance
-              </span>
-            ) : null}
-          </div>
-          <div className={styles.day}>
-            {h.dayChangePct !== null ? (
-              <span className={['num', styles[gainTone(h.dayChangePct)]].join(' ')} title="Variation depuis la clôture précédente">
-                {formatPct(h.dayChangePct, { signed: true })}
-              </span>
-            ) : null}
-          </div>
-          <div className={styles.figures}>
-            {h.value !== null ? <Amount cents={h.value} /> : <span className={styles.meta}>Cours indisponible</span>}
-            {h.gain !== null ? (
-              <span className={['num', styles.gain, styles[gainTone(h.gain)]].join(' ')}>
-                <Amount cents={h.gain} tone="always" className={styles[gainTone(h.gain)]} /> · {formatPct(h.gainPct, { signed: true })}
-              </span>
-            ) : null}
-          </div>
-        </li>
-      ))}
-    </ul>
+              {h.unpricedQuantity ? (
+                <span className={styles.unpriced}>
+                  {formatQty(h.unpricedQuantity)} {unitOf(h.ticker, h.unpricedQuantity)} sans prix d’achat
+                </span>
+              ) : null}
+              {h.missingQuantity ? (
+                <span className={styles.unpriced}>
+                  {formatQty(h.missingQuantity)} {unitOf(h.ticker, h.missingQuantity)} sortis de Binance
+                </span>
+              ) : null}
+            </div>
+            <div className={styles.day}>
+              {h.dayChangePct !== null ? (
+                <span className={['num', styles[gainTone(h.dayChangePct)]].join(' ')} title="Variation depuis la clôture précédente">
+                  {formatPct(h.dayChangePct, { signed: true })}
+                </span>
+              ) : null}
+            </div>
+            <div className={styles.figures}>
+              {h.value !== null ? <Amount cents={h.value} /> : <span className={styles.meta}>Cours indisponible</span>}
+              {h.gain !== null ? (
+                <span className={['num', styles.gain, styles[gainTone(h.gain)]].join(' ')}>
+                  <Amount cents={h.gain} tone="always" className={styles[gainTone(h.gain)]} /> · {formatPct(h.gainPct, { signed: true })}
+                </span>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

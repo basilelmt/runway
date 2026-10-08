@@ -116,12 +116,37 @@
   opacity: 0.5;
 }
 
-/* Positions */
-.holding {
+/* Positions : l'en-tête et chaque ligne partagent les colonnes du tableau, pour que les intitulés tombent sur les chiffres */
+.holdingTable {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(150px, auto);
+  column-gap: var(--s-4);
+}
+
+.holdingHead,
+.holdingTable .holdings,
+.holding {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+.holdingHead {
+  padding-bottom: var(--s-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+}
+
+.headDay,
+.headFigures {
+  justify-self: end;
+}
+
+.holding {
   align-items: center;
-  gap: var(--s-4);
   padding: var(--s-3) 0;
   min-height: 64px;
 }
@@ -175,6 +200,7 @@
 }
 
 .day {
+  justify-self: end;
   font-size: var(--text-sm);
   pointer-events: none;
 }
@@ -216,11 +242,12 @@
     height: 200px;
   }
 
-  .holding {
+  .holdingTable {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .day {
+  .day,
+  .headDay {
     display: none;
   }
 }

@@ -21,6 +21,7 @@ const base: HoldingView = {
   unpricedQuantity: null,
   missingQuantity: null,
   trades: [],
+  series: [],
 };
 
 const btc: HoldingView = {
@@ -48,6 +49,12 @@ describe('HoldingList', () => {
     expect(screen.getByText('5 parts')).toBeInTheDocument();
     expect(screen.getByText('0,00002 BTC sans prix d’achat')).toBeInTheDocument();
     expect(screen.getByText('-200,00 €')).toBeInTheDocument();
+  });
+
+  it('en-tête distinguant la variation du jour de la plus-value totale', () => {
+    render(<HoldingList holdings={[base]} onOpen={() => {}} />);
+    expect(screen.getByText('Aujourd’hui')).toBeInTheDocument();
+    expect(screen.getByText('All time')).toBeInTheDocument();
   });
 
   it('un clic ouvre le détail de la position', async () => {
