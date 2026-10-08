@@ -145,7 +145,6 @@ Serveur (`server/test/ideas.test.ts`), avec un `exec` simulé qui répond selon 
 - faits de marché transmis au critique ;
 - verdict manquant (écartée « Non évaluée ») et verdict sur un ticker inconnu (ignoré) ;
 - `phase` mise à jour pendant la fournée ;
-- migration des idées existantes (`sources` à un élément, `verdict` `null`) ;
 - vue : les écartées n'apparaissent ni dans `open` ni dans `closed`.
 
 Core (`core/invest.test.ts`) : variations sur 1 et 3 mois (historique trop court, trous de cotation), résumé `filter`.
@@ -153,6 +152,7 @@ Core (`core/invest.test.ts`) : variations sur 1 et 3 mois (historique trop court
 Client (`client/src/lib/invest.test.ts`) : formatage du contexte de marché.
 
 Validation de bout en bout :
+- migration vérifiée sur une copie de la vraie base : les idées existantes ont `sources` à un élément et `verdict` `null` ;
 - une vraie fournée sur une copie de la base, sur un autre port, sans toucher à `data/runway.db` ;
 - lecture critique du résultat (variété des pistes, raisons des écartées, retenues moins évidentes que celles du 7 octobre), ajustement des prompts si besoin ;
 - vérification visuelle dans le navigateur, sur ordinateur et sur mobile : cartes, rapport, Bilan, état « Rien de convaincant ».
