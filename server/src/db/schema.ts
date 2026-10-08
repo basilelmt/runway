@@ -19,7 +19,8 @@ export const envelopes = sqliteTable('envelopes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),
   color: text('color').notNull().default('#4f8a5b'),
-  monthlyTarget: integer('monthly_target'),
+  /** Complément mensuel saisi à la main, en plus des charges fixes de l'enveloppe ; null = pas de complément. */
+  monthlyExtra: integer('monthly_extra'),
   sortOrder: integer('sort_order').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   /** Enveloppe d'épargne : ses dépenses comptent comme argent mis de côté, pas comme consommation. */

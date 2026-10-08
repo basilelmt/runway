@@ -22,7 +22,7 @@ export function createEnvelope(db: Db, input: EnvelopeInput): Envelope {
     .values({
       name: input.name,
       color: input.color,
-      monthlyTarget: input.monthlyTarget ?? null,
+      monthlyExtra: input.monthlyExtra ?? null,
       isSavings: input.isSavings ?? false,
       sortOrder: (max?.m ?? -1) + 1,
     })
@@ -35,7 +35,7 @@ export function updateEnvelope(db: Db, id: number, input: EnvelopePatch): Envelo
   const patch: Partial<typeof envelopes.$inferInsert> = {};
   if (input.name !== undefined) patch.name = input.name;
   if (input.color !== undefined) patch.color = input.color;
-  if (input.monthlyTarget !== undefined) patch.monthlyTarget = input.monthlyTarget;
+  if (input.monthlyExtra !== undefined) patch.monthlyExtra = input.monthlyExtra;
   if (input.isSavings !== undefined) patch.isSavings = input.isSavings;
   if (input.archived !== undefined) patch.archived = input.archived;
   if (Object.keys(patch).length === 0) return getEnvelope(db, id);

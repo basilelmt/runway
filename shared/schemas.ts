@@ -52,7 +52,8 @@ export const envelopeSchema = z.object({
   id: idSchema,
   name: z.string(),
   color: z.string(),
-  monthlyTarget: centsSchema.nullable(),
+  /** Complément mensuel saisi à la main, en plus des charges fixes ; null = pas de complément. */
+  monthlyExtra: centsSchema.nullable(),
   sortOrder: z.number().int(),
   archived: z.boolean(),
   isSavings: z.boolean(),
@@ -62,7 +63,7 @@ export type Envelope = z.infer<typeof envelopeSchema>;
 const envelopeFields = {
   name: z.string().trim().min(1, 'Nom requis').max(80),
   color: colorSchema,
-  monthlyTarget: positiveCentsSchema.nullable().optional(),
+  monthlyExtra: positiveCentsSchema.nullable().optional(),
   isSavings: z.boolean(),
 };
 
