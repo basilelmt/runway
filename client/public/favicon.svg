@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Le logo de l'app (BrandMark) : une piste sombre et ses deux bandes jaunes -->
+  <clipPath id="piste">
+    <rect width="100" height="100" rx="25" />
+  </clipPath>
+  <g clip-path="url(#piste)">
+    <rect width="100" height="100" fill="#14201c" />
+    <rect x="36" width="10" height="100" fill="#e8b931" />
+    <rect x="54" width="10" height="100" fill="#e8b931" />
+  </g>
+  <!-- Liseré clair, pour que le logo reste visible sur un onglet sombre -->
+  <rect x="1.5" y="1.5" width="97" height="97" rx="23.5" fill="none" stroke="#eef2ef" stroke-opacity="0.14" stroke-width="3" />
+</svg>
