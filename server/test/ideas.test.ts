@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { IDEA_ANGLES, type IdeaAngle } from '@shared/invest';
+import { ideaCandidateSchema, ideaReviewSchema } from '@shared/schemas';
+import { createHolding } from '../src/repos/invest';
 import { listIdeas } from '../src/repos/ideas';
 import type { Exec, ExecResult } from '../src/services/claude';
 import { buildResearchPrompt, buildReviewPrompt } from '../src/services/idea-prompts';
+import { marketFacts } from '../src/services/ideas';
+import type { Prices } from '../src/services/prices';
 import { chart, fakeFetch } from './fixtures/yahoo';
 import { createTestApp } from './helpers';
 
@@ -54,14 +58,16 @@ function setup(exec: Exec) {
   };
   let now = new Date('2026-10-07T10:00:00Z');
   const runs: Promise<void>[] = [];
+  const fetchFn = fakeFetch(routes);
   const t = createTestApp('2026-10-07', {
     exec,
-    investDeps: { fetch: fakeFetch(routes), now: () => now, onRunStarted: (done) => runs.push(done) },
+    investDeps: { fetch: fetchFn, now: () => now, onRunStarted: (done) => runs.push(done) },
   });
   const settle = () => Promise.all(runs);
   return {
     ...t,
     routes,
+    fetchCalls: fetchFn.calls,
     moveTo: (iso: string) => {
       now = new Date(`${iso}T10:00:00Z`);
       t.setToday(iso);
@@ -103,6 +109,66 @@ describe('prompts', () => {
     expect(p).toContain('- https://exemple.jp/men-matsuri');
     expect(p).toContain('Cours : -3,2 % sur 1 mois, +20,0 % sur 3 mois.');
     expect(p).toContain('S&P 500 : +1,0 % sur 1 mois, inconnue sur 3 mois.');
+  });
+});
+
+describe('ideaCandidateSchema', () => {
+  it('garde les sources http(s) valides et écarte les autres sans rejeter toute la piste', () => {
+    const parsed = ideaCandidateSchema.parse(idea({ sources: ['javascript:alert(1)', 'https://exemple.fr/ok'] }));
+    expect(parsed.sources).toEqual(['https://exemple.fr/ok']);
+  });
+
+  it('coupe les sources à 8', () => {
+    const many = Array.from({ length: 10 }, (_, i) => `https://exemple.fr/${i}`);
+    const parsed = ideaCandidateSchema.parse(idea({ sources: many }));
+    expect(parsed.sources).toEqual(many.slice(0, 8));
+  });
+
+  it('dédoublonne les sources', () => {
+    const parsed = ideaCandidateSchema.parse(idea({ sources: ['https://exemple.fr/a', 'https://exemple.fr/a', 'https://exemple.fr/b'] }));
+    expect(parsed.sources).toEqual(['https://exemple.fr/a', 'https://exemple.fr/b']);
+  });
+
+  it('rejette une piste sans aucune source http(s) valide', () => {
+    expect(() => ideaCandidateSchema.parse(idea({ sources: ['javascript:alert(1)'] }))).toThrow();
+  });
+
+  it('met le ticker en majuscules', () => {
+    expect(ideaCandidateSchema.parse(idea({ ticker: 'bag.pa' })).ticker).toBe('BAG.PA');
+  });
+});
+
+describe('ideaReviewSchema', () => {
+  it('accepte un risque et un "pricedIn" vides, exige une raison et majuscule le ticker', () => {
+    const r = ideaReviewSchema.parse({ ticker: 'bag.pa', verdict: 'kept', reason: 'Personne n’en parle', pricedIn: '', risk: '' });
+    expect(r).toMatchObject({ ticker: 'BAG.PA', pricedIn: '', risk: '' });
+    expect(() => ideaReviewSchema.parse({ ticker: 'BAG.PA', verdict: 'kept', reason: '', pricedIn: '', risk: '' })).toThrow();
+  });
+});
+
+describe('marketFacts', () => {
+  const fakePrices = (overrides: Partial<Prices>): Prices => ({
+    search: async () => [],
+    history: async () => null,
+    historyEur: async () => null,
+    closeEurOn: async () => null,
+    quoteEur: async () => null,
+    isUnknown: () => false,
+    ...overrides,
+  });
+
+  it('renvoie des variations nulles quand l’historique est périmé', async () => {
+    const prices = fakePrices({
+      historyEur: async () => ({ ticker: 'BAG.PA', name: 'Baguettes', currency: 'EUR', closes: [], stale: true, closesEur: [{ date: '2026-10-07', close: 12 }] }),
+    });
+    expect(await marketFacts(prices, 'BAG.PA', '2026-10-07')).toEqual({ perf1m: null, perf3m: null });
+  });
+
+  it('renvoie des variations nulles quand la dernière clôture connue a plus de 7 jours', async () => {
+    const prices = fakePrices({
+      historyEur: async () => ({ ticker: 'BAG.PA', name: 'Baguettes', currency: 'EUR', closes: [], stale: false, closesEur: [{ date: '2026-09-20', close: 12 }] }),
+    });
+    expect(await marketFacts(prices, 'BAG.PA', '2026-10-07')).toEqual({ perf1m: null, perf3m: null });
   });
 });
 
@@ -186,11 +252,52 @@ describe('fournées d’idées', () => {
     expect(exec).toHaveBeenCalledTimes(4);
   });
 
+  it('écarte un horizon trop proche', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea({ horizon: '2026-10-09' })] } }));
+    const run = await t.runOnce();
+    expect(run).toMatchObject({ status: 'done', acceptedCount: 0, candidateCount: 1 });
+    expect(run.rejected).toEqual([{ ticker: 'BAG.PA', reason: 'Horizon hors limites' }]);
+  });
+
+  it('écarte une idée sur un actif déjà détenu', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea()] } }));
+    createHolding(t.db, { platform: 'trade_republic', ticker: 'BAG.PA', name: 'Baguettes SA', source: 'manual' });
+    const run = await t.runOnce();
+    expect(run).toMatchObject({ status: 'done', acceptedCount: 0, candidateCount: 1 });
+    expect(run.rejected).toEqual([{ ticker: 'BAG.PA', reason: 'Déjà détenu' }]);
+  });
+
+  it('ne récupère qu’une fois l’historique Yahoo par ticker (cours servi depuis le cache)', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea()] }, review: [keep('BAG.PA')] }));
+    await t.runOnce();
+    const bagCalls = t.fetchCalls.filter((u) => u.includes('chart/BAG.PA')).length;
+    expect(bagCalls).toBe(1);
+  });
+
   it('écarte une piste sans verdict et ignore un verdict sur un actif non soumis', async () => {
     const t = setup(fakeClaude({ research: { calendar: [idea()] }, review: [keep('ZZZ')] }));
     const run = await t.runOnce();
     expect(run).toMatchObject({ acceptedCount: 0, rejected: [{ ticker: 'BAG.PA', reason: 'Non évaluée par le critique' }] });
     expect(listIdeas(t.db)[0]).toMatchObject({ verdict: 'dropped', critique: 'Non évaluée par le critique', pricedIn: '', risk: null });
+  });
+
+  it('garde une piste retenue même avec un risque vide', async () => {
+    const t = setup(
+      fakeClaude({
+        research: { calendar: [idea()] },
+        review: [{ ticker: 'BAG.PA', verdict: 'kept', reason: 'Personne n’en parle encore', pricedIn: '', risk: '' }],
+      }),
+    );
+    const run = await t.runOnce();
+    expect(run).toMatchObject({ acceptedCount: 1 });
+    expect(listIdeas(t.db)[0]).toMatchObject({ verdict: 'kept', pricedIn: '', risk: null });
+  });
+
+  it('ignore la casse du ticker entre le chercheur et le critique', async () => {
+    const t = setup(fakeClaude({ research: { calendar: [idea({ ticker: 'bag.pa' })] }, review: [keep('BAG.PA')] }));
+    const run = await t.runOnce();
+    expect(run).toMatchObject({ acceptedCount: 1 });
+    expect(listIdeas(t.db)[0]).toMatchObject({ ticker: 'BAG.PA', verdict: 'kept' });
   });
 
   it('dédoublonne entre chercheurs ; une écartée ouverte ne bloque pas l’actif, une retenue si', async () => {

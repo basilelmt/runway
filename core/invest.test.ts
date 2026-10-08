@@ -110,7 +110,7 @@ describe('rendements des idées', () => {
   it('bilan vide', () => {
     expect(ideasSummary([])).toEqual({ closedCount: 0, beatCount: 0, avgExcess: null, hundredEach: { invested: 0, ideas: 0, bench: 0 } });
   });
-  it('trailingReturn compare la dernière clôture à celle d\'il y a N jours', () => {
+  it('trailingReturn compare la dernière clôture à celle d’il y a N jours', () => {
     const series = [
       { date: '2026-07-01', close: 10 },
       { date: '2026-09-07', close: 11 },
