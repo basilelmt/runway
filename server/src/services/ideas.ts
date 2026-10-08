@@ -94,6 +94,8 @@ export function startIdeaRun(db: Db, deps: IdeasDeps, trigger: 'manual' | 'weekl
 async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): Promise<void> {
   const now = deps.now ?? (() => new Date());
   // La référence d'abord : sans elle, inutile de faire chercher Claude pendant plusieurs minutes.
+  // L'historique avant le cours : la cotation du jour est alors servie depuis le cache, sans second appel Yahoo.
+  const benchMarket = await marketFacts(deps.prices, BENCHMARK_TICKER, today);
   const bench = await deps.prices.quoteEur(BENCHMARK_TICKER);
   if (!bench) throw new ClaudeError('Cours du S&P 500 indisponible', 'benchmark_unavailable');
 
@@ -101,27 +103,32 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
   const { pending, rejected } = await screen(db, deps.prices, proposed, today);
 
   let reviews = new Map<string, IdeaReview>();
-  let benchMarket: MarketFacts = { perf1m: null, perf3m: null };
   if (pending.length > 0) {
-    benchMarket = await marketFacts(deps.prices, BENCHMARK_TICKER, today);
     setRunPhase(db, runId, 'review');
     reviews = await review(deps, today, pending, benchMarket);
   }
 
+  // Calculés avant la transaction : screen() ne doit pas être muté depuis l'intérieur de db.transaction.
+  let kept = 0;
+  const criticRejections: Rejection[] = [];
+  for (const p of pending) {
+    const r = reviews.get(p.candidate.ticker);
+    if (r?.verdict === 'kept') kept++;
+    else criticRejections.push({ ticker: p.candidate.ticker, reason: r?.reason ?? NOT_REVIEWED });
+  }
+  const allRejected = [...rejected, ...criticRejections];
+
   db.transaction((tx) => {
     const t = tx as unknown as Db;
-    let kept = 0;
     for (const p of pending) {
       const r = reviews.get(p.candidate.ticker);
-      if (r?.verdict === 'kept') kept++;
-      else rejected.push({ ticker: p.candidate.ticker, reason: r?.reason ?? NOT_REVIEWED });
       insertIdea(t, runId, today, {
         ...p.candidate,
         angle: p.angle,
         verdict: r?.verdict ?? 'dropped',
         critique: r?.reason ?? NOT_REVIEWED,
         pricedIn: r?.pricedIn ?? '',
-        risk: r?.risk ?? null,
+        risk: r && r.risk !== '' ? r.risk : null,
         perf1m: p.market.perf1m,
         perf3m: p.market.perf3m,
         benchPerf1m: benchMarket.perf1m,
@@ -130,7 +137,7 @@ async function execute(db: Db, deps: IdeasDeps, runId: number, today: ISODate): 
         benchStartPriceEur: bench.eur,
       });
     }
-    finishRun(t, runId, { status: 'done', finishedAt: now().toISOString(), acceptedCount: kept, candidateCount: proposed.length, failedAngles, rejected });
+    finishRun(t, runId, { status: 'done', finishedAt: now().toISOString(), acceptedCount: kept, candidateCount: proposed.length, failedAngles, rejected: allRejected });
   });
 }
 
@@ -172,52 +179,70 @@ async function research(db: Db, deps: IdeasDeps, today: ISODate): Promise<{ prop
   return { proposed, failedAngles };
 }
 
+/** Un candidat qui a passé les filtres synchrones, en attente de son cours. */
+type ToPrice = { status: 'toPrice'; angle: IdeaAngle; candidate: IdeaCandidate };
+type ScreenSlot = { status: 'rejected'; ticker: string; reason: string } | ToPrice;
+
 /** Filtres du serveur (format, horizon, doublon, déjà détenu, déjà ouverte, ticker connu) et faits de marché. */
 async function screen(db: Db, prices: Prices, proposed: Proposed[], today: ISODate): Promise<{ pending: Pending[]; rejected: Rejection[] }> {
-  const rejected: Rejection[] = [];
-  const pending: Pending[] = [];
   const held = new Set(listHoldings(db).map((h) => h.ticker));
   // Une écartée encore ouverte ne bloque pas : seule une idée affichée occupe l'actif.
   const open = new Set(listIdeas(db, { status: 'open', shown: true }).map((i) => i.ticker));
   const seen = new Set<string>();
-  for (const { angle, raw } of proposed) {
+
+  // Filtres synchrones, dans l'ordre des pistes : déterministe, sans appel réseau.
+  const slots: ScreenSlot[] = proposed.map(({ angle, raw }) => {
     const parsed = ideaCandidateSchema.safeParse(raw);
     const rawTicker = (raw as { ticker?: unknown } | null)?.ticker;
-    if (!parsed.success) {
-      rejected.push({ ticker: typeof rawTicker === 'string' ? rawTicker : '?', reason: 'Format invalide' });
-      continue;
-    }
+    if (!parsed.success) return { status: 'rejected', ticker: typeof rawTicker === 'string' ? rawTicker : '?', reason: 'Format invalide' };
     const c = parsed.data;
     if (compareISODate(c.horizon, addDays(today, MIN_HORIZON_DAYS)) < 0 || compareISODate(c.horizon, addDays(today, MAX_HORIZON_DAYS)) > 0) {
-      rejected.push({ ticker: c.ticker, reason: 'Horizon hors limites' });
-      continue;
+      return { status: 'rejected', ticker: c.ticker, reason: 'Horizon hors limites' };
     }
-    if (seen.has(c.ticker)) {
-      rejected.push({ ticker: c.ticker, reason: 'Doublon' });
-      continue;
-    }
-    if (held.has(c.ticker)) {
-      rejected.push({ ticker: c.ticker, reason: 'Déjà détenu' });
-      continue;
-    }
-    if (open.has(c.ticker)) {
-      rejected.push({ ticker: c.ticker, reason: 'Idée déjà en cours sur cet actif' });
-      continue;
-    }
+    if (seen.has(c.ticker)) return { status: 'rejected', ticker: c.ticker, reason: 'Doublon' };
+    if (held.has(c.ticker)) return { status: 'rejected', ticker: c.ticker, reason: 'Déjà détenu' };
+    if (open.has(c.ticker)) return { status: 'rejected', ticker: c.ticker, reason: 'Idée déjà en cours sur cet actif' };
     seen.add(c.ticker);
-    const quote = await prices.quoteEur(c.ticker);
-    if (!quote) {
-      rejected.push({ ticker: c.ticker, reason: 'Ticker introuvable chez Yahoo' });
-      continue;
+    return { status: 'toPrice', angle, candidate: c };
+  });
+
+  // Cours et faits de marché en parallèle entre candidats ; pour un même candidat, l'historique avant
+  // le cours pour que ce dernier soit servi depuis le cache (pas de double appel Yahoo).
+  const priced = await Promise.all(
+    slots.map((slot) =>
+      slot.status === 'toPrice'
+        ? (async () => {
+            const market = await marketFacts(prices, slot.candidate.ticker, today);
+            const quote = await prices.quoteEur(slot.candidate.ticker);
+            return { quote, market };
+          })()
+        : null,
+    ),
+  );
+
+  const rejected: Rejection[] = [];
+  const pending: Pending[] = [];
+  slots.forEach((slot, i) => {
+    if (slot.status === 'rejected') {
+      rejected.push({ ticker: slot.ticker, reason: slot.reason });
+      return;
     }
-    pending.push({ angle, candidate: c, priceEur: quote.eur, market: await marketFacts(prices, c.ticker, today) });
-  }
+    const { quote, market } = priced[i]!;
+    if (!quote) {
+      rejected.push({ ticker: slot.candidate.ticker, reason: 'Ticker introuvable chez Yahoo' });
+      return;
+    }
+    pending.push({ angle: slot.angle, candidate: slot.candidate, priceEur: quote.eur, market });
+  });
   return { pending, rejected };
 }
 
-async function marketFacts(prices: Prices, ticker: string, today: ISODate): Promise<MarketFacts> {
+/** `null` si l'historique est périmé ou si la dernière clôture connue est trop ancienne : un cours qui ne reflète plus le marché ne doit pas passer pour actuel auprès du critique. */
+export async function marketFacts(prices: Prices, ticker: string, today: ISODate): Promise<MarketFacts> {
   const h = await prices.historyEur(ticker, addDays(today, -HISTORY_DAYS));
-  if (!h) return { perf1m: null, perf3m: null };
+  if (!h || h.stale) return { perf1m: null, perf3m: null };
+  const last = h.closesEur.at(-1);
+  if (!last || daysBetween(last.date, today) > CLOSE_TOLERANCE_DAYS) return { perf1m: null, perf3m: null };
   return { perf1m: trailingReturn(h.closesEur, today, 30), perf3m: trailingReturn(h.closesEur, today, 91) };
 }
 
