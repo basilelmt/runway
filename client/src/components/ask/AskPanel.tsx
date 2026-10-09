@@ -18,7 +18,9 @@ export function AskPanel() {
   const returnFocus = useRef<HTMLElement | null>(null);
 
   // À l'ouverture, le focus va dans le champ ; à la fermeture, il revient là où il était.
-  useEffect(() => {
+  // `useLayoutEffect` : le focus bouge dans le même passage que le commit, sans attendre le tour des effets
+  // passifs (une autre source ouvre ce panneau via un raccourci global, un effet différé serait un timing fragile).
+  useLayoutEffect(() => {
     if (!open) return;
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     inputRef.current?.focus();
@@ -26,7 +28,7 @@ export function AskPanel() {
   }, [open]);
 
   // Une fois la réponse arrivée, le champ (désactivé pendant l'attente) reprend le focus pour enchaîner.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open && !pending) inputRef.current?.focus();
   }, [open, pending]);
 
