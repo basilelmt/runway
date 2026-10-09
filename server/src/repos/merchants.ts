@@ -90,7 +90,8 @@ export function getMerchant(db: Db, key: string): MerchantDetail {
   const count = db.select({ n: sql<number>`count(*)` }).from(transactions).where(eq(transactions.merchantKey, key)).get()?.n ?? 0;
   const row = db.select().from(merchants).where(eq(merchants.key, key)).get();
   if (!row && count === 0) throw new NotFoundError('Marchand introuvable');
-  return { key, name: row?.name ?? merchantFallbackName(key, ''), source: row?.source ?? null, transactionCount: count };
+  const label = row?.name ? '' : sampleLabels(db, key, 1)[0] ?? '';
+  return { key, name: row?.name ?? merchantFallbackName(key, label), source: row?.source ?? null, transactionCount: count };
 }
 
 /** Nom choisi par l'utilisateur (source `user`, jamais écrasé par Claude) ; un nom vide remet le marchand à nommer par Claude. */

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { merchants } from '../src/db/schema';
-import { renameMerchant } from '../src/repos/merchants';
+import { getMerchant, renameMerchant } from '../src/repos/merchants';
 import { getSettings, saveSettings } from '../src/repos/settings';
 import { createTransaction } from '../src/repos/transactions';
 import type { Exec, ExecResult } from '../src/services/claude';
@@ -164,5 +164,13 @@ describe('createMerchantNamer', () => {
     await namer.idle();
     expect(exec).toHaveBeenCalledTimes(2);
     expect(namer.status().running).toBe(false);
+  });
+});
+
+describe('getMerchant', () => {
+  it('garde les accents d’un libellé saisi à la main pour le nom de repli', () => {
+    expense('Café de Léa');
+
+    expect(getMerchant(ctx.db, 'CAFE DE LEA').name).toBe('Café de Léa');
   });
 });
