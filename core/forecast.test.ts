@@ -33,19 +33,21 @@ describe('forecast', () => {
   it('détecte une enveloppe qui se vide', () => {
     const courant = account({ name: 'Courant', initialBalance: 1000_00 });
     const courses = envelope({ name: 'Courses' });
-    const hebdo = rule({ kind: 'expense', amount: 60_00, accountId: courant.id, envelopeId: courses.id, frequency: 'weekly', startDate: '2026-03-02', lastGeneratedDate: '2026-03-09' });
+    // Des dépenses ponctuelles prévues, pas une règle : ce ne sont pas des charges de l'enveloppe,
+    // donc aucun budget automatique ne vient compenser leur montant (sinon l'enveloppe ne se viderait jamais).
+    const depenses = ['2026-03-16', '2026-03-23', '2026-03-30'].map((date) =>
+      tx({ kind: 'expense', amount: 60_00, accountId: courant.id, envelopeId: courses.id, status: 'planned', date }),
+    );
     const r = forecast(
-      { accounts: [courant], envelopes: [courses], transactions: [tx({ kind: 'allocation', amount: 100_00, envelopeId: courses.id })] },
-      [hebdo],
+      { accounts: [courant], envelopes: [courses], transactions: [tx({ kind: 'allocation', amount: 100_00, envelopeId: courses.id }), ...depenses] },
+      [],
       '2026-03-10',
       30,
     );
     const alert = r.alerts.find((a) => a.kind === 'envelope');
     // Le 1er avril, l'enveloppe repart de zéro : le creux est celui de mars.
     expect(alert).toMatchObject({ id: courses.id, firstNegativeDate: '2026-03-23', minBalance: -80_00, minBalanceDate: '2026-03-30' });
-    // La règle hebdomadaire est aussi une charge de l'enveloppe : son budget d'avril (260,00 €) est réparti le 1er,
-    // une fois le découvert de mars remis à zéro (sans le rebond, ce serait -80,00 € + 260,00 €).
-    expect(r.days.find((d) => d.date === '2026-04-01')?.envelopes[courses.id]).toBe(260_00);
+    expect(r.days.find((d) => d.date === '2026-04-01')?.envelopes[courses.id]).toBe(0);
     expect(r.alerts.find((a) => a.kind === 'account')).toBeUndefined();
   });
 
@@ -67,6 +69,20 @@ describe('forecast', () => {
     expect(budget[0]).toMatchObject({ kind: 'allocation', envelopeId: logement.id, sourceId: logement.id, label: 'Budget Logement' });
     // Le loyer du 5 est couvert par le budget du 1er : pas de fausse alerte.
     expect(r.alerts).toEqual([]);
+  });
+
+  it('calcule le budget du mois en cours à partir des règles même si l’enveloppe n’est pas enrichie', () => {
+    const courant = account({ name: 'Courant', initialBalance: 5000_00 });
+    const logement = envelope({ name: 'Logement' });
+    const loyer = rule({ kind: 'expense', amount: 800_00, accountId: courant.id, envelopeId: logement.id, frequency: 'monthly', dayOfMonth: 5, startDate: '2026-01-01', lastGeneratedDate: '2026-03-05' });
+    // `logement` est passée telle quelle, sans `withBudgets` : son `monthlyBudget` est resté à 0.
+    expect(logement.monthlyBudget).toBe(0);
+    const r = forecast({ accounts: [courant], envelopes: [logement], transactions: [] }, [loyer], '2026-03-10', 5);
+
+    const budget = r.events.filter((e) => e.source === 'budget');
+    expect(budget).toEqual([
+      { date: '2026-03-10', label: 'Budget Logement', kind: 'allocation', amount: 800_00, accountId: null, toAccountId: null, envelopeId: logement.id, fromEnvelopeId: null, source: 'budget', sourceId: logement.id },
+    ]);
   });
 
   it('n’ajoute rien pour une enveloppe sans budget, archivée ou déjà remplie', () => {
