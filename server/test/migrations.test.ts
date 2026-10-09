@@ -146,3 +146,23 @@ describe('migration 0009 (complément des enveloppes)', () => {
     ]);
   });
 });
+
+describe('migration 0010 (marchands)', () => {
+  it('ajoute la table merchants et la colonne merchant_key, vides, sans toucher aux opérations', () => {
+    const db = new Database(':memory:');
+    for (const tag of journalTags(9)) applyMigration(db, tag);
+    db.prepare(`INSERT INTO transactions (kind, date, amount, label) VALUES ('expense', '2026-10-01', 1250, 'ACHAT CB BOULANGERIE DU COIN')`).run();
+
+    applyMigration(db, '0010_merchants');
+
+    expect(db.prepare('SELECT label, merchant_key FROM transactions').get()).toEqual({ label: 'ACHAT CB BOULANGERIE DU COIN', merchant_key: null });
+    const columns = (db.prepare("PRAGMA table_info('merchants')").all() as { name: string }[]).map((c) => c.name);
+    expect(columns).toEqual(['key', 'name', 'source', 'updated_at']);
+    const indexes = (db.prepare("PRAGMA index_list('transactions')").all() as { name: string }[]).map((i) => i.name);
+    expect(indexes).toContain('transactions_merchant_idx');
+
+    db.prepare(`INSERT INTO merchants (key) VALUES ('BOULANGERIE DU COIN')`).run();
+    expect(db.prepare('SELECT name, source, updated_at FROM merchants').get()).toMatchObject({ name: null, source: null, updated_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) });
+    db.close();
+  });
+});

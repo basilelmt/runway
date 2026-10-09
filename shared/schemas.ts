@@ -16,6 +16,9 @@ export const transactionKinds = ['expense', 'income', 'transfer', 'allocation'] 
 export type TransactionKind = (typeof transactionKinds)[number];
 export const transactionStatuses = ['confirmed', 'planned'] as const;
 export type TransactionStatus = (typeof transactionStatuses)[number];
+/** Qui a donné le nom d'un marchand : Claude, ou l'utilisateur (jamais écrasé). */
+export const merchantSources = ['claude', 'user'] as const;
+export type MerchantSource = (typeof merchantSources)[number];
 export const frequencies = ['daily', 'weekly', 'monthly', 'yearly'] as const;
 export type Frequency = (typeof frequencies)[number];
 

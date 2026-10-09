@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
-import { bankConnectionStatuses, fundingStatuses } from '@shared/schemas';
+import { bankConnectionStatuses, fundingStatuses, merchantSources } from '@shared/schemas';
 import { platforms, ideaAngleKeys } from '@shared/invest';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -82,6 +82,8 @@ export const transactions = sqliteTable(
     fingerprint: text('fingerprint'),
     /** Répartition automatique qui a créé cette allocation. */
     fundingId: integer('funding_id').references((): AnySQLiteColumn => fundings.id, { onDelete: 'cascade' }),
+    /** Clé du marchand tirée du libellé (`merchantKey`), pour les dépenses et revenus ; null sinon. Pas de clé étrangère. */
+    merchantKey: text('merchant_key'),
     createdAt: text('created_at').notNull().default(now),
   },
   (t) => [
@@ -89,6 +91,7 @@ export const transactions = sqliteTable(
     index('transactions_account_idx').on(t.accountId),
     index('transactions_envelope_idx').on(t.envelopeId),
     uniqueIndex('transactions_fingerprint_idx').on(t.fingerprint),
+    index('transactions_merchant_idx').on(t.merchantKey),
   ],
 );
 
@@ -104,6 +107,15 @@ export const fundings = sqliteTable('fundings', {
   shortfallCount: integer('shortfall_count').notNull().default(0),
   dismissedAt: text('dismissed_at'),
   createdAt: text('created_at').notNull().default(now),
+});
+
+/** Nom lisible d'une clé de marchand ; une clé sans ligne reste valide et s'affiche en casse de titre. */
+export const merchants = sqliteTable('merchants', {
+  key: text('key').primaryKey(),
+  /** Null tant que personne ne l'a nommé. */
+  name: text('name'),
+  source: text('source', { enum: merchantSources }),
+  updatedAt: text('updated_at').notNull().default(now),
 });
 
 export const sortingRules = sqliteTable('sorting_rules', {
