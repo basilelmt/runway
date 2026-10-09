@@ -7,6 +7,7 @@ import { useAutoBankSync } from '@/components/import/useAutoBankSync';
 import { BrandMark, Button, ButtonLink } from '@/components/ui';
 import { BottomNav } from './BottomNav';
 import { QuickAddProvider } from './QuickAdd';
+import { panelTrigger } from './quick-add-context';
 import { SideNav } from './SideNav';
 import styles from './Shell.module.css';
 
@@ -42,6 +43,7 @@ function Layout() {
             aria-label="Demander"
             aria-expanded={ask.open}
             onClick={ask.toggle}
+            {...panelTrigger}
           />
           <ButtonLink
             to="/reglages"

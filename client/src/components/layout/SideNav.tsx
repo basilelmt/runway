@@ -8,7 +8,7 @@ import { budgetNeedsAttention } from '@/lib/budget';
 import { useActiveIndicator } from '@/lib/motion';
 import { LiftoffArrow } from './LiftoffArrow';
 import { NAV, SETTINGS_NAV, type NavItem } from './nav';
-import { useQuickAdd } from './quick-add-context';
+import { panelTrigger, useQuickAdd } from './quick-add-context';
 import styles from './SideNav.module.css';
 
 export function SideNav() {
@@ -38,7 +38,7 @@ export function SideNav() {
         <span className={styles.brandName}>Runway</span>
       </NavLink>
 
-      <Button variant="secondary" icon={<Plus aria-hidden strokeWidth={2} />} className={styles.navAction} aria-keyshortcuts="n" onClick={openQuickAdd}>
+      <Button variant="secondary" icon={<Plus aria-hidden strokeWidth={2} />} className={styles.navAction} aria-keyshortcuts="n" onClick={openQuickAdd} {...panelTrigger}>
         Nouvelle opération
         <Kbd>N</Kbd>
       </Button>
@@ -50,6 +50,7 @@ export function SideNav() {
         aria-expanded={ask.open}
         aria-keyshortcuts="k"
         onClick={ask.toggle}
+        {...panelTrigger}
       >
         Demander
         <Kbd>K</Kbd>
