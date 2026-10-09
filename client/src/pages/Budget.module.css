@@ -27,7 +27,7 @@
 }
 
 .dragOver {
-  box-shadow: inset 0 2px 0 var(--marking);
+  box-shadow: inset 0 var(--s-half) 0 var(--marking);
 }
 
 /* Poignée de glisser : dans la marge à gauche de la ligne, au-dessus du bouton de ligne,

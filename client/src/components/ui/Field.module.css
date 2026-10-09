@@ -22,7 +22,7 @@
   font-size: var(--text-xs);
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   color: var(--ink-mute);
   transition: color var(--dur) var(--ease-out);
 }

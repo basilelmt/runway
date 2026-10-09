@@ -59,7 +59,7 @@
 }
 
 .edgeBelow {
-  box-shadow: 0 1px 0 var(--rule);
+  box-shadow: 0 var(--hairline) 0 var(--rule);
 }
 
 .heading {
@@ -141,7 +141,7 @@
 }
 
 .edgeAbove {
-  box-shadow: 0 -1px 0 var(--rule);
+  box-shadow: 0 calc(var(--hairline) * -1) 0 var(--rule);
 }
 
 .info {

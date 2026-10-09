@@ -47,7 +47,7 @@
   font-size: var(--text-xs);
   color: var(--ink-mute);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
 .asset {

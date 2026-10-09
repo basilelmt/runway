@@ -60,6 +60,13 @@
   --text-2xl: 2.25rem;
   --text-3xl: 3.25rem;
   --text-4xl: 4.25rem;
+  /* 16px : taille minimale pour qu'un champ ne déclenche pas le zoom automatique sur mobile */
+  --text-input: 1rem;
+  /* Échelle d'un texte secondaire accolé à un chiffre clé (ex. devise de AmountHero) */
+  --text-scale-sub: 0.55;
+
+  /* Trait d'un pixel simulé en box-shadow (séparateurs, contours fins) */
+  --hairline: 1px;
 
   /* Espacement 4px */
   --s-half: 2px;

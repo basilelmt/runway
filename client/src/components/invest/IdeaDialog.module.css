@@ -77,7 +77,7 @@
 
 .chain li:last-child::before {
   background: var(--marking);
-  box-shadow: 0 0 0 2px var(--marking-soft);
+  box-shadow: 0 0 0 var(--s-half) var(--marking-soft);
 }
 
 /* .asset, .assetName, .where (et le ticker en .mono) sont partagés avec la carte : Ideas.module.css est la source canonique. */

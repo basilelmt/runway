@@ -5,7 +5,7 @@ import type { ImportRecord } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useImports, useSaveSettings, useSettings, useTestBankCredentials } from '@/api/hooks';
 import { BankSyncPanel } from '@/components/import/BankSyncPanel';
-import { Button, ButtonLink, ColumnHeader, Disclosure, EmptyState, ErrorState, Field, Input, ListRow, ListRowSkeleton, SectionHeader, SkeletonRows, Textarea, listRowDate, useToast } from '@/components/ui';
+import { Button, ButtonLink, ColumnHeader, Disclosure, EmptyState, ErrorState, Field, Input, ListRow, ListRowSkeleton, SectionHeader, Textarea, listRowDate, useToast } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import styles from './Settings.module.css';
 import bank from './Bank.module.css';
@@ -91,7 +91,7 @@ function BankCredentials() {
         }
       />
       {settings.isPending ? (
-        <SkeletonRows rows={2} />
+        <ListRowSkeleton rows={2} />
       ) : (
         <form className={styles.form} onSubmit={submit} noValidate>
           <Field label="Application ID" error={errors.appId} hint="Affiché dans la console Enable Banking, onglet API applications.">

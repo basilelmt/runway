@@ -13,7 +13,7 @@ import {
   useRunBankSync,
   useStartBankConnection,
 } from '@/api/hooks';
-import { Badge, Button, ConfirmDialog, FieldError, Input, Notice, Select, SkeletonRows, useToast } from '@/components/ui';
+import { Badge, Button, ConfirmDialog, FieldError, Input, ListRowSkeleton, Notice, Select, useToast } from '@/components/ui';
 import { formatDateLong, formatDateTime, plural, syncSummary } from '@/lib/format';
 import styles from './BankSyncPanel.module.css';
 
@@ -104,7 +104,7 @@ export function BankSyncPanel() {
   if (state.isPending) {
     return (
       <div className={styles.panel}>
-        <SkeletonRows rows={2} />
+        <ListRowSkeleton rows={2} />
       </div>
     );
   }

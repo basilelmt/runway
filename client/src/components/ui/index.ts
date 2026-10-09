@@ -26,7 +26,7 @@ export { ProgressBar } from './ProgressBar';
 export { Range } from './Range';
 export { RowMenu, type RowMenuItem } from './RowMenu';
 export { Segmented } from './Segmented';
-export { Skeleton, SkeletonRows } from './Skeleton';
+export { Skeleton } from './Skeleton';
 export { Kbd } from './Kbd';
 export { KeyFigure, keyFigureValue } from './KeyFigure';
 export { PulseDot } from './PulseDot';
