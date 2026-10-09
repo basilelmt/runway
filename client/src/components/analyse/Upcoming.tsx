@@ -77,6 +77,7 @@ export function Upcoming() {
                       key={key}
                       onClick={() => setSeries(key)}
                       clickLabel={`Tracer le solde projeté de ${a.name}`}
+                      pressed={series === key}
                       className={series === key ? styles.selected : undefined}
                       lead={<span className={listRowDate}>{formatDateCompact(a.firstNegativeDate)}</span>}
                       title={

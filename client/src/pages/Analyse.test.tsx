@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SpendingReport } from '@shared/api-types';
+import type { ForecastResponse, SpendingReport } from '@shared/api-types';
 import { AnalysePage } from './Analyse';
 
 const spending: SpendingReport = {
@@ -89,5 +89,32 @@ describe('Analyse', () => {
     expect(within(figure).getByLabelText('20 %')).toBeInTheDocument();
     expect(within(figure).getByText('Mis de côté par mois')).toBeInTheDocument();
     expect(within(figure).getByText('Dépensé par mois, hors épargne')).toBeInTheDocument();
+  });
+
+  it('annonce le découvert tracé et en change au clic', async () => {
+    const days = ['2026-10-09', '2026-10-10', '2026-10-11'].map((date, i) => ({ date, accounts: { 1: 100_00 - i * 80_00 }, envelopes: { 5: 20_00 - i * 15_00 } }));
+    const forecast: ForecastResponse = {
+      today: '2026-10-09',
+      horizonDays: 90,
+      days,
+      events: [],
+      alerts: [
+        { kind: 'account', id: 1, name: 'Compte courant', firstNegativeDate: '2026-10-11', daysUntil: 2, minBalance: -60_00, minBalanceDate: '2026-10-11' },
+        { kind: 'envelope', id: 5, name: 'Sorties', firstNegativeDate: '2026-10-11', daysUntil: 2, minBalance: -10_00, minBalanceDate: '2026-10-11' },
+      ],
+      accounts: [{ id: 1, name: 'Compte courant', onBudget: true }],
+      envelopes: [{ id: 5, name: 'Sorties', color: '#9a4f9a' }],
+    };
+    fetchMock.mockImplementation(async (url: string) => (url.startsWith('/api/forecast') ? json(forecast) : json({ forecastHorizonDays: 90 })));
+    renderPage('/analyse?vue=a-venir');
+
+    const account = await screen.findByRole('button', { name: 'Tracer le solde projeté de Compte courant' });
+    const envelope = screen.getByRole('button', { name: 'Tracer le solde projeté de Sorties' });
+    expect(account).toHaveAttribute('aria-pressed', 'true');
+    expect(envelope).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(envelope);
+    expect(envelope).toHaveAttribute('aria-pressed', 'true');
+    expect(account).toHaveAttribute('aria-pressed', 'false');
   });
 });

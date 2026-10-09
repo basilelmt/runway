@@ -5,6 +5,19 @@ import { EnvelopeTag } from './EnvelopeTag';
 import { ColumnHeader, GroupLabel, ListRow, ListRowSkeleton } from './ListRow';
 
 describe('ListRow', () => {
+  it('annonce la ligne choisie par aria-pressed, seulement si elle est cliquable', () => {
+    render(
+      <ul>
+        <ListRow title="Compte courant" onClick={() => {}} clickLabel="Tracer Compte courant" pressed />
+        <ListRow title="Livret A" onClick={() => {}} clickLabel="Tracer Livret A" pressed={false} />
+        <ListRow title="Livret Jeune" onClick={() => {}} clickLabel="Tracer Livret Jeune" />
+      </ul>,
+    );
+    expect(screen.getByRole('button', { name: 'Tracer Compte courant' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Tracer Livret A' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Tracer Livret Jeune' })).not.toHaveAttribute('aria-pressed');
+  });
+
   it('rend un élément de liste avec titre, méta et fin', () => {
     render(
       <ul>

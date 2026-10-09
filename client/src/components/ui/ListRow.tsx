@@ -20,16 +20,18 @@ type ListRowProps = {
   muted?: boolean;
   onClick?: () => void;
   clickLabel?: string;
+  /** Ligne choisie parmi d'autres (série tracée...) : annoncée par `aria-pressed`, seulement avec `onClick`. */
+  pressed?: boolean;
   as?: 'li' | 'div';
   className?: string;
 };
 
 /** La ligne de liste de l'app : à placer dans un `<ul className="ledger">`. */
-export function ListRow({ lead, title, meta, middle, trail, trailSub, actions, compact = false, muted = false, onClick, clickLabel, as: Tag = 'li', className }: ListRowProps) {
+export function ListRow({ lead, title, meta, middle, trail, trailSub, actions, compact = false, muted = false, onClick, clickLabel, pressed, as: Tag = 'li', className }: ListRowProps) {
   return (
     <Tag className={[styles.row, compact ? styles.compact : '', muted ? styles.muted : '', onClick ? 'hover-row' : '', className ?? ''].join(' ')}>
       {/* Bouton qui couvre toute la ligne ; les actions passent au-dessus. */}
-      {onClick ? <button type="button" className={styles.open} onClick={onClick} aria-label={clickLabel} /> : null}
+      {onClick ? <button type="button" className={styles.open} onClick={onClick} aria-label={clickLabel} aria-pressed={pressed} /> : null}
       {lead ? <span className={styles.lead}>{lead}</span> : null}
       <span className={styles.body}>
         <span className={styles.title}>{title}</span>
