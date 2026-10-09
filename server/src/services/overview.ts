@@ -13,7 +13,7 @@ import { countUnsorted } from '../repos/transactions';
 import { loadState } from './state';
 
 export function buildOverview(db: Db, today: ISODate): Overview {
-  const state = loadState(db);
+  const state = loadState(db, today);
   const balances = computeBalances(state, today);
   const horizon = getSettings(db).forecastHorizonDays;
   const { alerts } = forecast(state, state.rules, today, horizon);
@@ -30,9 +30,9 @@ export function buildOverview(db: Db, today: ISODate): Overview {
     }));
 
   // Consommation du mois : toutes les dépenses confirmées (même à trier), hors enveloppes d'épargne.
-  // Les enveloppes portées par une charge fixe active (loyer, prêt...) sont séparées des dépenses courantes.
+  // Dépenses courantes : les mêmes, sauf celles générées par une charge fixe (loyer, Navigo...).
+  // Un ticket de métro rangé dans Transports compte donc, le Navigo non.
   const savings = new Set(state.envelopes.filter((e) => e.isSavings).map((e) => e.id));
-  const fixed = new Set(state.rules.filter((r) => r.active && r.kind === 'expense' && r.envelopeId != null).map((r) => r.envelopeId!));
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
   let monthSpent = 0;
@@ -41,7 +41,7 @@ export function buildOverview(db: Db, today: ISODate): Overview {
     if (t.kind !== 'expense' || t.status !== 'confirmed' || t.date < monthStart || t.date > monthEnd) continue;
     if (t.envelopeId != null && savings.has(t.envelopeId)) continue;
     monthSpent += t.amount;
-    if (t.envelopeId == null || !fixed.has(t.envelopeId)) variableSpent += t.amount;
+    if (t.recurringRuleId == null) variableSpent += t.amount;
   }
   const spending = envelopes.filter((e) => !e.isSavings);
   // Revenu attendu : revenus récurrents actifs et pas encore terminés, ramenés au mois.
@@ -61,15 +61,16 @@ export function buildOverview(db: Db, today: ISODate): Overview {
       start: monthStart,
       end: monthEnd,
       spent: monthSpent,
-      budget: spending.reduce((sum, e) => sum + (e.monthlyTarget ?? 0), 0),
+      budget: spending.reduce((sum, e) => sum + e.monthlyBudget, 0),
       variable: {
         spent: variableSpent,
-        budget: spending.filter((e) => !fixed.has(e.id)).reduce((sum, e) => sum + (e.monthlyTarget ?? 0), 0),
+        // Le budget courant est la part saisie à la main : les charges fixes ont leurs propres opérations.
+        budget: spending.reduce((sum, e) => sum + (e.monthlyExtra ?? 0), 0),
       },
       saved: savedInMonth(state.accounts, state.envelopes, state.transactions, today),
       toFund: envelopes.reduce((sum, e) => sum + e.toFundThisMonth, 0),
       income,
-      planned: envelopes.reduce((sum, e) => sum + (e.monthlyTarget ?? 0), 0),
+      planned: envelopes.reduce((sum, e) => sum + e.monthlyBudget, 0),
     },
     alerts,
     unsortedCount: countUnsorted(db),

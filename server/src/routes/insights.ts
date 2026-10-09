@@ -27,7 +27,7 @@ export const reportRoutes = new Hono<AppEnv>()
   .get('/spending', validate('query', spendingQuery), (c) => {
     const today = c.get('today');
     const { from = startOfMonth(today), to = endOfMonth(today) } = c.req.valid('query');
-    return c.json(spendingReport(c.get('db'), from, to));
+    return c.json(spendingReport(c.get('db'), today, from, to));
   })
   .get('/monthly', validate('query', monthlyQuery), (c) => {
     return c.json(monthlyReport(c.get('db'), c.get('today'), c.req.valid('query').months));

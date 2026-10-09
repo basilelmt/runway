@@ -76,9 +76,12 @@ export type MonthSummary = {
   end: ISODate;
   /** Dépenses confirmées du mois, à trier comprises, hors enveloppes d'épargne. */
   spent: Cents;
-  /** Somme des budgets mensuels des enveloppes hors épargne. */
+  /** Somme des budgets mensuels (charges fixes + complément) des enveloppes hors épargne. */
   budget: Cents;
-  /** Dépenses courantes : hors enveloppes portées par une charge fixe active (loyer, prêt...). */
+  /**
+   * Dépenses courantes : dépenses confirmées hors épargne qui ne viennent pas d'une règle récurrente,
+   * face à la somme des compléments des enveloppes hors épargne.
+   */
   variable: { spent: Cents; budget: Cents };
   /** Mis de côté : virements nets vers l'épargne et dépenses des enveloppes d'épargne. */
   saved: Cents;
@@ -86,7 +89,7 @@ export type MonthSummary = {
   toFund: Cents;
   /** Revenu mensuel attendu : revenus récurrents actifs, ramenés au mois. */
   income: Cents;
-  /** Somme des budgets mensuels de toutes les enveloppes, épargne comprise : ce que le budget prélève sur le revenu. */
+  /** Somme des budgets mensuels (charges fixes + complément) de toutes les enveloppes, épargne comprise : ce que le budget prélève sur le revenu. */
   planned: Cents;
 };
 
@@ -119,10 +122,10 @@ export type SpendingReport = {
   from: ISODate;
   to: ISODate;
   total: Cents;
-  /** Somme des budgets mensuels des enveloppes de dépenses actives, pour comparer à la période. */
+  /** Somme des budgets mensuels (charges fixes + complément) des enveloppes de dépenses actives, pour comparer à la période. */
   monthlyBudget: Cents;
   /** Dépenses par enveloppe, hors enveloppes d'épargne ; `envelopeId` null = à trier. */
-  byEnvelope: { envelopeId: number | null; name: string; color: string; amount: Cents; monthlyTarget: Cents | null }[];
+  byEnvelope: { envelopeId: number | null; name: string; color: string; amount: Cents; monthlyBudget: Cents }[];
 };
 
 /** `expense` exclut les enveloppes d'épargne, comptées dans `saved`. */

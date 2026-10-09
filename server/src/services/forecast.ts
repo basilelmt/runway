@@ -6,7 +6,7 @@ import { getSettings } from '../repos/settings';
 import { loadState } from './state';
 
 export function buildForecast(db: Db, today: ISODate, horizonDays?: number): ForecastResponse {
-  const state = loadState(db);
+  const state = loadState(db, today);
   const horizon = horizonDays ?? getSettings(db).forecastHorizonDays;
   const result = forecast(state, state.rules, today, horizon);
   return {

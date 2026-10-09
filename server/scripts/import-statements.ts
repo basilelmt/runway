@@ -160,7 +160,7 @@ async function main() {
   console.log(`${created} opérations créées, ${skipped} déjà présentes`);
 
   // 4. Contrôle final : les soldes de l'app doivent être ceux des derniers relevés.
-  const state = loadState(db);
+  const state = loadState(db, today());
   const balances = computeBalances(state, today());
   let allGood = true;
   for (const [number, s] of lastClosing) {
