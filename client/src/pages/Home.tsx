@@ -194,7 +194,9 @@ function TodoList({ data }: { data: Overview }) {
       ),
     });
   }
-  const alert = data.alerts[0];
+  // Une enveloppe déjà signalée dépassée dans la ligne de surveillance ne doit pas aussi sortir une alerte de prévision.
+  const overWatched = new Set(data.watch.filter((w) => w.kind === 'over').map((w) => w.envelopeId));
+  const alert = data.alerts.find((a) => a.kind !== 'envelope' || !overWatched.has(a.id));
   if (alert) {
     todos.push({
       key: 'alert',

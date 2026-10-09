@@ -72,6 +72,15 @@ describe('Accueil', () => {
     expect(await screen.findByRole('link', { name: 'L’enveloppe Courses passe dans le rouge dès aujourd’hui · point bas -12,30 €' })).toHaveAttribute('href', '/analyse?vue=a-venir');
   });
 
+  it('ne répète pas une enveloppe déjà signalée dépassée dans la ligne de surveillance', async () => {
+    renderHome({
+      watch: [{ envelopeId: 1, name: 'Restos', kind: 'over', amount: 12_40 }],
+      alerts: [{ kind: 'envelope', id: 1, name: 'Restos', firstNegativeDate: '2026-10-08', daysUntil: 0, minBalance: -12_40, minBalanceDate: '2026-10-08' }],
+    });
+    await screen.findByRole('link', { name: 'Restos dépassée de 12,40 €' });
+    expect(screen.queryByRole('link', { name: /passe dans le rouge/ })).not.toBeInTheDocument();
+  });
+
   it('nomme correctement la ligne d’opération prévue en retard, espace avant le détail compris', async () => {
     const late: Transaction = {
       id: 1,
