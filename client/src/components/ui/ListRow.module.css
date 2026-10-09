@@ -176,16 +176,17 @@
 
   /* Sans progression, une action (pastille d'enveloppe, bouton) passe sur sa propre ligne
      pour laisser le libellé respirer : lead + corps + montant tiennent sur la première ligne,
-     le montant à sa largeur plutôt que la colonne alignée de 110px. */
+     le montant à sa largeur plutôt que la colonne alignée de 110px. La date garde sa colonne
+     fixe de 84px (alignée d'une ligne à l'autre, y compris avec les lignes sans action) ;
+     c'est l'écart avant le montant qui se resserre pour laisser le plus de place au libellé. */
   .row:has(.actions):not(:has(.middle)) {
     flex-wrap: wrap;
     row-gap: var(--s-2);
     --list-trail: auto;
   }
 
-  /* La date garde sa largeur de texte plutôt que la colonne alignée de 84px */
-  .row:has(.actions):not(:has(.middle)) > .lead > .date {
-    width: auto;
+  .row:has(.actions):not(:has(.middle)) > .trail {
+    margin-left: calc(-1 * var(--s-4));
   }
 
   .row:has(.actions):not(:has(.middle)) > .actions {
