@@ -1,11 +1,14 @@
+/* Ancré en haut plutôt que centré : quand le contenu change de hauteur (données qui arrivent),
+   le dialogue s'allonge vers le bas sans déplacer son en-tête. */
 .dialog {
+  --dialog-top: clamp(var(--s-4), 10dvh, 96px);
   border: none;
   padding: 0;
   background: transparent;
   max-width: calc(100vw - 2 * var(--s-4));
-  max-height: calc(100dvh - 2 * var(--s-4));
+  max-height: calc(100dvh - var(--dialog-top) - var(--s-4));
   width: 100%;
-  margin: auto;
+  margin: var(--dialog-top) auto auto;
 }
 
 .dialog::backdrop {
@@ -37,7 +40,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  max-height: calc(100dvh - 2 * var(--s-4));
+  max-height: calc(100dvh - var(--dialog-top) - var(--s-4));
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius-lg);

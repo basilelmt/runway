@@ -6,7 +6,7 @@ import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
 import { operationsHref } from '@/components/transactions/TransactionFilters';
-import { Amount, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Stat, StatGroup } from '@/components/ui';
+import { Amount, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Skeleton, Stat, StatGroup } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import styles from './EnvelopeDetailDialog.module.css';
@@ -56,7 +56,8 @@ export function EnvelopeDetailDialog({ envelope, onClose }: EnvelopeDetailDialog
 function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
   const [period, setPeriod] = useState<Period>('month');
   const { from, to, months } = range(period);
-  const transactions = useTransactions({ envelope: envelope.id, from, to, kind: 'expense', limit: 1000 });
+  // En changeant de période, la liste précédente reste affichée jusqu'à l'arrivée de la nouvelle.
+  const transactions = useTransactions({ envelope: envelope.id, from, to, kind: 'expense', limit: 1000 }, { keepPrevious: true });
 
   const list = transactions.data ?? [];
   const confirmed = list.filter((t) => t.status === 'confirmed');
@@ -70,46 +71,77 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
 
       <StatGroup>
         <Stat label={verb}>
-          <Amount cents={total} size="lg" tone="neutral" className={budget !== null && total > budget ? styles.over : ''} />
-          {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
+          {/* Largeur réservée sur le budget de la période : la stat voisine ne bouge pas quand le montant arrive. */}
+          <span className={styles.spent}>
+            <span className={styles.reserve} aria-hidden="true">
+              <Amount cents={budget ?? 0} size="lg" tone="neutral" />
+              {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
+            </span>
+            {transactions.isPending ? (
+              <Skeleton width="70%" height={20} className={styles.spentSkeleton} />
+            ) : (
+              <span>
+                <Amount cents={total} size="lg" tone="neutral" className={budget !== null && total > budget ? styles.over : ''} />
+                {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
+              </span>
+            )}
+          </span>
         </Stat>
         <Stat label="Disponible aujourd’hui">
           <Amount cents={envelope.balance} size="lg" />
         </Stat>
       </StatGroup>
 
-      {transactions.isPending ? (
-        <ListRowSkeleton rows={4} compact />
-      ) : transactions.error ? (
-        <ErrorState title="Impossible de charger les dépenses" description={errorMessage(transactions.error)} onRetry={() => transactions.refetch()} />
-      ) : list.length === 0 ? (
-        <EmptyState icon={<Receipt />} title="Aucune dépense sur cette période." />
-      ) : (
-        <div>
-          <GroupLabel as="p">{plural(list.length, 'dépense')}</GroupLabel>
-          <ul className={['ledger', 'stagger', styles.list].join(' ')}>
-            {list.map((t) => (
-              <ListRow
-                key={t.id}
-                compact
-                muted={t.status === 'planned'}
-                lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
-                title={
-                  <span title={t.label}>
-                    {displayLabel(t)}
-                    {t.status === 'planned' ? <span className="muted"> · prévue</span> : null}
-                  </span>
-                }
-                trail={<Amount cents={-t.amount} tone="neutral" />}
-              />
-            ))}
-          </ul>
+      {/* La zone garde au moins la hauteur de son squelette : le dialogue ne saute pas à l'arrivée des données. */}
+      <div className={styles.results} aria-busy={transactions.isFetching}>
+        <div className={styles.reserve} aria-hidden="true">
+          <ResultsSkeleton />
         </div>
-      )}
+        {transactions.isPending ? (
+          <ResultsSkeleton />
+        ) : transactions.error ? (
+          <ErrorState title="Impossible de charger les dépenses" description={errorMessage(transactions.error)} onRetry={() => transactions.refetch()} />
+        ) : list.length === 0 ? (
+          <EmptyState icon={<Receipt />} title="Aucune dépense sur cette période." />
+        ) : (
+          <div className={transactions.isPlaceholderData ? styles.stale : undefined}>
+            <GroupLabel as="p">{plural(list.length, 'dépense')}</GroupLabel>
+            <ul className={['ledger', 'stagger', styles.list].join(' ')}>
+              {list.map((t) => (
+                <ListRow
+                  key={t.id}
+                  compact
+                  muted={t.status === 'planned'}
+                  lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+                  title={
+                    <span title={t.label}>
+                      {displayLabel(t)}
+                      {t.status === 'planned' ? <span className="muted"> · prévue</span> : null}
+                    </span>
+                  }
+                  trail={<Amount cents={-t.amount} tone="neutral" />}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       <ButtonLink to={operationsHref({ envelope: envelope.id, from, to })} variant="ghost" size="sm" icon={<ArrowRight />} className={styles.more}>
         Voir dans Opérations
       </ButtonLink>
+    </div>
+  );
+}
+
+/** Chargement de la liste : même forme que le résultat, intitulé compris. */
+function ResultsSkeleton() {
+  return (
+    <div>
+      <GroupLabel as="p">
+        <Skeleton width={72} height={10} className={styles.labelSkeleton} />
+      </GroupLabel>
+      <ListRowSkeleton rows={4} compact />
     </div>
   );
 }

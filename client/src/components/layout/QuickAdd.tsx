@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useCreateTransaction } from '@/api/hooks';
+import { useAccounts, useCreateTransaction, useEnvelopes } from '@/api/hooks';
 import { errorMessage } from '@/api/client';
 import { QuickEntry } from '@/components/transactions/QuickEntry';
 import { useAsk } from '@/components/ask/ask-context';
@@ -22,6 +22,9 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [resetKey, setResetKey] = useState(0);
   const toast = useToast();
   const create = useCreateTransaction();
+  // Chargés d'avance : la saisie s'ouvre avec ses comptes et ses enveloppes, sans que le formulaire grandisse ensuite.
+  useAccounts();
+  useEnvelopes();
   const { toggle: toggleAsk } = useAsk();
 
   useEffect(() => {
