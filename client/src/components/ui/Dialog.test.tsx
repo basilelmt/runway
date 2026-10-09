@@ -97,6 +97,16 @@ describe('Dialog', () => {
     expect(trigger).toHaveFocus();
   });
 
+  it('donne le focus à l’élément marqué `data-autofocus` même après un champ', () => {
+    render(
+      <Dialog open onClose={vi.fn()} title="Répartir">
+        <input aria-label="Recherche" />
+        <input aria-label="Montant" data-autofocus />
+      </Dialog>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Montant', hidden: true })).toHaveFocus();
+  });
+
   it('rend le pied sur place hors dialogue', () => {
     render(
       <DialogFooter>

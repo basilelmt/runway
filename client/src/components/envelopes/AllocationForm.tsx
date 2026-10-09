@@ -68,9 +68,11 @@ export function AllocationForm({ initial, submitLabel, submitting, serverError, 
           describedBy={errors.amount ? `${formId}-amount-error` : undefined}
           autoFocus
         />
-        <div className={styles.amountError}>
-          <FieldError id={`${formId}-amount-error`}>{errors.amount}</FieldError>
-        </div>
+        {errors.amount ? (
+          <div className={styles.amountError}>
+            <FieldError id={`${formId}-amount-error`}>{errors.amount}</FieldError>
+          </div>
+        ) : null}
       </div>
 
       <Field label="De" error={errors.fromEnvelopeId}>

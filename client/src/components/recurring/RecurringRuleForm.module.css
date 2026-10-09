@@ -38,12 +38,10 @@
   gap: var(--s-5);
 }
 
-
 .summary {
   font-size: var(--text-sm);
   color: var(--ink-soft);
 }
-
 
 .funding {
   display: flex;

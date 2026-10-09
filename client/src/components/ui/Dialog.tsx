@@ -54,7 +54,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
       openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       el.showModal();
       // Le focus va d'abord au champ marqué `data-autofocus`, sinon au premier champ, jamais au bouton Fermer.
-      const target = el.querySelector<HTMLElement>('[data-autofocus], input, select, textarea');
+      const target = el.querySelector<HTMLElement>('[data-autofocus]') ?? el.querySelector<HTMLElement>('input, select, textarea');
       target?.focus();
     }
   }, [open, rendered]);

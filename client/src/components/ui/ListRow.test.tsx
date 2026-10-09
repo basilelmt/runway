@@ -34,6 +34,36 @@ describe('ListRow', () => {
     expect(screen.getByRole('listitem').className).not.toMatch(/undefined/);
   });
 
+  it('garde cliquables les contrôles posés dans la méta et la fin d’une ligne cliquable', async () => {
+    const onClick = vi.fn();
+    const onMeta = vi.fn();
+    const onTrail = vi.fn();
+    render(
+      <ul>
+        <ListRow
+          title="Loyer"
+          onClick={onClick}
+          clickLabel="Modifier Loyer"
+          meta={
+            <button type="button" onClick={onMeta}>
+              Logement
+            </button>
+          }
+          trail={
+            <button type="button" onClick={onTrail}>
+              Voir l’opération
+            </button>
+          }
+        />
+      </ul>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Logement' }));
+    expect(onMeta).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir l’opération' }));
+    expect(onTrail).toHaveBeenCalledOnce();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it('peut être un div hors liste', () => {
     render(<ListRow as="div" title="Seule" />);
     expect(screen.queryByRole('listitem')).not.toBeInTheDocument();

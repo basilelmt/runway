@@ -34,8 +34,11 @@
   pointer-events: none;
 }
 
-/* Sauf les contrôles posés dans le début, comme une poignée de glisser */
-.row:has(> .open) > .lead :is(button, a) {
+/* Sauf les contrôles posés dans la ligne (poignée, lien dans la méta...), qui passent au-dessus du bouton de ligne.
+   Spécificité nulle : le composant qui pose le contrôle peut le positionner autrement. */
+:where(.row:has(> .open) :is(button, a, input, select, textarea, [role='button']):not(.open)) {
+  position: relative;
+  z-index: 1;
   pointer-events: auto;
 }
 
