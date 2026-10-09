@@ -10,32 +10,6 @@
   gap: var(--s-5);
 }
 
-.stats {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--s-6);
-  margin: 0;
-}
-
-.stats > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-}
-
-.stats dt {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
-.stats dd {
-  margin: 0;
-}
-
-.right {
-  align-items: flex-end;
-}
-
 .budget {
   font-size: var(--text-sm);
   color: var(--ink-mute);
@@ -45,76 +19,11 @@
   color: var(--negative);
 }
 
-.count {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-mute);
-  margin-bottom: calc(-1 * var(--s-3));
-}
-
 .list {
   max-height: 48dvh;
   overflow-y: auto;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--s-3);
-  min-height: 48px;
-}
-
-.date {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
-.label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.amount {
-  text-align: right;
-}
-
-.planned .label,
-.planned .amount {
-  opacity: 0.55;
-}
-
-.plannedTag {
-  color: var(--ink-mute);
-}
-
-.empty {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-6) 0;
-  color: var(--ink-mute);
-}
-
-.empty :global(svg) {
-  width: 18px;
-  height: 18px;
-}
-
-.error {
-  color: var(--negative);
-  font-size: var(--text-sm);
-}
-
 .more {
   align-self: flex-start;
-  margin-left: calc(-1 * var(--s-4));
-}
-
-@media (max-width: 767px) {
-  .row {
-    grid-template-columns: 72px minmax(0, 1fr) auto;
-  }
 }

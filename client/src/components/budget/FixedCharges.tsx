@@ -14,7 +14,7 @@ import {
 } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
-import { Amount, Badge, Button, ConfirmDialog, Dialog, Dot, Skeleton, useToast } from '@/components/ui';
+import { Amount, Badge, Button, ConfirmDialog, Dialog, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, Stat, StatGroup, useToast } from '@/components/ui';
 import styles from './FixedCharges.module.css';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; rule: RecurringRuleView } | { mode: 'delete'; rule: RecurringRuleView } | null;
@@ -47,116 +47,108 @@ export function FixedCharges() {
   const expense = monthly('expense');
   const transfer = monthly('transfer');
 
-  function target(rule: RecurringRuleView) {
+  /** Fréquence et destination : comptes du virement, enveloppe de la charge ou compte du revenu. */
+  function meta(rule: RecurringRuleView) {
+    const frequency = describeFrequency(rule);
     const account = rule.accountId ? accountName.get(rule.accountId) : '';
-    if (rule.kind === 'transfer') return `${account} → ${rule.toAccountId ? accountName.get(rule.toAccountId) : ''}`;
+    if (rule.kind === 'transfer') return `${frequency} · ${account} → ${rule.toAccountId ? accountName.get(rule.toAccountId) : ''}`;
     if (rule.kind === 'expense') {
       const env = rule.envelopeId ? envelopeById.get(rule.envelopeId) : null;
       return env ? (
         <>
-          <Dot color={env.color} size={8} /> {env.name}
+          <span>{frequency}</span>
+          <EnvelopeTag name={env.name} color={env.color} />
         </>
       ) : (
-        'à ranger'
+        `${frequency} · à ranger`
       );
     }
-    return account;
+    return `${frequency} · ${account}`;
   }
 
   const row = (rule: RecurringRuleView) => (
-    <li key={rule.id} className={['hover-row', styles.row, rule.active ? '' : styles.paused].join(' ')}>
-      <div className={styles.main}>
-        <span className={styles.name}>
-          {rule.name}
+    <ListRow
+      key={rule.id}
+      muted={!rule.active}
+      title={rule.name}
+      meta={
+        <>
           {!rule.active ? <Badge tone="warning">En pause</Badge> : null}
-        </span>
-        <span className={styles.details}>
-          {describeFrequency(rule)} · {target(rule)}
-        </span>
-      </div>
-      <span className={styles.next}>{rule.nextDate ? `le ${formatDateShort(rule.nextDate)}` : 'terminée'}</span>
-      <Amount cents={rule.kind === 'income' ? rule.amount : -rule.amount} tone={rule.kind === 'income' ? 'always' : 'neutral'} className={styles.amount} />
-      <div className={styles.actions}>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={rule.active ? <Pause /> : <Play />}
-          onClick={() => setActive.mutate({ id: rule.id, active: !rule.active })}
-          aria-label={rule.active ? `Mettre ${rule.name} en pause` : `Reprendre ${rule.name}`}
-          title={rule.active ? 'Mettre en pause' : 'Reprendre'}
+          {meta(rule)}
+        </>
+      }
+      trail={<Amount cents={rule.kind === 'income' ? rule.amount : -rule.amount} tone={rule.kind === 'income' ? 'always' : 'neutral'} />}
+      trailSub={rule.nextDate ? `le ${formatDateShort(rule.nextDate)}` : 'terminée'}
+      actions={
+        <RowMenu
+          label={`Actions pour ${rule.name}`}
+          items={[
+            rule.active
+              ? { label: 'Mettre en pause', icon: <Pause />, onSelect: () => setActive.mutate({ id: rule.id, active: false }) }
+              : { label: 'Reprendre', icon: <Play />, onSelect: () => setActive.mutate({ id: rule.id, active: true }) },
+            { label: 'Modifier', icon: <Pencil />, onSelect: () => setDialog({ mode: 'edit', rule }) },
+            { label: 'Supprimer', icon: <Trash2 />, onSelect: () => setDialog({ mode: 'delete', rule }), danger: true },
+          ]}
         />
-        <Button variant="ghost" size="sm" icon={<Pencil />} onClick={() => setDialog({ mode: 'edit', rule })} aria-label={`Modifier ${rule.name}`} title="Modifier" />
-        <Button variant="ghost" size="sm" icon={<Trash2 />} onClick={() => setDialog({ mode: 'delete', rule })} aria-label={`Supprimer ${rule.name}`} title="Supprimer" />
-      </div>
-    </li>
+      }
+    />
   );
 
   return (
-    <section aria-labelledby="fixed-title" className={styles.section}>
-      <div className="section-title">
-        <h2 id="fixed-title">Charges fixes et revenus</h2>
-        <Button size="sm" variant="ghost" icon={<Plus />} onClick={() => setDialog({ mode: 'create' })}>
-          Ajouter
-        </Button>
-      </div>
-      <p className={styles.intro}>Ce qui revient tout seul. Runway les attend dans la prévision et les rapproche du relevé quand ils passent.</p>
+    <section aria-labelledby="fixed-title">
+      <SectionHeader
+        id="fixed-title"
+        title="Charges fixes et revenus"
+        description="Ce qui revient tout seul. Runway les attend dans la prévision et les rapproche du relevé quand ils passent."
+        aside={
+          <Button size="sm" icon={<Plus />} onClick={() => setDialog({ mode: 'create' })}>
+            Ajouter
+          </Button>
+        }
+      />
 
       {rules.isPending ? (
-        <Skeleton height={160} />
+        <ListRowSkeleton rows={5} actions />
       ) : rules.isError ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(rules.error)}
-        </p>
+        <ErrorState title="Impossible de charger les charges fixes" description={errorMessage(rules.error)} onRetry={() => rules.refetch()} />
       ) : (
-        <>
-          <dl className={styles.totals}>
-            <div>
-              <dt>Revenus par mois</dt>
-              <dd>
-                <Amount cents={income} size="lg" tone="neutral" />
-              </dd>
-            </div>
-            <div>
-              <dt>Charges par mois</dt>
-              <dd>
-                <Amount cents={expense} size="lg" tone="neutral" />
-              </dd>
-            </div>
+        <div className={styles.body}>
+          <StatGroup>
+            <Stat label="Revenus par mois">
+              <Amount cents={income} size="lg" tone="neutral" />
+            </Stat>
+            <Stat label="Charges par mois">
+              <Amount cents={expense} size="lg" tone="neutral" />
+            </Stat>
             {transfer > 0 ? (
-              <div>
-                <dt>Virements programmés</dt>
-                <dd>
-                  <Amount cents={transfer} size="lg" tone="neutral" />
-                </dd>
-              </div>
+              <Stat label="Virements programmés">
+                <Amount cents={transfer} size="lg" tone="neutral" />
+              </Stat>
             ) : null}
-            <div className={styles.rest}>
-              <dt>Reste pour vivre et investir</dt>
-              <dd>
-                <Amount cents={income - expense - transfer} size="lg" tone="neutral" className={income - expense - transfer < 0 ? styles.negative : ''} animate />
-              </dd>
-            </div>
-          </dl>
+            <Stat label="Reste pour vivre et investir" emphasis>
+              <Amount cents={income - expense - transfer} size="lg" tone="neutral" className={income - expense - transfer < 0 ? styles.negative : ''} animate />
+            </Stat>
+          </StatGroup>
 
           {list.length === 0 ? (
-            <p className={styles.intro}>Ajoute ton salaire, ton loyer et tes abonnements pour voir ce qu’il te reste chaque mois.</p>
+            <p className={styles.empty}>Ajoute ton salaire, ton loyer et tes abonnements pour voir ce qu’il te reste chaque mois.</p>
           ) : (
-            <div className={styles.groups}>
+            <div>
               {incomes.length > 0 ? (
-                <div>
-                  <h3 className={styles.groupTitle}>Revenus</h3>
+                <>
+                  <GroupLabel>Revenus</GroupLabel>
                   <ul className="ledger">{incomes.map(row)}</ul>
-                </div>
+                </>
               ) : null}
               {outgoings.length > 0 ? (
-                <div>
-                  <h3 className={styles.groupTitle}>Charges et virements</h3>
+                <>
+                  <GroupLabel>Charges et virements</GroupLabel>
                   <ul className="ledger">{outgoings.map(row)}</ul>
-                </div>
+                </>
               ) : null}
             </div>
           )}
-        </>
+        </div>
       )}
 
       <Dialog

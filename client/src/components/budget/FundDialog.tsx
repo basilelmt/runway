@@ -3,7 +3,7 @@ import type { EnvelopeWithBalance } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useFundEnvelopes } from '@/api/hooks';
-import { Amount, Button, Dialog, DialogFooter, Dot, MoneyInput, useToast } from '@/components/ui';
+import { Amount, Button, Dialog, DialogFooter, Dot, FieldError, MoneyInput, Stat, StatGroup, useToast } from '@/components/ui';
 import { plural } from '@/lib/format';
 import styles from './FundDialog.module.css';
 
@@ -77,26 +77,20 @@ function FundForm({ envelopes, toAllocate, onClose }: Omit<FundDialogProps, 'ope
       <DialogFooter
         info={
           <div className={styles.info}>
-            <div className={styles.summary}>
-              <div>
-                <span className={styles.summaryLabel}>À répartir</span>
+            <StatGroup>
+              <Stat label="À répartir">
                 <Amount cents={total} tone="neutral" size="lg" />
-              </div>
-              <div className={styles.summaryRight}>
-                <span className={styles.summaryLabel}>{left >= 0 ? 'Restera non réparti' : 'Dépasse ce qui est disponible de'}</span>
-                <Amount cents={Math.abs(left)} tone="neutral" className={left < 0 ? styles.negative : ''} />
-              </div>
-            </div>
+              </Stat>
+              <Stat label={left >= 0 ? 'Restera non réparti' : 'Dépasse ce qui est disponible de'}>
+                <Amount cents={Math.abs(left)} tone="neutral" size="lg" className={left < 0 ? styles.negative : ''} />
+              </Stat>
+            </StatGroup>
             {left < 0 ? (
               <p className={styles.warning} role="status">
                 Tu répartis plus que l’argent disponible sur tes comptes. Les enveloppes seront remplies, mais « Pas encore réparti » passera en négatif.
               </p>
             ) : null}
-            {fund.error ? (
-              <p className={styles.error} role="alert">
-                {errorMessage(fund.error)}
-              </p>
-            ) : null}
+            <FieldError>{fund.error ? errorMessage(fund.error) : null}</FieldError>
           </div>
         }
       >

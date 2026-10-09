@@ -5,7 +5,7 @@ import { addMonths, endOfMonth, startOfMonth, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
-import { Amount, ButtonLink, Dialog, Dot, Segmented, SkeletonRows } from '@/components/ui';
+import { Amount, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Stat, StatGroup } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import styles from './EnvelopeDetailDialog.module.css';
 
@@ -67,51 +67,46 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
     <div className={styles.body}>
       <Segmented label="Période" value={period} onChange={setPeriod} options={PERIODS} />
 
-      <dl className={styles.stats}>
-        <div>
-          <dt>{verb}</dt>
-          <dd>
-            <Amount cents={total} size="lg" tone="neutral" className={budget !== null && total > budget ? styles.over : ''} />
-            {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
-          </dd>
-        </div>
-        <div className={styles.right}>
-          <dt>Disponible aujourd’hui</dt>
-          <dd>
-            <Amount cents={envelope.balance} size="lg" />
-          </dd>
-        </div>
-      </dl>
+      <StatGroup>
+        <Stat label={verb}>
+          <Amount cents={total} size="lg" tone="neutral" className={budget !== null && total > budget ? styles.over : ''} />
+          {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
+        </Stat>
+        <Stat label="Disponible aujourd’hui">
+          <Amount cents={envelope.balance} size="lg" />
+        </Stat>
+      </StatGroup>
 
       {transactions.isPending ? (
-        <SkeletonRows rows={4} />
+        <ListRowSkeleton rows={4} compact />
       ) : transactions.error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(transactions.error)}
-        </p>
+        <ErrorState title="Impossible de charger les dépenses" description={errorMessage(transactions.error)} onRetry={() => transactions.refetch()} />
       ) : list.length === 0 ? (
-        <p className={styles.empty}>
-          <Receipt aria-hidden /> Aucune dépense sur cette période.
-        </p>
+        <EmptyState icon={<Receipt />} title="Aucune dépense sur cette période." />
       ) : (
-        <>
-          <p className={styles.count}>{plural(list.length, 'dépense')}</p>
+        <div>
+          <GroupLabel as="p">{plural(list.length, 'dépense')}</GroupLabel>
           <ul className={['ledger', 'stagger', styles.list].join(' ')}>
             {list.map((t) => (
-              <li key={t.id} className={[styles.row, t.status === 'planned' ? styles.planned : ''].join(' ')}>
-                <span className={['num', styles.date].join(' ')}>{formatDateCompact(t.date)}</span>
-                <span className={styles.label}>
-                  {t.label}
-                  {t.status === 'planned' ? <span className={styles.plannedTag}> · prévue</span> : null}
-                </span>
-                <Amount cents={-t.amount} tone="neutral" className={styles.amount} />
-              </li>
+              <ListRow
+                key={t.id}
+                compact
+                muted={t.status === 'planned'}
+                lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+                title={
+                  <>
+                    {t.label}
+                    {t.status === 'planned' ? <span className="muted"> · prévue</span> : null}
+                  </>
+                }
+                trail={<Amount cents={-t.amount} tone="neutral" />}
+              />
             ))}
           </ul>
-        </>
+        </div>
       )}
 
-      <ButtonLink to={`/operations?${params}`} variant="ghost" icon={<ArrowRight />} className={styles.more}>
+      <ButtonLink to={`/operations?${params}`} variant="ghost" size="sm" icon={<ArrowRight />} className={styles.more}>
         Voir dans Opérations
       </ButtonLink>
     </div>
