@@ -77,4 +77,18 @@ describe('TransactionRow', () => {
     expect(screen.getByText('Prévue')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirmer' })).toBeInTheDocument();
   });
+
+  it('affiche le nom du marchand, avec le libellé brut au survol', () => {
+    render(
+      <ul>
+        <TransactionRow
+          transaction={tx({ kind: 'expense', amount: 1250, label: 'ACHAT CB CARREFOUR EXPR 03.10.26', merchantKey: 'CARREFOUR EXPR', merchantName: 'Carrefour Express' })}
+          accounts={accounts}
+          envelopes={envelopes}
+        />
+      </ul>,
+    );
+    expect(screen.getByText('Carrefour Express')).toHaveAttribute('title', 'ACHAT CB CARREFOUR EXPR 03.10.26');
+    expect(screen.queryByText('ACHAT CB CARREFOUR EXPR 03.10.26')).not.toBeInTheDocument();
+  });
 });

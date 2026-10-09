@@ -7,6 +7,7 @@ import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
 import { Amount, ButtonLink, Dialog, Dot, Segmented, SkeletonRows } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import styles from './EnvelopeDetailDialog.module.css';
 
 type Period = 'month' | 'last' | 'quarter';
@@ -100,8 +101,8 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
             {list.map((t) => (
               <li key={t.id} className={[styles.row, t.status === 'planned' ? styles.planned : ''].join(' ')}>
                 <span className={['num', styles.date].join(' ')}>{formatDateCompact(t.date)}</span>
-                <span className={styles.label}>
-                  {t.label}
+                <span className={styles.label} title={t.label}>
+                  {displayLabel(t)}
                   {t.status === 'planned' ? <span className={styles.plannedTag}> · prévue</span> : null}
                 </span>
                 <Amount cents={-t.amount} tone="neutral" className={styles.amount} />

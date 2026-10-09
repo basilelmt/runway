@@ -2,6 +2,7 @@ import { Check } from 'lucide-react';
 import type { Account, Envelope, Transaction } from '@shared/schemas';
 import { Amount, Badge, Button, Dot } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import { signedAmount } from './signed';
 import styles from './TransactionRow.module.css';
 
@@ -43,7 +44,9 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
   return (
     <li className={[styles.row, planned ? styles.planned : '', onClick ? `hover-row ${styles.clickable}` : ''].join(' ')}>
       <button type="button" className={styles.main} onClick={onClick} disabled={!onClick}>
-        <span className={styles.label}>{t.label}</span>
+        <span className={styles.label} title={t.label}>
+          {displayLabel(t)}
+        </span>
         <span className={styles.meta}>
           {t.kind !== 'expense' ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}
           {t.kind === 'expense' ? (

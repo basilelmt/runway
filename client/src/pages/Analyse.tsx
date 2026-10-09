@@ -12,6 +12,7 @@ import { NetWorthLine } from '@/components/charts/NetWorthLine';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Amount, DateRangeField, Dot, EmptyState, Segmented, Skeleton, SkeletonRows, Tabs } from '@/components/ui';
 import { formatDateCompact, formatDateLong } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import { useCountUp } from '@/lib/motion';
 import styles from './Analyse.module.css';
 
@@ -200,7 +201,9 @@ function TopExpenses({ from, to }: { from: string; to: string }) {
             return (
               <li key={t.id} className={styles.topRow}>
                 <span className={['num', styles.topDate].join(' ')}>{formatDateCompact(t.date)}</span>
-                <span className={styles.topLabel}>{t.label}</span>
+                <span className={styles.topLabel} title={t.label}>
+                  {displayLabel(t)}
+                </span>
                 <span className={styles.topEnvelope}>
                   {env ? (
                     <>
