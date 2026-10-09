@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Overview } from '@shared/api-types';
+import type { Transaction } from '@shared/schemas';
 import { ToastProvider } from '@/components/ui';
 import { HomePage } from './Home';
 
@@ -59,6 +60,44 @@ describe('Accueil', () => {
       ],
     });
     expect(await screen.findByRole('link', { name: '2 enveloppes à surveiller · Restos, Sorties' })).toHaveAttribute('href', '/budget');
+  });
+
+  it('nomme correctement la ligne « enveloppes au-dessus du revenu », espace avant le détail compris', async () => {
+    renderHome({ month: { ...base.month, income: 500_00, planned: 800_00 } });
+    expect(await screen.findByRole('link', { name: 'Tes enveloppes prévoient 300,00 € de plus que ton revenu · 800,00 € pour 500,00 € par mois' })).toHaveAttribute('href', '/budget');
+  });
+
+  it('nomme correctement la ligne d’alerte de solde, espace avant le détail compris', async () => {
+    renderHome({ alerts: [{ kind: 'envelope', id: 1, name: 'Courses', firstNegativeDate: '2026-10-15', daysUntil: 0, minBalance: -12_30, minBalanceDate: '2026-10-20' }] });
+    expect(await screen.findByRole('link', { name: 'L’enveloppe Courses passe dans le rouge dès aujourd’hui · point bas -12,30 €' })).toHaveAttribute('href', '/analyse?vue=a-venir');
+  });
+
+  it('nomme correctement la ligne d’opération prévue en retard, espace avant le détail compris', async () => {
+    const late: Transaction = {
+      id: 1,
+      kind: 'expense',
+      date: '2026-10-05',
+      amount: 750_00,
+      label: 'Loyer',
+      note: null,
+      accountId: 1,
+      toAccountId: null,
+      envelopeId: null,
+      fromEnvelopeId: null,
+      status: 'planned',
+      recurringRuleId: null,
+      importId: null,
+      fingerprint: null,
+      fundingId: null,
+      merchantKey: null,
+      merchantName: null,
+      createdAt: '',
+    };
+    renderHome({ latePlanned: [late] });
+    expect(await screen.findByRole('link', { name: 'Le prélèvement « Loyer » de 750,00 € prévu le 5 oct. n’est pas passé · confirme-le ou supprime-le' })).toHaveAttribute(
+      'href',
+      '/operations?status=planned&period=all',
+    );
   });
 
   it('ne répète plus le budget : ni marge restante, ni section des enveloppes', async () => {

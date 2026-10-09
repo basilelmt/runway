@@ -166,9 +166,8 @@ function TodoList({ data }: { data: Overview }) {
       tone: 'alert',
       text: (
         <>
-          Tes enveloppes prévoient {formatEuros(overIncome)} de plus que ton revenu
+          Tes enveloppes prévoient {formatEuros(overIncome)} de plus que ton revenu{' '}
           <span className={styles.todoDetail}>
-            {' '}
             · <span className={styles.nowrap}>{formatEuros(data.month.planned)}</span> pour <span className={styles.nowrap}>{formatEuros(data.month.income)}</span> par mois
           </span>
         </>
@@ -204,8 +203,8 @@ function TodoList({ data }: { data: Overview }) {
       tone: 'alert',
       text: (
         <>
-          {alert.kind === 'account' ? 'Le compte' : 'L’enveloppe'} {alert.name} passe dans le rouge {alert.daysUntil <= 0 ? 'dès aujourd’hui' : `le ${formatDateShort(alert.firstNegativeDate)}`}
-          <span className={styles.todoDetail}> · point bas {formatEuros(alert.minBalance)}</span>
+          {alert.kind === 'account' ? 'Le compte' : 'L’enveloppe'} {alert.name} passe dans le rouge {alert.daysUntil <= 0 ? 'dès aujourd’hui' : `le ${formatDateShort(alert.firstNegativeDate)}`}{' '}
+          <span className={styles.todoDetail}>· point bas {formatEuros(alert.minBalance)}</span>
         </>
       ),
     });
@@ -220,13 +219,13 @@ function TodoList({ data }: { data: Overview }) {
       text:
         late.length === 1 ? (
           <>
-            {first.kind === 'income' ? 'Le revenu' : first.kind === 'transfer' ? 'Le virement' : 'Le prélèvement'} « {first.label} » de {formatEuros(first.amount)} prévu le {formatDateShort(first.date)} n’est pas passé
-            <span className={styles.todoDetail}> · confirme-le ou supprime-le</span>
+            {first.kind === 'income' ? 'Le revenu' : first.kind === 'transfer' ? 'Le virement' : 'Le prélèvement'} « {first.label} » de {formatEuros(first.amount)} prévu le {formatDateShort(first.date)} n’est pas passé{' '}
+            <span className={styles.todoDetail}>· confirme-le ou supprime-le</span>
           </>
         ) : (
           <>
-            {late.length} opérations prévues ne sont pas passées
-            <span className={styles.todoDetail}> · confirme-les ou supprime-les</span>
+            {late.length} opérations prévues ne sont pas passées{' '}
+            <span className={styles.todoDetail}>· confirme-les ou supprime-les</span>
           </>
         ),
     });
