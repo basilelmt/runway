@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { HoldingView } from '@shared/api-types';
 import { ToastProvider } from '@/components/ui';
 import { HoldingDialog } from './HoldingDialog';
@@ -25,18 +25,22 @@ const holding: HoldingView = {
   trades: [{ id: 7, date: '2026-03-02', side: 'buy', quantity: '5', amount: 3000_00, fees: 1_00, source: 'manual' }],
 };
 
-function renderDialog() {
+function renderDialog(onClose = () => {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={qc}>
       <ToastProvider>
-        <HoldingDialog holding={holding} onClose={() => {}} />
+        <HoldingDialog holding={holding} onClose={onClose} />
       </ToastProvider>
     </QueryClientProvider>,
   );
 }
 
 describe('HoldingDialog', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('supprimer un mouvement passe par une confirmation', async () => {
     renderDialog();
     await userEvent.click(screen.getByRole('button', { name: /^Actions du mouvement du 2 mars/, hidden: true }));
@@ -51,5 +55,17 @@ describe('HoldingDialog', () => {
     renderDialog();
     await userEvent.click(screen.getByRole('button', { name: 'Supprimer la position', hidden: true }));
     expect(screen.getByRole('dialog', { name: 'Supprimer la position ?', hidden: true })).toHaveTextContent('La position et ses 1 mouvements seront effacés.');
+  });
+
+  it('referme la confirmation une fois la position supprimée', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
+    const onClose = vi.fn();
+    renderDialog(onClose);
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer la position', hidden: true }));
+    const confirm = screen.getByRole('dialog', { name: 'Supprimer la position ?', hidden: true });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Supprimer', hidden: true }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(fetchMock).toHaveBeenCalledWith('/api/invest/holdings/1', expect.objectContaining({ method: 'DELETE' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Supprimer la position ?', hidden: true })).not.toBeInTheDocument());
   });
 });

@@ -40,6 +40,7 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
   });
   const removeHolding = useDeleteHolding({
     onSuccess: () => {
+      setConfirmDelete(false);
       toast.success('Position supprimée');
       onClose();
     },
