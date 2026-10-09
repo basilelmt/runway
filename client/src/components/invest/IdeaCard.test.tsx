@@ -1,58 +1,41 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import type { IdeaView } from '@shared/api-types';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { openIdea as open } from './idea-fixture';
 import { IdeaCard } from './IdeaCard';
 
-const open: IdeaView = {
-  id: 1,
-  createdOn: '2026-10-07',
-  title: 'La fête des nouilles fait vendre des baguettes',
-  event: 'La fête des nouilles a lieu le 20 octobre.',
-  sources: ['https://www.exemple.fr/fete', 'https://news.exemple.jp/men'],
-  risk: null,
-  marketContext: null,
-  reasoning: ['La fête des nouilles approche', 'Les gens vont acheter des baguettes', 'Le fabricant de baguettes va vendre plus'],
-  pricedIn: 'En partie.',
-  ticker: 'BAG.PA',
-  assetName: 'Baguettes SA',
-  whereToBuy: 'trade_republic',
-  horizon: '2026-10-28',
-  startPriceEur: 12,
-  status: 'open',
-  return: 0.083,
-  benchReturn: 0.01,
-  priceDate: '2026-10-10',
-};
-
 describe('IdeaCard', () => {
-  it('montre la déduction, la source et les performances', () => {
-    render(<IdeaCard idea={open} />);
-    expect(screen.getByRole('list', { name: 'Déduction' }).querySelectorAll('li')).toHaveLength(3);
-    expect(screen.getByRole('link', { name: /exemple\.fr/ })).toHaveAttribute('href', 'https://www.exemple.fr/fete');
-    expect(screen.getByRole('link', { name: /news\.exemple\.jp/ })).toHaveAttribute('href', 'https://news.exemple.jp/men');
+  it('résume l’idée : titre, horizon, actif et performances', () => {
+    render(<IdeaCard idea={open} onOpen={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: 'La fête des nouilles fait vendre des baguettes' })).toBeInTheDocument();
+    expect(screen.getByText('D’ici le 28 oct.')).toBeInTheDocument();
+    expect(screen.getByText('Baguettes SA')).toBeInTheDocument();
+    expect(screen.getByText('BAG.PA')).toBeInTheDocument();
+    expect(screen.getByText('Sur Trade Republic')).toBeInTheDocument();
     expect(screen.getByText('+8,3 %')).toBeInTheDocument();
     expect(screen.getByText('+1,0 %')).toBeInTheDocument();
-    expect(screen.getByText('Sur Trade Republic')).toBeInTheDocument();
-    expect(screen.queryByText(/battu/)).not.toBeInTheDocument();
+  });
+
+  it('garde le raisonnement pour le dialogue', () => {
+    render(<IdeaCard idea={{ ...open, risk: 'La fête peut être annulée.' }} onOpen={vi.fn()} />);
+    expect(screen.queryByRole('list', { name: 'Déduction' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/La fête des nouilles a lieu/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Déjà dans les prix ?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ce qui peut mal tourner')).not.toBeInTheDocument();
+  });
+
+  it('s’ouvre au clic', async () => {
+    const onOpen = vi.fn();
+    render(<IdeaCard idea={open} onOpen={onOpen} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Voir le raisonnement : La fête des nouilles fait vendre des baguettes' }));
+    expect(onOpen).toHaveBeenCalledOnce();
   });
 
   it('une idée close affiche son verdict', () => {
-    const { rerender } = render(<IdeaCard idea={{ ...open, status: 'closed', return: 0.25, benchReturn: 0.05 }} />);
+    const { rerender } = render(<IdeaCard idea={{ ...open, status: 'closed', return: 0.25, benchReturn: 0.05 }} onOpen={vi.fn()} />);
     expect(screen.getByText('A battu le S&P 500')).toBeInTheDocument();
-    rerender(<IdeaCard idea={{ ...open, status: 'closed', return: -0.1, benchReturn: 0.05 }} />);
+    expect(screen.getByText('Close le 28 oct.')).toBeInTheDocument();
+    rerender(<IdeaCard idea={{ ...open, status: 'closed', return: -0.1, benchReturn: 0.05 }} onOpen={vi.fn()} />);
     expect(screen.getByText('N’a pas battu le S&P 500')).toBeInTheDocument();
-  });
-
-  it('montre le risque et ce que le cours avait déjà fait', () => {
-    render(<IdeaCard idea={{ ...open, risk: 'La fête peut être annulée.', marketContext: { perf3m: 0.18, benchPerf3m: 0.04 } }} />);
-    expect(screen.getByText('Ce qui peut mal tourner')).toBeInTheDocument();
-    expect(screen.getByText(/La fête peut être annulée\./)).toBeInTheDocument();
-    expect(screen.getByText('Avant l’idée : +18,0 % sur 3 mois (S&P 500 +4,0 %)')).toBeInTheDocument();
-  });
-
-  it('une idée d’avant la critique n’a ni risque ni contexte de marché', () => {
-    render(<IdeaCard idea={open} />);
-    expect(screen.queryByText('Ce qui peut mal tourner')).not.toBeInTheDocument();
-    expect(screen.queryByText(/sur 3 mois/)).not.toBeInTheDocument();
   });
 });

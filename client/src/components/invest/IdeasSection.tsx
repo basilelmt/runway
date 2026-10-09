@@ -1,13 +1,14 @@
-import { ChevronDown, Lightbulb, Sparkles } from 'lucide-react';
+import { Lightbulb, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { IdeaRunView } from '@shared/api-types';
+import type { IdeaRunView, IdeaView } from '@shared/api-types';
 import { IDEA_ANGLES } from '@shared/invest';
 import { errorMessage } from '@/api/client';
 import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
-import { Button, EmptyState, Skeleton } from '@/components/ui';
-import { keepTogether, plural } from '@/lib/format';
+import { Button, Disclosure, EmptyState, Notice, PulseDot, SectionHeader, Skeleton } from '@/components/ui';
+import { keepTogether } from '@/lib/format';
 import { failedAnglesText, runOutcome } from '@/lib/invest';
 import { IdeaCard } from './IdeaCard';
+import { IdeaDialog } from './IdeaDialog';
 import { IdeasScore } from './IdeasScore';
 import styles from './Ideas.module.css';
 
@@ -15,7 +16,7 @@ import styles from './Ideas.module.css';
 export function IdeasSection() {
   const ideas = useIdeas();
   const [runId, setRunId] = useState<number | null>(null);
-  const [showClosed, setShowClosed] = useState(false);
+  const [open, setOpen] = useState<IdeaView | null>(null);
   const start = useStartIdeaRun({ onSuccess: (r) => r.started && r.run && setRunId(r.run.id) });
   const run = useIdeaRun(runId);
 
@@ -39,31 +40,27 @@ export function IdeasSection() {
 
   return (
     <section aria-labelledby="ideas-title" className={styles.section}>
-      <div className={styles.head}>
-        <div className={styles.headText}>
-          <h2 id="ideas-title">Idées</h2>
-          <p className={styles.subtitle}>Trouvées par {IDEA_ANGLES.length} chercheurs, passées au crible par un critique, suivies face au S&P 500.</p>
-        </div>
-        <Button icon={<Sparkles />} onClick={() => start.mutate('manual')} disabled={running}>
-          Trouver des idées
-        </Button>
-      </div>
+      <SectionHeader
+        id="ideas-title"
+        title="Idées"
+        description={`Trouvées par ${IDEA_ANGLES.length} chercheurs, passées au crible par un critique, suivies face au S&P 500.`}
+        aside={
+          <Button size="sm" icon={<Sparkles />} onClick={() => start.mutate('manual')} disabled={running}>
+            Trouver des idées
+          </Button>
+        }
+      />
 
       {running ? (
-        <p className={styles.running} role="status">
-          <span className={styles.pulse} aria-hidden />
+        <Notice tone="neutral" icon={<PulseDot />}>
           {current?.phase === 'review'
             ? 'Claude passe les pistes au crible.'
             : `${IDEA_ANGLES.length} chercheurs fouillent l’actualité. Ça prend plusieurs minutes, tu peux continuer ailleurs.`}
-        </p>
+        </Notice>
       ) : current && current.id === runId ? (
         <RunReport run={current} onRetry={() => start.mutate('manual')} />
       ) : null}
-      {start.error ? (
-        <p className={styles.failed} role="alert">
-          {errorMessage(start.error)}
-        </p>
-      ) : null}
+      {start.error ? <Notice tone="negative">{errorMessage(start.error)}</Notice> : null}
 
       {ideas.isError ? (
         <EmptyState title="Impossible de charger les idées" description={errorMessage(ideas.error)} action={<Button onClick={() => ideas.refetch()}>Réessayer</Button>} />
@@ -83,7 +80,7 @@ export function IdeasSection() {
           ) : (
             <div className={[styles.grid, 'stagger'].join(' ')}>
               {data.open.map((i) => (
-                <IdeaCard key={i.id} idea={i} />
+                <IdeaCard key={i.id} idea={i} onOpen={() => setOpen(i)} />
               ))}
             </div>
           )}
@@ -91,22 +88,18 @@ export function IdeasSection() {
           <IdeasScore summary={data.summary} />
 
           {data.closed.length > 0 ? (
-            <div className={styles.closed}>
-              <button type="button" className={styles.closedToggle} aria-expanded={showClosed} onClick={() => setShowClosed((v) => !v)}>
-                <ChevronDown aria-hidden className={showClosed ? styles.chevronOpen : ''} />
-                {plural(data.closed.length, 'idée close', 'idées closes')}
-              </button>
-              {showClosed ? (
-                <div className={styles.grid}>
-                  {data.closed.map((i) => (
-                    <IdeaCard key={i.id} idea={i} />
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <Disclosure label="Afficher les idées closes" openLabel="Masquer les idées closes" count={data.closed.length}>
+              <div className={styles.grid}>
+                {data.closed.map((i) => (
+                  <IdeaCard key={i.id} idea={i} onOpen={() => setOpen(i)} />
+                ))}
+              </div>
+            </Disclosure>
           ) : null}
         </>
       )}
+
+      <IdeaDialog idea={open} onClose={() => setOpen(null)} />
     </section>
   );
 }
@@ -114,12 +107,9 @@ export function IdeasSection() {
 function RunReport({ run, onRetry }: { run: IdeaRunView; onRetry: () => void }) {
   if (run.status === 'failed') {
     return (
-      <div className={styles.failed} role="alert">
-        <span>La recherche d’idées a échoué : {run.error ?? 'erreur inconnue'}</span>
-        <Button size="sm" onClick={onRetry}>
-          Réessayer
-        </Button>
-      </div>
+      <Notice tone="negative" action={<Button size="sm" onClick={onRetry}>Réessayer</Button>}>
+        La recherche d’idées a échoué : {run.error ?? 'erreur inconnue'}
+      </Notice>
     );
   }
   return (
