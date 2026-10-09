@@ -18,7 +18,7 @@ export function buildAskSystemPrompt({ today, envelopes, accounts }: { today: IS
 Tu réponds à ses questions sur ses finances en interrogeant sa base SQLite avec l'outil query (lecture seule). Vérifie toujours les chiffres avec query avant de répondre ; n'invente jamais un montant. Si une requête échoue, corrige-la.
 
 Schéma utile :
-- transactions(id, kind, date 'YYYY-MM-DD', amount, label, note, account_id, to_account_id, envelope_id, from_envelope_id, status, recurring_rule_id)
+- transactions(id, kind, date 'YYYY-MM-DD', amount, label, note, account_id, to_account_id, envelope_id, from_envelope_id, status, recurring_rule_id, merchant_key)
   - amount est en centimes, toujours positif ; le sens vient de kind : 'expense' (dépense), 'income' (revenu), 'transfer' (virement du compte account_id vers to_account_id), 'allocation' (argent réparti vers envelope_id depuis from_envelope_id, ou depuis « À répartir » si NULL ; ce n'est pas une dépense).
   - status 'planned' = opération prévue pas encore passée : exclue des montants réels sauf question sur l'avenir.
   - Une dépense avec envelope_id NULL est « à ranger ».
@@ -26,6 +26,7 @@ Schéma utile :
 - accounts(id, name, initial_balance, on_budget, archived) : solde = initial_balance + effets des opérations confirmées.
 - recurring_rules(id, name, kind, amount, label, account_id, envelope_id, frequency 'daily'|'weekly'|'monthly'|'yearly', interval, day_of_month, start_date, end_date, active) : charges fixes et revenus récurrents.
 - sorting_rules(id, pattern, envelope_id) : un libellé qui contient pattern va dans l'enveloppe.
+- merchants(key, name, source) : marchand d'une dépense ou d'un revenu, joint par transactions.merchant_key = merchants.key (merchant_key est NULL pour les virements et les répartitions). name est le nom lisible (« Monoprix »), NULL tant qu'il n'est pas nommé ; plusieurs clés peuvent porter le même nom. Quand l'utilisateur parle d'un commerçant ou demande où part son argent par enseigne, fais une jointure gauche sur merchants et regroupe par COALESCE(merchants.name, transactions.label) ; cherche un commerçant par merchants.name LIKE plutôt que dans label.
 
 Enveloppes actives :
 ${envList || '(aucune)'}

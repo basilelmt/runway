@@ -5,15 +5,15 @@ import { createTestDb, type TestContext } from './helpers';
 
 const input = {
   transactions: [
-    { id: 1, date: '2026-03-12', label: 'CARTE X1234 CARREFOUR MARKET', amount: 62_30 },
-    { id: 2, date: '2026-03-11', label: 'PRLV EDF', amount: 45_00 },
+    { id: 1, date: '2026-03-12', label: 'CARTE X1234 CARREFOUR MARKET', amount: 62_30, merchantName: 'Carrefour Market' },
+    { id: 2, date: '2026-03-11', label: 'PRLV EDF', amount: 45_00, merchantName: null },
   ],
   envelopes: [
     { id: 10, name: 'Courses' },
     { id: 11, name: 'Logement' },
   ],
   rules: [{ pattern: 'carrefour', envelopeId: 10 }],
-  examples: [{ label: 'CB LECLERC', envelopeId: 10 }],
+  examples: [{ label: 'CB LECLERC', merchantName: 'Leclerc', envelopeId: 10 }],
 };
 
 function ok(structured: unknown): ExecResult {
@@ -21,12 +21,13 @@ function ok(structured: unknown): ExecResult {
 }
 
 describe('buildPrompt', () => {
-  it('contient enveloppes, règles, exemples et opérations', () => {
+  it('contient enveloppes, règles, exemples et opérations, avec le nom du marchand', () => {
     const p = buildPrompt(input);
     expect(p).toContain('- 10 : Courses');
     expect(p).toContain('"carrefour" -> enveloppe 10');
-    expect(p).toContain('"CB LECLERC" -> enveloppe 10');
-    expect(p).toContain('id 1 | 2026-03-12 | 62.30 € | CARTE X1234 CARREFOUR MARKET');
+    expect(p).toContain('"CB LECLERC" (marchand : Leclerc) -> enveloppe 10');
+    expect(p).toContain('id 1 | 2026-03-12 | 62.30 € | CARTE X1234 CARREFOUR MARKET (marchand : Carrefour Market)');
+    expect(p).toContain('id 2 | 2026-03-11 | 45.00 € | PRLV EDF\n');
   });
 });
 
@@ -63,7 +64,7 @@ describe('runClaudeSort', () => {
 
   it('découpe en lots', async () => {
     const exec = vi.fn<Exec>(async () => ok({ suggestions: [], rules: [] }));
-    const many = Array.from({ length: BATCH_SIZE + 5 }, (_, i) => ({ id: i + 1, date: '2026-03-01', label: `op ${i}`, amount: 100 }));
+    const many = Array.from({ length: BATCH_SIZE + 5 }, (_, i) => ({ id: i + 1, date: '2026-03-01', label: `op ${i}`, amount: 100, merchantName: null }));
     await runClaudeSort({ ...input, transactions: many }, { exec });
     expect(exec).toHaveBeenCalledTimes(2);
   });
@@ -71,7 +72,7 @@ describe('runClaudeSort', () => {
   it('garde les lots réussis si un lot suivant échoue', async () => {
     let calls = 0;
     const exec = vi.fn<Exec>(async () => (calls++ === 0 ? ok({ suggestions: [{ transactionId: 1, envelopeId: 10, reason: 'ok' }], rules: [] }) : { stdout: JSON.stringify({ is_error: true, result: 'session limit' }), stderr: '', exitCode: 1 }));
-    const many = Array.from({ length: BATCH_SIZE + 5 }, (_, i) => ({ id: i + 1, date: '2026-03-01', label: `op ${i}`, amount: 100 }));
+    const many = Array.from({ length: BATCH_SIZE + 5 }, (_, i) => ({ id: i + 1, date: '2026-03-01', label: `op ${i}`, amount: 100, merchantName: null }));
     const result = await runClaudeSort({ ...input, transactions: many }, { exec });
     expect(result.suggestions).toHaveLength(1);
     expect(result.warning).toContain('session limit');
@@ -107,6 +108,7 @@ describe('routes /api/sorting', () => {
     const exec = vi.fn<Exec>(async (args) => {
       const prompt = args.at(-1)!;
       expect(prompt).toContain('Inconnu');
+      expect(prompt).toContain('Inconnu (marchand : Inconnu)');
       expect(prompt).toContain(`- ${ctx.courses.id} : Courses`);
       return ok({ suggestions: [{ transactionId: 1, envelopeId: ctx.courses.id, reason: 'ok' }], rules: [{ pattern: 'inconnu', envelopeId: ctx.courses.id }] });
     });

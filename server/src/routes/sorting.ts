@@ -19,12 +19,12 @@ export function sortingRoutes(deps: { exec?: Exec } = {}) {
       const examples = listTransactions(db, { kind: 'expense', limit: 300 })
         .filter((t) => t.envelopeId != null)
         .slice(0, 40)
-        .map((t) => ({ label: t.label, envelopeId: t.envelopeId! }));
+        .map((t) => ({ label: t.label, merchantName: t.merchantName, envelopeId: t.envelopeId! }));
       const model = getSettings(db).claudeModel || undefined;
 
       const result = await runClaudeSort(
         {
-          transactions: unsorted.map(({ id, date, label, amount }) => ({ id, date, label, amount })),
+          transactions: unsorted.map(({ id, date, label, amount, merchantName }) => ({ id, date, label, amount, merchantName })),
           envelopes: envelopes.map(({ id, name }) => ({ id, name })),
           rules: listSortingRules(db).map(({ pattern, envelopeId }) => ({ pattern, envelopeId })),
           examples,
