@@ -257,7 +257,7 @@ function TodoList({ data }: { data: Overview }) {
 function EnvelopesPreview({ data }: { data: Overview }) {
   const spending = data.envelopes.filter((e) => !e.isSavings);
   // Les plus serrées d'abord : part du budget déjà dépensée.
-  const tension = (e: (typeof spending)[number]) => (e.monthlyTarget ? e.spentThisMonth / e.monthlyTarget : e.spentThisMonth > 0 ? 0.5 : -1);
+  const tension = (e: (typeof spending)[number]) => (e.monthlyBudget > 0 ? e.spentThisMonth / e.monthlyBudget : e.spentThisMonth > 0 ? 0.5 : -1);
   const shown = [...spending].sort((a, b) => tension(b) - tension(a)).slice(0, HOME_ENVELOPES);
   const [detail, setDetail] = useState<EnvelopeWithBalance | null>(null);
 

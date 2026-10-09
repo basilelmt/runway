@@ -144,7 +144,7 @@ function ByEnvelope({ report, months }: { report: SpendingReport; months: number
 
       <ul className={[styles.bars, 'stagger'].join(' ')}>
         {report.byEnvelope.map((e) => {
-          const target = months && e.monthlyTarget ? e.monthlyTarget * months : null;
+          const target = months && e.monthlyBudget > 0 ? e.monthlyBudget * months : null;
           const over = target !== null && e.amount > target;
           const params = new URLSearchParams({ period: 'custom', from: report.from, to: report.to });
           if (e.envelopeId) params.set('envelope', String(e.envelopeId));

@@ -8,7 +8,10 @@ const courses: EnvelopeWithBalance = {
   id: 1,
   name: 'Courses',
   color: '#4f8a5b',
-  monthlyTarget: 400_00,
+  // 250 € de charges fixes + 150 € de complément.
+  monthlyExtra: 150_00,
+  monthlyCharges: 250_00,
+  monthlyBudget: 400_00,
   sortOrder: 0,
   archived: false,
   isSavings: false,
@@ -35,5 +38,11 @@ describe('EnvelopeRow', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Modifier' }));
     expect(onEdit).toHaveBeenCalledOnce();
     expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('sans budget, l’indique au lieu d’une jauge', () => {
+    render(<EnvelopeRow envelope={{ ...courses, monthlyExtra: null, monthlyCharges: 0, monthlyBudget: 0 }} />);
+    expect(screen.getByText('Sans budget')).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 });

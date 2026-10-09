@@ -6,7 +6,7 @@ import { TransactionRow } from './TransactionRow';
 
 const courant: Account = { id: 1, name: 'Courant', initialBalance: 0, onBudget: true, bankAccountNumber: null, archived: false, createdAt: '' };
 const livret: Account = { id: 2, name: 'Livret', initialBalance: 0, onBudget: false, bankAccountNumber: null, archived: false, createdAt: '' };
-const courses: Envelope = { id: 10, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false, isSavings: false };
+const courses: Envelope = { id: 10, name: 'Courses', color: '#4f8a5b', monthlyExtra: null, sortOrder: 0, archived: false, isSavings: false };
 const accounts = new Map([[courant.id, courant], [livret.id, livret]]);
 const envelopes = new Map([[courses.id, courses]]);
 

@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AllocationForm } from './AllocationForm';
 
 const envelopes = [
-  { id: 10, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false, isSavings: false },
-  { id: 11, name: 'Restos', color: '#c2703d', monthlyTarget: null, sortOrder: 1, archived: false, isSavings: false },
+  { id: 10, name: 'Courses', color: '#4f8a5b', monthlyExtra: null, sortOrder: 0, archived: false, isSavings: false },
+  { id: 11, name: 'Restos', color: '#c2703d', monthlyExtra: null, sortOrder: 1, archived: false, isSavings: false },
 ];
 
 beforeEach(() => {

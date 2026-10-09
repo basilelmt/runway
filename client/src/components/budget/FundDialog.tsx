@@ -37,7 +37,7 @@ function FundForm({ envelopes, toAllocate, onClose }: Omit<FundDialogProps, 'ope
   });
 
   // Celles qui ont un budget d'abord, dans leur ordre ; les autres ensuite.
-  const ordered = [...envelopes.filter((e) => e.monthlyTarget), ...envelopes.filter((e) => !e.monthlyTarget)];
+  const ordered = [...envelopes.filter((e) => e.monthlyBudget > 0), ...envelopes.filter((e) => e.monthlyBudget <= 0)];
   const items = Object.entries(amounts)
     .filter((entry): entry is [string, number] => entry[1] !== null && entry[1] > 0)
     .map(([id, amount]) => ({ envelopeId: Number(id), amount }));
@@ -61,10 +61,10 @@ function FundForm({ envelopes, toAllocate, onClose }: Omit<FundDialogProps, 'ope
               <span>
                 {env.name}
                 <span className={styles.hint}>
-                  {env.monthlyTarget
+                  {env.monthlyBudget > 0
                     ? env.toFundThisMonth > 0
-                      ? `il manque ${formatEuros(env.toFundThisMonth)} sur ${formatEuros(env.monthlyTarget)}`
-                      : `budget de ${formatEuros(env.monthlyTarget)} atteint`
+                      ? `il manque ${formatEuros(env.toFundThisMonth)} sur ${formatEuros(env.monthlyBudget)}`
+                      : `budget de ${formatEuros(env.monthlyBudget)} atteint`
                     : 'sans budget mensuel'}
                 </span>
               </span>
