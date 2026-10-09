@@ -124,6 +124,13 @@ describe('withBudgets', () => {
     expect(withBudgets([logement], rules, today)[0]).toMatchObject({ monthlyCharges: 7_00, monthlyBudget: 12_00 });
   });
 
+  it('une charge qui commence le mois prochain ne compte pas ce mois-ci mais compte le mois prochain', () => {
+    const logement = envelope({ name: 'Logement' });
+    const abonnement = rule({ kind: 'expense', amount: 15_00, envelopeId: logement.id, startDate: '2026-11-01' });
+    expect(withBudgets([logement], [abonnement], today)[0]).toMatchObject({ monthlyCharges: 0, monthlyBudget: 0 });
+    expect(withBudgets([logement], [abonnement], '2026-11-05')[0]).toMatchObject({ monthlyCharges: 15_00, monthlyBudget: 15_00 });
+  });
+
   it('sans charge ni complément, pas de budget', () => {
     expect(withBudgets([envelope({ name: 'Divers' })], [], today)[0]).toMatchObject({ monthlyExtra: null, monthlyCharges: 0, monthlyBudget: 0 });
   });

@@ -31,10 +31,16 @@ export function monthActivity(transactions: Transaction[], date: ISODate): Month
 
 /**
  * Une règle est une charge de son enveloppe : dépense active, rattachée à une enveloppe,
- * et pas terminée avant le mois de `today`.
+ * déjà commencée et pas terminée avant le mois de `today`.
  */
-export function isEnvelopeCharge(rule: Pick<RecurringRule, 'kind' | 'active' | 'envelopeId' | 'endDate'>, today: ISODate): boolean {
-  return rule.kind === 'expense' && rule.active && rule.envelopeId != null && (rule.endDate == null || rule.endDate >= startOfMonth(today));
+export function isEnvelopeCharge(rule: Pick<RecurringRule, 'kind' | 'active' | 'envelopeId' | 'startDate' | 'endDate'>, today: ISODate): boolean {
+  return (
+    rule.kind === 'expense' &&
+    rule.active &&
+    rule.envelopeId != null &&
+    rule.startDate <= endOfMonth(today) &&
+    (rule.endDate == null || rule.endDate >= startOfMonth(today))
+  );
 }
 
 /**
