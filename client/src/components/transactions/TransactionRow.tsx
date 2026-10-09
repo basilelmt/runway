@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import type { Account, Envelope, Transaction } from '@shared/schemas';
-import { Amount, Badge, Button, Dot } from '@/components/ui';
+import { Amount, Badge, Button, EnvelopeTag, ListRow } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
 import { signedAmount } from './signed';
 import styles from './TransactionRow.module.css';
@@ -41,32 +41,28 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
         : account?.name ?? '';
 
   return (
-    <li className={[styles.row, planned ? styles.planned : '', onClick ? `hover-row ${styles.clickable}` : ''].join(' ')}>
-      <button type="button" className={styles.main} onClick={onClick} disabled={!onClick}>
-        <span className={styles.label}>{t.label}</span>
-        <span className={styles.meta}>
+    <ListRow
+      muted={planned}
+      onClick={onClick}
+      clickLabel={onClick ? `Modifier ${t.label}` : undefined}
+      title={t.label}
+      meta={
+        <>
           {t.kind !== 'expense' ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}
-          {t.kind === 'expense' ? (
-            envelope ? (
-              <Badge>
-                <Dot color={envelope.color} size={8} />
-                {envelope.name}
-              </Badge>
-            ) : (
-              <Badge tone="marking">À ranger</Badge>
-            )
-          ) : null}
+          {t.kind === 'expense' ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null}
           {planned ? <Badge tone="warning">Prévue</Badge> : null}
           {where ? <span className={styles.where}>{where}</span> : null}
           {t.note && !repeatsLabel(t.note, t.label) ? <span className={styles.note}>{t.note}</span> : null}
-        </span>
-      </button>
-      {planned && onConfirm ? (
-        <Button size="sm" variant="secondary" icon={<Check />} onClick={onConfirm} loading={confirming} className={styles.confirm}>
-          Confirmer
-        </Button>
-      ) : null}
-      <Amount cents={amount} tone={amount > 0 && t.kind !== 'allocation' ? 'always' : 'neutral'} className={styles.amount} />
-    </li>
+        </>
+      }
+      trail={<Amount cents={amount} tone={amount > 0 && t.kind !== 'allocation' ? 'always' : 'neutral'} />}
+      actions={
+        planned && onConfirm ? (
+          <Button size="sm" variant="secondary" icon={<Check />} onClick={onConfirm} loading={confirming}>
+            Confirmer
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }

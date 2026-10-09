@@ -51,10 +51,11 @@
 }
 
 .date {
-  width: 64px;
+  width: 84px;
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--ink-mute);
+  white-space: nowrap;
 }
 
 .body {

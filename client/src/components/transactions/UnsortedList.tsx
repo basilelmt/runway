@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react';
 import type { SuggestResponse } from '@shared/api-types';
 import type { Transaction } from '@shared/schemas';
 import { ApiError, errorMessage } from '@/api/client';
-import { useApplySorting, useEnvelopes, useSuggestSorting, useTransactions, useUpdateTransaction } from '@/api/hooks';
+import { useAccounts, useApplySorting, useEnvelopes, useSuggestSorting, useTransactions, useUpdateTransaction } from '@/api/hooks';
 import { RuleBanner } from '@/components/transactions/RuleBanner';
-import { Amount, Button, Card, Dot, EmptyState, InlinePill, SkeletonRows, useToast } from '@/components/ui';
+import { Amount, Button, Dot, EmptyState, GroupLabel, InlinePill, ListRow, ListRowSkeleton, Notice, listRowDate, useToast } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { prefersReducedMotion } from '@/lib/motion';
 import styles from './UnsortedList.module.css';
@@ -34,6 +34,7 @@ function claudeErrorTitle(err: unknown): string {
 /** Dépenses sans enveloppe : on les range une à une, ou on laisse Claude proposer. */
 export function UnsortedList() {
   const toast = useToast();
+  const accounts = useAccounts();
   const envelopes = useEnvelopes();
   const unsorted = useTransactions({ unsorted: true, limit: 1000 });
   const [banner, setBanner] = useState<Banner | null>(null);
@@ -59,6 +60,7 @@ export function UnsortedList() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
+  const accountMap = useMemo(() => new Map((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const envelopeMap = useMemo(() => new Map((envelopes.data ?? []).map((e) => [e.id, e])), [envelopes.data]);
   const suggestionFor = useMemo(() => new Map((suggestions?.suggestions ?? []).map((s) => [s.transactionId, s])), [suggestions]);
   const list = unsorted.data ?? [];
@@ -114,27 +116,28 @@ export function UnsortedList() {
       {suggest.isPending ? <p className={styles.waiting}>Claude lit tes opérations et tes enveloppes. Cela peut prendre une minute.</p> : null}
 
       {suggest.error ? (
-        <Card tone="negative" padding="sm">
+        <Notice tone="negative">
           <strong>{claudeErrorTitle(suggest.error)}</strong>
           <p className={styles.errorBody}>{errorMessage(suggest.error)}</p>
-        </Card>
+        </Notice>
       ) : null}
 
       {suggestions && list.length > 0 ? (
-        <Card tone="marking" padding="sm" className={styles.suggestionsCard}>
-          <div className={styles.suggestionsHead}>
-            <Sparkles aria-hidden />
-            <div className="grow">
-              <strong>{plural(acceptable.length, 'suggestion')}</strong>
-              <p className={styles.suggestionsHint}>Les enveloppes proposées sont pré-remplies ci-dessous. Vérifie, ajuste, puis accepte.</p>
-            </div>
+        <Notice
+          tone="neutral"
+          icon={<Sparkles />}
+          label="Suggestions de Claude"
+          action={
             <Button variant="primary" icon={<CheckCheck />} loading={apply.isPending} disabled={acceptable.length === 0} onClick={acceptAll}>
               Tout accepter
             </Button>
-          </div>
+          }
+        >
+          <strong>{plural(acceptable.length, 'suggestion')}</strong>
+          <p className={styles.suggestionsHint}>Les enveloppes proposées sont pré-remplies ci-dessous. Vérifie, ajuste, puis accepte.</p>
           {suggestions.rules.length > 0 ? (
             <fieldset className={styles.rules}>
-              <legend className={styles.rulesLegend}>Règles proposées, créées avec "Tout accepter"</legend>
+              <GroupLabel as="p">Règles proposées, créées avec "Tout accepter"</GroupLabel>
               {suggestions.rules.map((r) => {
                 const env = envelopeMap.get(r.envelopeId);
                 return (
@@ -163,7 +166,7 @@ export function UnsortedList() {
               })}
             </fieldset>
           ) : null}
-        </Card>
+        </Notice>
       ) : null}
 
       {banner ? (
@@ -176,7 +179,7 @@ export function UnsortedList() {
       ) : null}
 
       {unsorted.isPending ? (
-        <SkeletonRows rows={5} />
+        <ListRowSkeleton rows={5} meta={false} actions />
       ) : unsorted.error ? (
         <p className={styles.errorBody} role="alert">
           {errorMessage(unsorted.error)}
@@ -184,33 +187,39 @@ export function UnsortedList() {
       ) : list.length === 0 ? (
         <EmptyState icon={<Inbox />} title="Tout est rangé" description="Chaque dépense a son enveloppe. Les nouvelles opérations sans enveloppe arriveront ici." />
       ) : (
-        <ul className={['ledger', 'stagger', styles.list].join(' ')}>
+        <ul className="ledger stagger">
           {list.map((t) => {
             const suggestion = suggestionFor.get(t.id);
             const suggestedId = suggestion?.envelopeId ?? null;
+            const account = t.accountId != null ? accountMap.get(t.accountId) : undefined;
             return (
               <li key={t.id} className={[styles.item, leaving.has(t.id) ? styles.leaving : ''].join(' ')}>
-                <div className={['hover-row', styles.row].join(' ')}>
-                  <span className={['num', styles.date].join(' ')}>{formatDateCompact(t.date)}</span>
-                  <span className={styles.label}>{t.label}</span>
-                  <Amount cents={-t.amount} tone="neutral" className={styles.amount} />
-                  <div className={styles.choose}>
-                    {suggestion && suggestedId !== null ? (
-                      <span className={styles.sparkle} title={suggestion.reason} aria-label={`Suggestion de Claude : ${suggestion.reason}`}>
-                        <Sparkles />
-                      </span>
-                    ) : null}
-                    <InlinePill
-                      aria-label={`Enveloppe pour ${t.label}`}
-                      value={suggestedId}
-                      placeholder="+ Enveloppe"
-                      tone={suggestedId !== null ? 'suggested' : undefined}
-                      options={(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))}
-                      onChange={(v) => v !== null && assign(t, v)}
-                      disabled={update.isPending && update.variables?.id === t.id}
-                    />
-                  </div>
-                </div>
+                <ListRow
+                  as="div"
+                  className={styles.row}
+                  lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+                  title={t.label}
+                  meta={account?.name}
+                  trail={<Amount cents={-t.amount} tone="neutral" />}
+                  actions={
+                    <>
+                      {suggestion && suggestedId !== null ? (
+                        <span className={styles.sparkle} title={suggestion.reason} aria-label={`Suggestion de Claude : ${suggestion.reason}`}>
+                          <Sparkles />
+                        </span>
+                      ) : null}
+                      <InlinePill
+                        aria-label={`Enveloppe pour ${t.label}`}
+                        value={suggestedId}
+                        placeholder="+ Enveloppe"
+                        tone={suggestedId !== null ? 'suggested' : undefined}
+                        options={(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))}
+                        onChange={(v) => v !== null && assign(t, v)}
+                        disabled={update.isPending && update.variables?.id === t.id}
+                      />
+                    </>
+                  }
+                />
               </li>
             );
           })}

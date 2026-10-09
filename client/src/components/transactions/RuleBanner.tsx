@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { suggestPattern } from '@core/sorting';
 import { errorMessage } from '@/api/client';
 import { useCreateSortingRule } from '@/api/hooks';
-import { Button, Input, useToast } from '@/components/ui';
+import { Button, Input, Notice, useToast } from '@/components/ui';
 import styles from './RuleBanner.module.css';
 
 type RuleBannerProps = {
@@ -25,20 +25,25 @@ export function RuleBanner({ label, envelopeId, envelopeName, onDone }: RuleBann
   });
 
   return (
-    <div className={styles.banner} role="group" aria-label="Créer une règle de tri">
-      <span className={styles.text}>Toujours ranger les libellés contenant</span>
-      <Input aria-label="Motif de la règle" value={pattern} onChange={(e) => setPattern(e.target.value)} className={styles.pattern} />
-      <span className={styles.text}>
+    <Notice
+      tone="marking"
+      label="Créer une règle de tri"
+      action={
+        <>
+          <Button size="sm" variant="secondary" loading={create.isPending} disabled={pattern.trim().length < 2} onClick={() => create.mutate({ pattern: pattern.trim(), envelopeId })}>
+            Créer la règle
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onDone}>
+            Non merci
+          </Button>
+        </>
+      }
+    >
+      <span className={styles.sentence}>
+        Toujours ranger les libellés contenant
+        <Input aria-label="Motif de la règle" value={pattern} onChange={(e) => setPattern(e.target.value)} className={styles.pattern} />
         dans <strong>{envelopeName}</strong> ?
       </span>
-      <div className={styles.actions}>
-        <Button size="sm" variant="primary" loading={create.isPending} disabled={pattern.trim().length < 2} onClick={() => create.mutate({ pattern: pattern.trim(), envelopeId })}>
-          Créer la règle
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onDone}>
-          Non merci
-        </Button>
-      </div>
-    </div>
+    </Notice>
   );
 }
