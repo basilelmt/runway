@@ -16,10 +16,6 @@
   gap: var(--s-4);
 }
 
-.block > :global(.section-title) {
-  margin-bottom: 0;
-}
-
 .periodBar {
   display: flex;
   align-items: center;
@@ -29,21 +25,14 @@
   font-size: var(--text-sm);
 }
 
-/* Chiffre de tête et comparaison au budget */
-.headline {
+/* Chiffre clé, puis les barres par enveloppe */
+.byEnvelope {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s-3) var(--s-6);
-  flex-wrap: wrap;
-  margin-bottom: var(--s-4);
+  flex-direction: column;
+  gap: var(--s-8);
 }
 
-.headline .eyebrow {
-  margin-bottom: var(--s-3);
-}
-
-.headlineSide {
+.versus {
   color: var(--ink-soft);
   font-size: var(--text-sm);
 }
@@ -56,74 +45,9 @@
   color: var(--negative);
 }
 
-/* Barres horizontales : une par enveloppe, longueur relative à la plus grosse */
+/* Les barres prennent la moitié de la ligne, sur la même colonne pour toutes les enveloppes */
 .bars {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--rule);
-}
-
-.bars li {
-  border-bottom: 1px solid var(--rule);
-}
-
-.barRow {
-  display: grid;
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) 140px;
-  align-items: center;
-  gap: var(--s-6);
-  min-height: 52px;
-  padding: var(--s-2) 0;
-  text-decoration: none;
-}
-
-.barName {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  font-weight: 500;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.barTrack {
-  position: relative;
-  height: 10px;
-}
-
-.barFill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: 5px;
-  transform-origin: left;
-  animation: grow var(--dur-slow) var(--ease-out);
-}
-
-.barTarget {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--ink);
-}
-
-.barAmount {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.25;
-}
-
-.barMeta {
-  font-size: var(--text-xs);
-  color: var(--ink-mute);
+  --list-middle: 50%;
 }
 
 .note {
@@ -131,94 +55,8 @@
   color: var(--ink-mute);
 }
 
-@keyframes grow {
-  from {
-    transform: scaleX(0);
-  }
-}
-
-/* Plus grosses dépenses */
-.top {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.topRow {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) minmax(0, 200px) 120px;
-  align-items: center;
-  gap: var(--s-4);
-  min-height: 48px;
-  font-size: var(--text-md);
-}
-
-.topDate {
+.period {
   font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
-.topLabel {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topEnvelope {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.topAmount {
-  text-align: right;
-}
-
-/* Indicateurs d'évolution */
-.kpis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-12);
-  margin: 0;
-}
-
-.kpis > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-}
-
-.kpis dt {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
-.kpis dd {
-  margin: 0;
-}
-
-.kpiMain {
-  padding-right: var(--s-12);
-  border-right: 1px solid var(--rule);
-}
-
-.kpiValue {
-  font-family: var(--font-display);
-  font-size: var(--text-4xl);
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  margin-top: var(--s-2) !important;
-}
-
-.kpiHint {
-  font-size: var(--text-xs);
   color: var(--ink-mute);
 }
 
@@ -227,53 +65,8 @@
     gap: var(--s-10);
   }
 
-  .barRow {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'name amount'
-      'track track';
-    row-gap: var(--s-2);
-  }
-
-  .barName {
-    grid-area: name;
-  }
-
-  .barTrack {
-    grid-area: track;
-  }
-
-  .barAmount {
-    grid-area: amount;
-  }
-
-  .topRow {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 2px;
-    padding: var(--s-2) 0;
-  }
-
-  .topDate {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .topEnvelope {
-    display: none;
-  }
-
-  .kpis {
-    gap: var(--s-6);
-  }
-
-  .kpiMain {
-    width: 100%;
-    padding: 0 0 var(--s-6);
-    border-right: none;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .kpiValue {
-    font-size: var(--text-3xl);
+  /* Montant à sa largeur : le libellé garde la place */
+  .top {
+    --list-trail: auto;
   }
 }

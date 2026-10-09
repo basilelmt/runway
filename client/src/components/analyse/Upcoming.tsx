@@ -1,11 +1,11 @@
-import { AlertTriangle, Landmark, Plane, WalletCards } from 'lucide-react';
+import { Landmark, Plane, WalletCards } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { errorMessage } from '@/api/client';
 import { useForecast, useSettings } from '@/api/hooks';
 import { BalanceAreaChart } from '@/components/charts/BalanceAreaChart';
 import { RunwayStrip } from '@/components/dashboard/RunwayStrip';
-import { Amount, Badge, ButtonLink, EmptyState, FilterPill, Skeleton, SkeletonRows } from '@/components/ui';
-import { formatDateShort, inDays, KIND_LABELS } from '@/lib/format';
+import { Amount, Badge, ButtonLink, ColumnHeader, EmptyState, ErrorState, FilterPill, ListRow, ListRowSkeleton, listRowDate, Range, SectionHeader, Skeleton } from '@/components/ui';
+import { formatDateCompact, inDays, KIND_LABELS, plural } from '@/lib/format';
 import styles from './Upcoming.module.css';
 
 type Series = `account-${number}` | `envelope-${number}`;
@@ -45,55 +45,53 @@ export function Upcoming() {
           <span>
             Horizon <strong className="num">{effectiveHorizon} jours</strong>
           </span>
-          <input type="range" min={30} max={365} step={30} value={effectiveHorizon} onChange={(e) => setHorizon(Number(e.target.value))} aria-label="Horizon de prévision en jours" />
+          <Range min={30} max={365} step={30} value={effectiveHorizon} onChange={(e) => setHorizon(Number(e.target.value))} aria-label="Horizon de prévision en jours" />
         </label>
       </div>
 
       {data ? <RunwayStrip forecast={data} /> : null}
 
       {forecast.isPending ? (
-        <SkeletonRows rows={3} />
+        <ListRowSkeleton rows={3} />
       ) : forecast.isError ? (
-        <EmptyState title="Impossible de calculer la prévision" description={errorMessage(forecast.error)} />
+        <ErrorState title="Impossible de calculer la prévision" description={errorMessage(forecast.error)} onRetry={() => forecast.refetch()} />
       ) : (
         <>
           {data!.alerts.length === 0 ? null : (
-            <section>
-              <div className="section-title">
-                <h2>
-                  <AlertTriangle size={16} aria-hidden className={styles.alertIcon} /> Découverts à venir
-                </h2>
-              </div>
-              <div className={styles.table} role="table" aria-label="Découverts à venir">
-                <div className={[styles.tr, styles.th].join(' ')} role="row">
-                  <span role="columnheader">Quoi</span>
-                  <span role="columnheader">Premier jour négatif</span>
-                  <span role="columnheader">Dans</span>
-                  <span role="columnheader" className={styles.right}>
-                    Point bas
+            <section aria-labelledby="overdrafts-title">
+              <SectionHeader id="overdrafts-title" title="Découverts à venir" />
+              <ColumnHeader
+                title={
+                  <span className={styles.columnTitle}>
+                    <span className={listRowDate}>Négatif le</span>
+                    Quoi
                   </span>
-                </div>
+                }
+                trail="Point bas"
+              />
+              <ul className={['ledger', styles.list].join(' ')}>
                 {data!.alerts.map((a) => {
                   const key: Series = `${a.kind}-${a.id}`;
                   return (
-                    <button key={key} type="button" role="row" className={[styles.tr, series === key ? styles.selected : ''].join(' ')} onClick={() => setSeries(key)} aria-pressed={series === key}>
-                      <span role="cell" className={styles.what}>
-                        {a.kind === 'account' ? <Landmark size={14} aria-label="Compte" /> : <WalletCards size={14} aria-label="Enveloppe" />}
-                        {a.name}
-                      </span>
-                      <span role="cell" className="num">
-                        {formatDateShort(a.firstNegativeDate)}
-                      </span>
-                      <span role="cell">
-                        <Badge tone={a.daysUntil <= 7 ? 'negative' : 'warning'}>{inDays(a.daysUntil)}</Badge>
-                      </span>
-                      <span role="cell" className={styles.right}>
-                        <Amount cents={a.minBalance} size="sm" /> <span className="muted">le {formatDateShort(a.minBalanceDate)}</span>
-                      </span>
-                    </button>
+                    <ListRow
+                      key={key}
+                      onClick={() => setSeries(key)}
+                      clickLabel={`Tracer le solde projeté de ${a.name}`}
+                      className={series === key ? styles.selected : undefined}
+                      lead={<span className={listRowDate}>{formatDateCompact(a.firstNegativeDate)}</span>}
+                      title={
+                        <span className={styles.what}>
+                          {a.kind === 'account' ? <Landmark size={14} aria-label="Compte" /> : <WalletCards size={14} aria-label="Enveloppe" />}
+                          <span className={styles.name}>{a.name}</span>
+                        </span>
+                      }
+                      meta={<Badge tone={a.daysUntil <= 7 ? 'negative' : 'warning'}>{inDays(a.daysUntil)}</Badge>}
+                      trail={<Amount cents={a.minBalance} />}
+                      trailSub={`le ${formatDateCompact(a.minBalanceDate)}`}
+                    />
                   );
                 })}
-              </div>
+              </ul>
             </section>
           )}
 
@@ -105,44 +103,38 @@ export function Upcoming() {
               action={<ButtonLink to="/budget">Aller au Budget</ButtonLink>}
             />
           ) : (
-            <section className={styles.chartSection}>
-              <div className="section-title">
-                <h2>Solde projeté</h2>
-                <FilterPill value={series ?? ''} onChange={(v) => setSeries(v as Series)} aria-label="Compte ou enveloppe à tracer">
-                  <optgroup label="Comptes">
-                    {data!.accounts.map((a) => (
-                      <option key={a.id} value={`account-${a.id}`}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Enveloppes">
-                    {data!.envelopes.map((e) => (
-                      <option key={e.id} value={`envelope-${e.id}`}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </FilterPill>
-              </div>
-              {selected ? (
-                <div className={styles.chart}>
-                  <BalanceAreaChart data={selected.points} name={selected.name} today={data!.today} />
-                </div>
-              ) : (
-                <Skeleton height={260} />
-              )}
+            <section aria-labelledby="projection-title" className={styles.chartSection}>
+              <SectionHeader
+                id="projection-title"
+                title="Solde projeté"
+                aside={
+                  <FilterPill value={series ?? ''} onChange={(v) => setSeries(v as Series)} aria-label="Compte ou enveloppe à tracer">
+                    <optgroup label="Comptes">
+                      {data!.accounts.map((a) => (
+                        <option key={a.id} value={`account-${a.id}`}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Enveloppes">
+                      {data!.envelopes.map((e) => (
+                        <option key={e.id} value={`envelope-${e.id}`}>
+                          {e.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </FilterPill>
+                }
+              />
+              {selected ? <BalanceAreaChart data={selected.points} name={selected.name} today={data!.today} /> : <Skeleton height={260} />}
 
               {selected ? (
                 <div className={styles.events}>
-                  <div className="section-title">
-                    <h3>À venir pour {selected.name}</h3>
-                    <span className="muted">{selected.events.length} événement{selected.events.length > 1 ? 's' : ''}</span>
-                  </div>
+                  <SectionHeader as="h3" title={`À venir pour ${selected.name}`} aside={<span className={styles.count}>{plural(selected.events.length, 'événement')}</span>} />
                   {selected.events.length === 0 ? (
-                    <p className="muted">Aucune échéance sur cet horizon.</p>
+                    <EmptyState title="Aucune échéance sur cet horizon" />
                   ) : (
-                    <div className="ledger">
+                    <ul className={['ledger', styles.list].join(' ')}>
                       {selected.events.map((e, i) => {
                         const outgoing =
                           (e.kind === 'expense' && selected.kind === 'account') ||
@@ -150,17 +142,21 @@ export function Upcoming() {
                           (e.kind === 'transfer' && e.accountId === selected.id) ||
                           (e.kind === 'allocation' && e.fromEnvelopeId === selected.id);
                         return (
-                          <div key={`${e.source}-${e.sourceId}-${e.date}-${i}`} className={styles.event}>
-                            <span className="num muted">{formatDateShort(e.date)}</span>
-                            <span className="grow">
-                              {e.label} <span className="muted">· {KIND_LABELS[e.kind]}</span>
-                            </span>
-                            {e.source === 'rule' ? null : <Badge tone={e.source === 'planned' ? 'info' : 'neutral'}>{e.source === 'planned' ? 'prévue' : 'budget'}</Badge>}
-                            <Amount cents={outgoing ? -e.amount : e.amount} size="sm" tone={outgoing ? 'neutral' : 'always'} />
-                          </div>
+                          <ListRow
+                            key={`${e.source}-${e.sourceId}-${e.date}-${i}`}
+                            lead={<span className={listRowDate}>{formatDateCompact(e.date)}</span>}
+                            title={e.label}
+                            meta={
+                              <>
+                                {KIND_LABELS[e.kind]}
+                                {e.source === 'rule' ? null : <Badge tone={e.source === 'planned' ? 'info' : 'neutral'}>{e.source === 'planned' ? 'prévue' : 'budget'}</Badge>}
+                              </>
+                            }
+                            trail={<Amount cents={outgoing ? -e.amount : e.amount} size="sm" tone={outgoing ? 'neutral' : 'always'} />}
+                          />
                         );
                       })}
-                    </div>
+                    </ul>
                   )}
                 </div>
               ) : null}

@@ -1,6 +1,6 @@
 import { BarChart3 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import type { SpendingReport } from '@shared/api-types';
 import { addMonths, endOfMonth, startOfMonth, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
@@ -10,7 +10,27 @@ import { Upcoming } from '@/components/analyse/Upcoming';
 import { MonthlyBars } from '@/components/charts/MonthlyBars';
 import { NetWorthLine } from '@/components/charts/NetWorthLine';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Amount, DateRangeField, Dot, EmptyState, Segmented, Skeleton, SkeletonRows, Tabs } from '@/components/ui';
+import {
+  Amount,
+  Badge,
+  DateRangeField,
+  Dot,
+  EmptyState,
+  EnvelopeTag,
+  ErrorState,
+  KeyFigure,
+  keyFigureValue,
+  ListRow,
+  ListRowSkeleton,
+  listRowDate,
+  ProgressBar,
+  SectionHeader,
+  Segmented,
+  Skeleton,
+  Stat,
+  StatGroup,
+  Tabs,
+} from '@/components/ui';
 import { formatDateCompact, formatDateLong } from '@/lib/format';
 import { useCountUp } from '@/lib/motion';
 import styles from './Analyse.module.css';
@@ -99,9 +119,9 @@ function Spending() {
       {!valid ? (
         <p className="muted">La date de début doit précéder la date de fin.</p>
       ) : spending.isPending ? (
-        <SkeletonRows rows={6} />
+        <ListRowSkeleton rows={6} meta={false} middle />
       ) : spending.isError ? (
-        <EmptyState title="Rapport indisponible" description={errorMessage(spending.error)} />
+        <ErrorState title="Impossible de charger le rapport des dépenses" description={errorMessage(spending.error)} onRetry={() => spending.refetch()} />
       ) : spending.data.byEnvelope.length === 0 ? (
         <EmptyState icon={<BarChart3 />} title="Aucune dépense sur cette période" description="Les dépenses confirmées apparaîtront ici, enveloppe par enveloppe." />
       ) : (
@@ -115,61 +135,68 @@ function Spending() {
 }
 
 function ByEnvelope({ report, months }: { report: SpendingReport; months: number | null }) {
+  const navigate = useNavigate();
   const max = Math.max(...report.byEnvelope.map((e) => e.amount));
   const budget = months ? report.monthlyBudget * months : 0;
 
   return (
-    <section aria-labelledby="by-envelope-title" className={styles.block}>
-      <div className={styles.headline}>
-        <div>
-          <p className="eyebrow" id="by-envelope-title">
-            Dépensé sur la période
-          </p>
-          <Amount cents={report.total} size="xl" tone="neutral" animate />
-        </div>
-        {budget > 0 ? (
-          <p className={styles.headlineSide}>
-            {report.total <= budget ? (
-              <>
-                <strong className={['num', styles.good].join(' ')}>{formatEuros(budget - report.total)}</strong> sous le budget de {formatEuros(budget)}
-              </>
-            ) : (
-              <>
-                <strong className={['num', styles.bad].join(' ')}>{formatEuros(report.total - budget)}</strong> au-dessus du budget de {formatEuros(budget)}
-              </>
-            )}
-          </p>
-        ) : null}
-      </div>
+    <div className={styles.byEnvelope}>
+      <KeyFigure
+        label="Dépensé sur la période"
+        figure={<Amount cents={report.total} size="xl" tone="neutral" animate />}
+        aside={
+          budget > 0 ? (
+            <p className={styles.versus}>
+              {report.total <= budget ? (
+                <>
+                  <strong className={['num', styles.good].join(' ')}>{formatEuros(budget - report.total)}</strong> sous le budget de {formatEuros(budget)}
+                </>
+              ) : (
+                <>
+                  <strong className={['num', styles.bad].join(' ')}>{formatEuros(report.total - budget)}</strong> au-dessus du budget de {formatEuros(budget)}
+                </>
+              )}
+            </p>
+          ) : undefined
+        }
+      />
 
-      <ul className={[styles.bars, 'stagger'].join(' ')}>
-        {report.byEnvelope.map((e) => {
-          const target = months && e.monthlyTarget ? e.monthlyTarget * months : null;
-          const over = target !== null && e.amount > target;
-          const params = new URLSearchParams({ period: 'custom', from: report.from, to: report.to });
-          if (e.envelopeId) params.set('envelope', String(e.envelopeId));
-          const to = e.envelopeId ? `/operations?${params}` : '/operations?vue=a-ranger';
-          return (
-            <li key={e.envelopeId ?? 'unsorted'}>
-              <Link to={to} className={['hover-row', styles.barRow].join(' ')}>
-                <span className={styles.barName}>
-                  <Dot color={e.color} /> {e.name}
-                </span>
-                <span className={styles.barTrack} aria-hidden>
-                  <span className={styles.barFill} style={{ width: `${(e.amount / max) * 100}%`, background: e.color }} />
-                  {target ? <span className={styles.barTarget} style={{ left: `${Math.min(1, target / max) * 100}%` }} title={`Budget ${formatEuros(target)}`} /> : null}
-                </span>
-                <span className={styles.barAmount}>
-                  <Amount cents={e.amount} tone="neutral" className={over ? styles.bad : ''} />
-                  <span className={styles.barMeta}>{target ? `sur ${formatEuros(target)}` : `${Math.round((e.amount / report.total) * 100)} %`}</span>
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      {months ? <p className={styles.note}>Le petit trait vertical marque le budget de l’enveloppe sur la période. Clique une ligne pour voir ses opérations.</p> : null}
-    </section>
+      <section aria-label="Dépenses par enveloppe" className={styles.block}>
+        {/* Barres relatives à la plus grosse enveloppe, trait au budget de la période */}
+        <ul className={['ledger', 'stagger', styles.bars].join(' ')}>
+          {report.byEnvelope.map((e) => {
+            const target = months && e.monthlyTarget ? e.monthlyTarget * months : null;
+            const over = target !== null && e.amount > target;
+            const params = new URLSearchParams({ period: 'custom', from: report.from, to: report.to });
+            if (e.envelopeId) params.set('envelope', String(e.envelopeId));
+            const to = e.envelopeId ? `/operations?${params}` : '/operations?vue=a-ranger';
+            const share = Math.round((e.amount / report.total) * 100);
+            return (
+              <ListRow
+                key={e.envelopeId ?? 'unsorted'}
+                onClick={() => navigate(to)}
+                clickLabel={`Voir les opérations de ${e.name}`}
+                lead={<Dot color={e.color} />}
+                title={e.name}
+                middle={
+                  <ProgressBar
+                    ratio={e.amount / max}
+                    color={e.color}
+                    size="md"
+                    label={target ? `${e.name} : ${formatEuros(e.amount)} sur ${formatEuros(target)}` : `${e.name} : ${share} % des dépenses`}
+                    marker={target ? target / max : undefined}
+                    markerLabel="Budget de la période"
+                  />
+                }
+                trail={<Amount cents={e.amount} tone="neutral" className={over ? styles.bad : undefined} />}
+                trailSub={target ? `sur ${formatEuros(target)}` : `${share} %`}
+              />
+            );
+          })}
+        </ul>
+        {months ? <p className={styles.note}>Le petit trait vertical marque le budget de l’enveloppe sur la période. Clique une ligne pour voir ses opérations.</p> : null}
+      </section>
+    </div>
   );
 }
 
@@ -187,31 +214,24 @@ function TopExpenses({ from, to }: { from: string; to: string }) {
   );
 
   return (
-    <section aria-labelledby="top-title" className={styles.block}>
-      <div className="section-title">
-        <h2 id="top-title">Plus grosses dépenses</h2>
-      </div>
+    <section aria-labelledby="top-title">
+      <SectionHeader id="top-title" title="Plus grosses dépenses" />
       {transactions.isPending ? (
-        <SkeletonRows rows={4} />
+        <ListRowSkeleton rows={4} />
+      ) : transactions.isError ? (
+        <ErrorState title="Impossible de charger les plus grosses dépenses" description={errorMessage(transactions.error)} onRetry={() => transactions.refetch()} />
       ) : (
         <ol className={['ledger', 'stagger', styles.top].join(' ')}>
           {top.map((t) => {
             const env = t.envelopeId != null ? envelopeById.get(t.envelopeId) : undefined;
             return (
-              <li key={t.id} className={styles.topRow}>
-                <span className={['num', styles.topDate].join(' ')}>{formatDateCompact(t.date)}</span>
-                <span className={styles.topLabel}>{t.label}</span>
-                <span className={styles.topEnvelope}>
-                  {env ? (
-                    <>
-                      <Dot color={env.color} size={8} /> {env.name}
-                    </>
-                  ) : (
-                    'À ranger'
-                  )}
-                </span>
-                <Amount cents={t.amount} tone="neutral" className={styles.topAmount} />
-              </li>
+              <ListRow
+                key={t.id}
+                lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+                title={t.label}
+                meta={env ? <EnvelopeTag name={env.name} color={env.color} /> : <Badge tone="marking">À ranger</Badge>}
+                trail={<Amount cents={t.amount} tone="neutral" />}
+              />
             );
           })}
         </ol>
@@ -239,46 +259,50 @@ function Evolution() {
     <div className={styles.view}>
       {monthly.isPending ? (
         <Skeleton height={72} />
-      ) : monthly.isError ? null : (
-        <dl className={styles.kpis}>
-          <div className={styles.kpiMain}>
-            <dt>Taux d’épargne sur 12 mois</dt>
-            <dd className={styles.kpiValue} aria-label={kpis.rate === null ? 'inconnu' : `${Math.round(kpis.rate * 100)} %`}>
+      ) : monthly.isError ? (
+        <ErrorState title="Impossible de calculer le taux d’épargne" description={errorMessage(monthly.error)} onRetry={() => monthly.refetch()} />
+      ) : (
+        <KeyFigure
+          label="Taux d’épargne sur 12 mois"
+          figure={
+            <span className={keyFigureValue} aria-label={kpis.rate === null ? 'inconnu' : `${Math.round(kpis.rate * 100)} %`}>
               <span aria-hidden>{kpis.rate === null ? '–' : `${ratePercent} %`}</span>
-            </dd>
-            <dd className={styles.kpiHint}>part des revenus mise de côté ou investie</dd>
-          </div>
-          <div>
-            <dt>Mis de côté par mois</dt>
-            <dd>
-              <Amount cents={kpis.savedPerMonth} size="lg" tone="neutral" animate />
-            </dd>
-            <dd className={styles.kpiHint}>en moyenne</dd>
-          </div>
-          <div>
-            <dt>Dépensé par mois</dt>
-            <dd>
-              <Amount cents={kpis.expensePerMonth} size="lg" tone="neutral" animate />
-            </dd>
-            <dd className={styles.kpiHint}>en moyenne, hors épargne</dd>
-          </div>
-        </dl>
+            </span>
+          }
+          caption="Part des revenus mise de côté ou investie. Mis de côté et dépensé : moyennes par mois."
+          aside={
+            <StatGroup direction="column" divided>
+              <Stat label="Mis de côté par mois">
+                <Amount cents={kpis.savedPerMonth} size="lg" tone="neutral" animate />
+              </Stat>
+              <Stat label="Dépensé par mois, hors épargne">
+                <Amount cents={kpis.expensePerMonth} size="lg" tone="neutral" animate />
+              </Stat>
+            </StatGroup>
+          }
+        />
       )}
 
-      <section aria-labelledby="monthly-title" className={styles.block}>
-        <div className="section-title">
-          <h2 id="monthly-title">Revenus, dépenses et épargne</h2>
-          <span className="muted">12 derniers mois</span>
-        </div>
-        {monthly.isPending ? <Skeleton height={260} /> : monthly.isError ? <EmptyState title="Rapport indisponible" description={errorMessage(monthly.error)} /> : <MonthlyBars data={monthly.data} height={260} />}
+      <section aria-labelledby="monthly-title">
+        <SectionHeader id="monthly-title" title="Revenus, dépenses et épargne" aside={<span className={styles.period}>12 derniers mois</span>} />
+        {monthly.isPending ? (
+          <Skeleton height={260} />
+        ) : monthly.isError ? (
+          <ErrorState title="Impossible de charger les revenus et dépenses" description={errorMessage(monthly.error)} onRetry={() => monthly.refetch()} />
+        ) : (
+          <MonthlyBars data={monthly.data} height={260} />
+        )}
       </section>
 
-      <section aria-labelledby="networth-title" className={styles.block}>
-        <div className="section-title">
-          <h2 id="networth-title">Total de tes comptes</h2>
-          <span className="muted">12 mois passés, 90 jours projetés</span>
-        </div>
-        {netWorth.isPending ? <Skeleton height={260} /> : netWorth.isError ? <EmptyState title="Rapport indisponible" description={errorMessage(netWorth.error)} /> : <NetWorthLine report={netWorth.data} today={now} height={260} />}
+      <section aria-labelledby="networth-title">
+        <SectionHeader id="networth-title" title="Total de tes comptes" aside={<span className={styles.period}>12 mois passés, 90 jours projetés</span>} />
+        {netWorth.isPending ? (
+          <Skeleton height={260} />
+        ) : netWorth.isError ? (
+          <ErrorState title="Impossible de charger le total de tes comptes" description={errorMessage(netWorth.error)} onRetry={() => netWorth.refetch()} />
+        ) : (
+          <NetWorthLine report={netWorth.data} today={now} height={260} />
+        )}
       </section>
     </div>
   );
