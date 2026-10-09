@@ -34,7 +34,7 @@ type ButtonLinkProps = LinkProps & Pick<ButtonProps, 'variant' | 'size' | 'icon'
 /** Lien de navigation avec l'apparence d'un bouton. */
 export function ButtonLink({ variant = 'secondary', size = 'md', icon, className, children, ...rest }: ButtonLinkProps) {
   return (
-    <Link className={[styles.button, styles.link, styles[variant], styles[size], className ?? ''].join(' ')} {...rest}>
+    <Link className={[styles.button, styles.link, styles[variant], styles[size], icon && !children ? styles.iconOnly : '', className ?? ''].join(' ')} {...rest}>
       {icon ? <span className={styles.icon}>{icon}</span> : null}
       {children}
     </Link>
