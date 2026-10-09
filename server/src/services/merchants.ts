@@ -80,16 +80,20 @@ Consignes :
 }
 
 /**
- * Nomme les marchands sans nom par lots de 150, les plus fréquents d'abord, tant qu'un lot en nomme au moins un.
+ * Nomme les marchands sans nom par lots de 150, les plus fréquents d'abord, jusqu'à épuisement.
+ * Une clé déjà demandée dans ce run n'est jamais redemandée, même si Claude ne l'a pas nommée :
+ * sinon une clé jamais nommée resterait en tête de liste et priverait les suivantes, moins fréquentes.
  * N'écrit que là où personne n'a nommé le marchand. Lève une `ClaudeError` si Claude échoue.
  */
 export async function nameMerchants(db: Db, deps: { exec?: Exec } = {}): Promise<number> {
   const exec = deps.exec ?? execClaude;
   const model = getSettings(db).claudeModel || undefined;
   let total = 0;
+  const tried = new Set<string>();
   for (;;) {
-    const keys = listUnnamedKeys(db, MERCHANT_BATCH_SIZE);
+    const keys = listUnnamedKeys(db, MERCHANT_BATCH_SIZE, tried);
     if (keys.length === 0) return total;
+    for (const key of keys) tried.add(key);
     const prompt = buildMerchantPrompt({
       merchants: keys.map((key) => ({ key, examples: sampleLabels(db, key, MERCHANT_EXAMPLES) })),
       knownNames: listMerchantNames(db),
@@ -104,10 +108,7 @@ export async function nameMerchants(db: Db, deps: { exec?: Exec } = {}): Promise
     const valid = parsed.data.names
       .map(({ key, name }) => ({ key, name: name.trim() }))
       .filter(({ key, name }) => asked.has(key) && name.length > 0 && name.length <= MERCHANT_NAME_MAX);
-    const named = setClaudeNames(db, valid);
-    total += named;
-    // Un lot qui ne nomme rien reposerait les mêmes clés indéfiniment.
-    if (named === 0) return total;
+    total += setClaudeNames(db, valid);
   }
 }
 
@@ -131,18 +132,26 @@ export function createMerchantNamer(db: Db, deps: { exec?: Exec; log?: (message:
 
   const start = () => {
     pending = false;
-    current = nameMerchants(db, { exec: deps.exec })
-      .then(() => {
-        lastError = null;
-      })
-      .catch((err: unknown) => {
-        lastError = err instanceof Error ? err.message : String(err);
-        log(`[marchands] Nommage par Claude impossible : ${lastError}`);
-      })
-      .finally(() => {
-        current = null;
-        if (pending) start();
+    // setImmediate : request() doit rendre la main avant que nameMerchants ne touche la base,
+    // sinon son premier appel synchrone (avant son premier await) s'exécute dans la pile de l'appelant
+    // (import, synchro bancaire) et entre en concurrence avec ses propres requêtes.
+    current = new Promise<void>((resolve) => {
+      setImmediate(() => {
+        nameMerchants(db, { exec: deps.exec })
+          .then(() => {
+            lastError = null;
+          })
+          .catch((err: unknown) => {
+            lastError = err instanceof Error ? err.message : String(err);
+            log(`[marchands] Nommage par Claude impossible : ${lastError}`);
+          })
+          .finally(() => {
+            current = null;
+            if (pending) start();
+            resolve();
+          });
       });
+    });
   };
 
   return {

@@ -23,6 +23,9 @@ function ok(structured: unknown): ExecResult {
 
 const notInstalled: ExecResult = { stdout: '', stderr: 'ENOENT', exitCode: 127 };
 
+/** Laisse passer le `setImmediate` qui diffère le vrai démarrage de `request()`. */
+const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 /** Clés demandées dans le prompt, dans l'ordre (le prompt est le dernier argument). */
 function askedKeys(args: string[]): string[] {
   return [...args.at(-1)!.matchAll(/clé "([^"]+)"/g)].map((m) => m[1]!);
@@ -111,6 +114,24 @@ describe('nameMerchants', () => {
     expect(askedKeys(exec.mock.calls[1]![0])).toHaveLength(1);
   });
 
+  it('un marchand jamais nommé par Claude ne prive pas les suivants, moins fréquents, du même run', async () => {
+    // 150 clés très fréquentes que Claude ne nomme jamais (simulation d'un oubli répété), plus une clé rare qu'il nomme bien.
+    for (let i = 0; i < MERCHANT_BATCH_SIZE; i++) {
+      expense(`ACHAT CB MAGASIN ${i}`);
+      expense(`ACHAT CB MAGASIN ${i}`);
+    }
+    expense('ACHAT CB LIBRAIRIE RARE');
+    const exec = vi.fn<Exec>(async (args) => ok({ names: askedKeys(args).filter((key) => key === 'LIBRAIRIE RARE').map((key) => ({ key, name: 'Librairie Rare' })) }));
+
+    expect(await nameMerchants(ctx.db, { exec })).toBe(1);
+
+    expect(exec).toHaveBeenCalledTimes(2);
+    expect(askedKeys(exec.mock.calls[0]![0])).toHaveLength(MERCHANT_BATCH_SIZE);
+    expect(askedKeys(exec.mock.calls[0]![0])).not.toContain('LIBRAIRIE RARE');
+    expect(askedKeys(exec.mock.calls[1]![0])).toEqual(['LIBRAIRIE RARE']);
+    expect(merchant('LIBRAIRIE RARE')).toMatchObject({ name: 'Librairie Rare', source: 'claude' });
+  });
+
   it('ne lance rien sans clé à nommer', async () => {
     const exec = vi.fn<Exec>();
     expect(await nameMerchants(ctx.db, { exec })).toBe(0);
@@ -159,6 +180,7 @@ describe('createMerchantNamer', () => {
     namer.request();
     namer.request();
     namer.request();
+    await tick();
     expect(exec).toHaveBeenCalledTimes(1);
     release();
     await namer.idle();

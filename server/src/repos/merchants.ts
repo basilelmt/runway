@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, notInArray, sql } from 'drizzle-orm';
 import { merchantFallbackName } from '@core/merchants';
 import type { MerchantDetail } from '@shared/api-types';
 import type { Db } from '../db/client';
@@ -20,13 +20,15 @@ export function ensureMerchants(db: Db, keys: Iterable<string | null>): void {
   }
 }
 
-/** Clés portées par au moins une opération et sans nom, les plus fréquentes d'abord. */
-export function listUnnamedKeys(db: Db, limit: number): string[] {
+/** Clés portées par au moins une opération et sans nom, les plus fréquentes d'abord, hors `exclude`. */
+export function listUnnamedKeys(db: Db, limit: number, exclude: Iterable<string> = []): string[] {
+  const excluded = [...exclude];
+  const where = excluded.length > 0 ? and(isNull(merchants.name), notInArray(merchants.key, excluded)) : isNull(merchants.name);
   return db
     .select({ key: merchants.key })
     .from(merchants)
     .innerJoin(transactions, eq(transactions.merchantKey, merchants.key))
-    .where(isNull(merchants.name))
+    .where(where)
     .groupBy(merchants.key)
     .orderBy(desc(sql`count(*)`), asc(merchants.key))
     .limit(limit)
