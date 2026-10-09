@@ -71,6 +71,9 @@ export type EnvelopeWithBalance = BudgetedEnvelope & {
   toFundThisMonth: Cents;
 };
 
+/** Enveloppe à surveiller sur l'Accueil : dépassée (`amount` = dépassement) ou presque vide (`amount` = disponible libre). */
+export type WatchedEnvelope = { envelopeId: number; name: string; kind: 'over' | 'low'; amount: Cents };
+
 export type MonthSummary = {
   start: ISODate;
   end: ISODate;
