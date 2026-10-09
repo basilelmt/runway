@@ -186,7 +186,7 @@
   }
 
   .row:has(.actions):not(:has(.middle)) > .trail {
-    margin-left: calc(-1 * var(--s-4));
+    margin-left: calc(-1 * var(--s-2));
   }
 
   .row:has(.actions):not(:has(.middle)) > .actions {
