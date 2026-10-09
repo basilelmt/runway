@@ -3,6 +3,7 @@ import { suggestPattern } from '@core/sorting';
 import { errorMessage } from '@/api/client';
 import { useCreateSortingRule } from '@/api/hooks';
 import { Button, Input, Notice, useToast } from '@/components/ui';
+import { keepTogether } from '@/lib/format';
 import styles from './RuleBanner.module.css';
 
 type RuleBannerProps = {
@@ -42,7 +43,10 @@ export function RuleBanner({ label, envelopeId, envelopeName, onDone }: RuleBann
       <span className={styles.sentence}>
         Toujours ranger les libellés contenant
         <Input aria-label="Motif de la règle" value={pattern} onChange={(e) => setPattern(e.target.value)} className={styles.pattern} />
-        dans <strong>{envelopeName}</strong> ?
+        <span>
+          dans <strong>{envelopeName}</strong>
+          {keepTogether(' ?')}
+        </span>
       </span>
     </Notice>
   );

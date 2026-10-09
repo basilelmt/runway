@@ -69,7 +69,6 @@
 .bannerTitle {
   font-size: var(--text-sm);
   color: var(--ink-soft);
-  padding: 0 var(--s-2);
 }
 
 .bannerLabel {
