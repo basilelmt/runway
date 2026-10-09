@@ -28,5 +28,6 @@ export function watchTodo(watch: WatchedEnvelope[]): WatchTodo | null {
     const todo: WatchTodo = { text: `${watch.length} enveloppes à surveiller`, detail: watch.map((w) => w.name).join(', ') };
     return watch.some((w) => w.kind === 'over') ? { ...todo, tone: 'alert' } : todo;
   }
-  return first.kind === 'over' ? { text: `${first.name} dépassée de ${formatEuros(first.amount)}`, tone: 'alert' } : { text: `Plus que ${formatEuros(first.amount)} dans ${first.name}` };
+  if (first.kind === 'over') return { text: `${first.name} dépassée de ${formatEuros(first.amount)}`, tone: 'alert' };
+  return { text: first.amount === 0 ? `Plus rien de libre dans ${first.name}` : `Plus que ${formatEuros(first.amount)} dans ${first.name}` };
 }

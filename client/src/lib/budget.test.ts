@@ -37,6 +37,10 @@ describe('watchTodo', () => {
     expect(watchTodo([watched('low', 'Abonnements', 3_05)])).toEqual({ text: 'Plus que 3,05 € dans Abonnements' });
   });
 
+  it('une seule enveloppe sans rien de libre : texte dédié plutôt que « Plus que 0,00 € »', () => {
+    expect(watchTodo([watched('low', 'Abonnements', 0)])).toEqual({ text: 'Plus rien de libre dans Abonnements' });
+  });
+
   it('plusieurs : le nombre et les noms, en alerte si l’une est dépassée', () => {
     expect(watchTodo([watched('over', 'Restos', 12_40, 1), watched('low', 'Sorties', 1_00, 2), watched('low', 'Abonnements', 3_05, 3)])).toEqual({
       text: '3 enveloppes à surveiller',
