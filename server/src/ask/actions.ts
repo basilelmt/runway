@@ -13,7 +13,7 @@ import { listBudgetedEnvelopes } from '../services/state';
  * silencieusement. `reasons` liste les motifs des refus destinés à l'utilisateur (ex. budget sous les
  * charges fixes) : c'est à l'appelant (`runAsk`) de les transmettre, dans `notices` de la réponse.
  */
-export function validateActions(db: Db, raw: unknown[], today: ISODate): { actions: AskActionView[]; rejected: number; reasons: string[] } {
+export function validateActions(db: Db, raw: unknown[], today: ISODate): { actions: AskActionView[]; reasons: string[] } {
   const envelopes = new Map(listBudgetedEnvelopes(db, today).map((e) => [e.id, e]));
   const accounts = new Map(listAccounts(db).map((a) => [a.id, a]));
   const actions: AskActionView[] = [];
@@ -24,7 +24,7 @@ export function validateActions(db: Db, raw: unknown[], today: ISODate): { actio
     if (typeof view === 'string') reasons.push(view);
     else if (view) actions.push(view);
   }
-  return { actions, rejected: raw.length - actions.length, reasons };
+  return { actions, reasons };
 }
 
 /** Vue enrichie de l'action, raison d'un refus à expliquer, ou null pour une action simplement invalide. */

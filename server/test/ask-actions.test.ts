@@ -28,7 +28,6 @@ describe('validateActions', () => {
     const r = validateActions(ctx.db, [{ type: 'sort', transactionIds: [a.id, b.id], envelopeId: ctx.loisirs.id, rulePattern: 'UBER' }], TODAY);
     expect(r).toEqual({
       actions: [{ type: 'sort', transactionIds: [a.id, b.id], envelopeId: ctx.loisirs.id, envelopeName: 'Loisirs', rulePattern: 'UBER', count: 2, total: 20_00 }],
-      rejected: 0,
       reasons: [],
     });
   });
@@ -43,7 +42,7 @@ describe('validateActions', () => {
       ],
       TODAY,
     );
-    expect(r).toEqual({ actions: [], rejected: 2, reasons: [] });
+    expect(r).toEqual({ actions: [], reasons: [] });
   });
 
   it('enrichit un déplacement, y compris depuis « Pas encore réparti »', () => {
@@ -60,7 +59,6 @@ describe('validateActions', () => {
       { type: 'move', fromEnvelopeId: ctx.courses.id, fromName: 'Courses', toEnvelopeId: ctx.loisirs.id, toName: 'Loisirs', amount: 50_00 },
       { type: 'move', fromEnvelopeId: null, fromName: 'Pas encore réparti', toEnvelopeId: ctx.loisirs.id, toName: 'Loisirs', amount: 10_00 },
     ]);
-    expect(r.rejected).toBe(1);
   });
 
   it('convertit le budget voulu en complément au-dessus des charges, et refuse une enveloppe archivée', () => {
@@ -86,7 +84,6 @@ describe('validateActions', () => {
         { ...courses, monthlyTarget: 40_00, monthlyExtra: null },
         { ...courses, monthlyTarget: null, monthlyExtra: null },
       ],
-      rejected: 1,
       reasons: [],
     });
   });
@@ -94,14 +91,13 @@ describe('validateActions', () => {
   it('refuse un budget sous les charges fixes, avec la raison', () => {
     navigo(ctx.courses.id);
     const r = validateActions(ctx.db, [{ type: 'budget', envelopeId: ctx.courses.id, monthlyTarget: 30_00 }], TODAY);
-    expect(r).toEqual({ actions: [], rejected: 1, reasons: ['Le budget de Courses ne peut pas descendre sous ses charges fixes (40,00 €)'] });
+    expect(r).toEqual({ actions: [], reasons: ['Le budget de Courses ne peut pas descendre sous ses charges fixes (40,00 €)'] });
   });
 
   it('valide une charge fixe avec le schéma des règles', () => {
     const rule = { name: 'Spotify', kind: 'expense', amount: 11_99, label: 'Spotify', accountId: ctx.courant.id, envelopeId: ctx.loisirs.id, frequency: 'monthly', dayOfMonth: 4, startDate: '2026-11-04' };
     const r = validateActions(ctx.db, [{ type: 'recurring', rule }, { type: 'recurring', rule: { ...rule, dayOfMonth: null } }, { type: 'inconnu' }], TODAY);
     expect(r.actions).toEqual([{ type: 'recurring', rule: expect.objectContaining({ name: 'Spotify', interval: 1, active: true }), accountName: 'Courant' }]);
-    expect(r.rejected).toBe(2);
   });
 });
 
