@@ -6,6 +6,7 @@ import type { BankProvider } from '../src/bank/provider';
 import { openDb, type Db } from '../src/db/client';
 import { createAccount } from '../src/repos/accounts';
 import { createEnvelope } from '../src/repos/envelopes';
+import { createMerchantNamer, type MerchantNamer } from '../src/services/merchants';
 
 export type TestContext = {
   db: Db;
@@ -25,24 +26,35 @@ export function createTestDb(): TestContext {
   return { db, courant, livret, courses, loisirs };
 }
 
+/** Claude absent : aucun test ne lance le vrai binaire, même en tâche de fond. */
+export const offlineExec: Exec = async () => ({ stdout: '', stderr: 'ENOENT', exitCode: 127 });
+
+/** Nommeur de marchands silencieux, hors ligne par défaut, pour les applications de test. */
+export function quietMerchantNamer(db: Db, exec: Exec = offlineExec): MerchantNamer {
+  return createMerchantNamer(db, { exec, log: () => {} });
+}
+
 export type TestApp = TestContext & {
   app: ReturnType<typeof createApp>;
   today: string;
   setToday: (date: string) => void;
+  merchantNamer: MerchantNamer;
   /** Requête JSON pratique : renvoie le statut et le corps décodé. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
 };
 
-export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void }; exec?: Exec; askStream?: StreamExec; askSessionId?: () => string } = {}): TestApp {
+export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void }; exec?: Exec; askStream?: StreamExec; askSessionId?: () => string; merchantNamer?: MerchantNamer } = {}): TestApp {
   const ctx = createTestDb();
   let today = initialToday;
+  const merchantNamer = opts.merchantNamer ?? quietMerchantNamer(ctx.db, opts.exec ?? offlineExec);
   const app = createApp({
     db: ctx.db,
     now: () => today,
     exec: opts.exec,
     askStream: opts.askStream,
     askSessionId: opts.askSessionId,
+    merchantNamer,
     bankDeps: {
       provider: opts.bankProvider ? () => opts.bankProvider! : undefined,
       now: () => new Date(`${today}T10:00:00Z`),
@@ -53,6 +65,7 @@ export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?
   return {
     ...ctx,
     app,
+    merchantNamer,
     get today() {
       return today;
     },

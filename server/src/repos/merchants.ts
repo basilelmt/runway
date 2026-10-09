@@ -105,3 +105,8 @@ export function renameMerchant(db: Db, key: string, name: string): MerchantDetai
     .run();
   return getMerchant(db, key);
 }
+
+/** Tous les marchands, pour l'export JSON. */
+export function listMerchants(db: Db) {
+  return db.select().from(merchants).orderBy(asc(merchants.key)).all();
+}

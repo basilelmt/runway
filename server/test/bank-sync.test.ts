@@ -483,15 +483,18 @@ describe('routes /api/bank-sync', () => {
       ],
     });
     expect(linked.body.status).toBe('active');
+    const request = vi.spyOn(t.merchantNamer, 'request');
 
     const run = await t.call('POST', '/api/bank-sync/run', {});
     expect(run.body.reason).toBe('ok');
     expect(run.body.connections[0]).toMatchObject({ created: 1 });
+    expect(request).toHaveBeenCalledTimes(1);
     const listCall = p.calls.find((c) => c.method === 'listTransactions')!;
     expect(listCall.args[2]).toBe('2026-10-04');
 
     const stale = await t.call('POST', '/api/bank-sync/run', { onlyIfStaleMinutes: 60 });
     expect(stale.body.reason).toBe('fresh');
+    expect(request).toHaveBeenCalledTimes(1);
 
     const state2 = await t.call('GET', '/api/bank-sync');
     expect(state2.body.connections[0]).toMatchObject({ status: 'active', lastError: null });

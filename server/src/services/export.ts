@@ -3,6 +3,7 @@ import { listAccounts } from '../repos/accounts';
 import { listEnvelopes } from '../repos/envelopes';
 import { listFundings } from '../repos/fundings';
 import { listImports } from '../repos/imports';
+import { listMerchants } from '../repos/merchants';
 import { listRules } from '../repos/recurring-rules';
 import { listSortingRules } from '../repos/sorting-rules';
 import { getSettings } from '../repos/settings';
@@ -20,6 +21,7 @@ export function exportJson(db: Db) {
     sortingRules: listSortingRules(db),
     imports: listImports(db),
     fundings: listFundings(db),
+    merchants: listMerchants(db),
     // La clé privée Enable Banking ne sort jamais de la base : l'utilisateur garde le fichier .pem.
     settings: { ...getSettings(db), enableBankingPrivateKey: '' },
   };

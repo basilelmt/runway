@@ -8,7 +8,7 @@ import { createApp } from './app';
 import { openDb } from './db/client';
 import { failInterruptedRuns } from './repos/ideas';
 import { materializeDue } from './services/materialize';
-import { backfillMerchantKeys } from './services/merchants';
+import { backfillMerchantKeys, createMerchantNamer } from './services/merchants';
 
 const port = Number(process.env.PORT ?? 3000);
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -25,7 +25,11 @@ if (created > 0) console.log(`${created} occurrence(s) récurrente(s) créée(s)
 const backfilled = backfillMerchantKeys(db);
 if (backfilled > 0) console.log(`${backfilled} opération(s) rattachée(s) à un marchand`);
 
-const app = createApp({ db });
+const merchantNamer = createMerchantNamer(db);
+// Nomme en tâche de fond les marchands apparus depuis le dernier démarrage, sans retarder l'écoute.
+merchantNamer.request();
+
+const app = createApp({ db, merchantNamer });
 
 if (existsSync(clientDist)) {
   app.use('/*', serveStatic({ root: relative(process.cwd(), clientDist) }));

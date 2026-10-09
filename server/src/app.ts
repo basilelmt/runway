@@ -10,6 +10,7 @@ import { fundingRoutes } from './routes/fundings';
 import { importRoutes } from './routes/imports';
 import { investRoutes } from './routes/invest';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
+import { merchantRoutes } from './routes/merchants';
 import { recurringRuleRoutes } from './routes/recurring-rules';
 import { settingsRoutes } from './routes/settings';
 import { sortingRoutes } from './routes/sorting';
@@ -18,6 +19,7 @@ import { transactionRoutes } from './routes/transactions';
 import type { Exec, StreamExec } from './services/claude';
 import type { ImportDeps } from './services/import';
 import { materializeDue } from './services/materialize';
+import { createMerchantNamer, type MerchantNamer } from './services/merchants';
 import { createPrices, type PricesDeps } from './services/prices';
 
 export type AppEnv = { Variables: { db: Db; today: string } };
@@ -37,11 +39,14 @@ export type AppOptions = {
   bankDeps?: BankDeps;
   /** Réseau (Yahoo, Binance) et horloge de l'écran Investir, injectables pour les tests. */
   investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void };
+  /** Nommage des marchands par Claude en tâche de fond ; par défaut, un nommeur qui utilise `exec`. */
+  merchantNamer?: MerchantNamer;
 };
 
-export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {} }: AppOptions) {
+export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer }: AppOptions) {
   const app = new Hono<AppEnv>();
   const prices = createPrices(db, investDeps);
+  const namer = merchantNamer ?? createMerchantNamer(db, { exec });
 
   app.use('*', async (c, next) => {
     c.set('db', db);
@@ -85,8 +90,9 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
   app.route('/api/overview', overviewRoutes);
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
-  app.route('/api/imports', importRoutes(importDeps));
-  app.route('/api/bank-sync', bankSyncRoutes(bankDeps));
+  app.route('/api/merchants', merchantRoutes(namer));
+  app.route('/api/imports', importRoutes(importDeps, { onCommitted: () => namer.request() }));
+  app.route('/api/bank-sync', bankSyncRoutes({ ...bankDeps, onNewTransactions: () => namer.request() }));
   app.route('/api/invest', investRoutes({ prices, exec, ...investDeps }));
   app.route('/api', exportRoutes);
 
