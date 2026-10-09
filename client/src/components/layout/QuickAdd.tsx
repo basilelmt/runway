@@ -25,14 +25,21 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const { toggle: toggleAsk } = useAsk();
 
   useEffect(() => {
+    // Ouvert au clavier, rien ne doit récupérer le focus à la fermeture : sinon le bouton cliqué plus tôt
+    // dans la barre latérale le reprend et affiche son anneau de focus après Échap.
+    function releaseFocus() {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    }
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
       if (e.key === 'n') {
         e.preventDefault();
+        releaseFocus();
         setOpen(true);
       }
       if (e.key === 'k') {
         e.preventDefault();
+        releaseFocus();
         toggleAsk();
       }
       if (e.key === '/') {

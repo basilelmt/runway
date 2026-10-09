@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '@/components/ui';
@@ -47,5 +48,19 @@ describe('Shell', () => {
     const header = screen.getByRole('banner');
     const link = within(header).getByRole('link', { name: 'Réglages' });
     expect(link).not.toHaveAttribute('aria-current');
+  });
+
+  it('ouvert avec N ou K, ne rend pas le focus au bouton cliqué plus tôt (pas d’anneau après Échap)', async () => {
+    renderShell('/');
+    // La barre latérale et le bouton flottant mobile portent le même nom : on prend celui de la barre latérale.
+    const button = within(screen.getAllByRole('navigation')[0]!).getByRole('button', { name: /Nouvelle opération/ });
+    button.focus();
+    await userEvent.keyboard('n');
+    expect(button).not.toHaveFocus();
+    button.focus();
+    await userEvent.keyboard('{Escape}');
+    button.focus();
+    await userEvent.keyboard('k');
+    expect(button).not.toHaveFocus();
   });
 });
