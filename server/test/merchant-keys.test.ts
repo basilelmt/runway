@@ -7,6 +7,7 @@ import { createRule } from '../src/repos/recurring-rules';
 import { listPlanned, listTransactions } from '../src/repos/transactions';
 import { commitImport } from '../src/services/import';
 import { materializeDue } from '../src/services/materialize';
+import { backfillMerchantKeys } from '../src/services/merchants';
 import { createTestApp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -106,5 +107,22 @@ describe('clé marchand à l’écriture', () => {
     const byName = await t.call('GET', `/api/transactions?q=${encodeURIComponent('café')}`);
     expect(byName.body.map((x: any) => x.label)).toEqual(['ACHAT CB CAFE DU PORT']);
     expect((await t.call('GET', '/api/transactions?q=port')).body).toHaveLength(1);
+  });
+});
+
+describe('backfillMerchantKeys', () => {
+  it('calcule la clé des opérations qui n’en ont pas, une seule fois', async () => {
+    await expense('ACHAT CB CAFE DU PORT');
+    await expense('ACHAT CB 03.10.26 APPLE PAY');
+    await t.call('POST', '/api/transactions', { kind: 'income', date: '2026-03-03', amount: 2000_00, label: 'VIREMENT DE EMPLOYEUR SA', accountId: t.courant.id });
+    await t.call('POST', '/api/transactions', { kind: 'transfer', date: '2026-03-04', amount: 50_00, label: 'Épargne', accountId: t.courant.id, toAccountId: t.livret.id });
+    // État d'une base tout juste migrée : aucune clé, aucun marchand.
+    t.db.update(transactions).set({ merchantKey: null }).run();
+    t.db.delete(merchants).run();
+
+    expect(backfillMerchantKeys(t.db)).toBe(2);
+    expectInvariant(t.db);
+    expect(t.db.select({ key: merchants.key }).from(merchants).all().map((m) => m.key).sort()).toEqual(['CAFE DU PORT', 'EMPLOYEUR SA']);
+    expect(backfillMerchantKeys(t.db)).toBe(0);
   });
 });
