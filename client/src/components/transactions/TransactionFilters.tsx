@@ -104,7 +104,7 @@ export function TransactionFilters({ value, onChange, accounts, envelopes }: Tra
   return (
     <div className={styles.filters}>
       <div className={styles.line}>
-        <SearchPill placeholder="Rechercher un libellé (/)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" />
+        <SearchPill placeholder="Rechercher un marchand ou un libellé (/)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" />
         <Segmented
           label="Période"
           value={value.period}

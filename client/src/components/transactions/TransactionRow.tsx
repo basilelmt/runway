@@ -2,6 +2,7 @@ import { Check } from 'lucide-react';
 import type { Account, Envelope, Transaction } from '@shared/schemas';
 import { Amount, Badge, Button, EnvelopeTag, ListRow } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import { signedAmount } from './signed';
 import styles from './TransactionRow.module.css';
 
@@ -30,12 +31,13 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
   const fromEnvelope = t.fromEnvelopeId != null ? envelopes.get(t.fromEnvelopeId) : undefined;
   const account = t.accountId != null ? accounts.get(t.accountId) : undefined;
-  const toAccount = t.toAccountId != null ? accounts.get(t.toAccountId) : undefined;
   const planned = t.status === 'planned';
+  const name = displayLabel(t, accounts, viewAccountId);
 
   const where =
+    // Le titre dit déjà « Virement vers/depuis » : pas la peine de répéter le même couple de comptes en dessous.
     t.kind === 'transfer'
-      ? `${account?.name ?? '?'} → ${toAccount?.name ?? '?'}`
+      ? ''
       : t.kind === 'allocation'
         ? `${fromEnvelope?.name ?? 'Pas encore réparti'} → ${envelope?.name ?? '?'}`
         : account?.name ?? '';
@@ -44,8 +46,8 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
     <ListRow
       muted={planned}
       onClick={onClick}
-      clickLabel={onClick ? `Modifier ${t.label}` : undefined}
-      title={t.label}
+      clickLabel={onClick ? `Modifier ${name}` : undefined}
+      title={<span title={t.label}>{name}</span>}
       meta={
         <>
           {t.kind !== 'expense' ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}

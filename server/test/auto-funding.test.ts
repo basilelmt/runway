@@ -9,8 +9,8 @@ const fixture = readFileSync(fileURLToPath(new URL('./fixtures/lbp.csv', import.
 let t: TestApp;
 beforeEach(() => {
   t = createTestApp('2026-03-12');
-  updateEnvelope(t.db, t.courses.id, { monthlyTarget: 300_00 });
-  updateEnvelope(t.db, t.loisirs.id, { monthlyTarget: 100_00 });
+  updateEnvelope(t.db, t.courses.id, { monthlyExtra: 300_00 });
+  updateEnvelope(t.db, t.loisirs.id, { monthlyExtra: 100_00 });
 });
 
 const salaire = (over: Record<string, unknown> = {}) => ({
@@ -60,7 +60,7 @@ describe('répartition automatique', () => {
 
   it('manque d’argent : par ordre des enveloppes, incomplètes signalées', async () => {
     // 1 000 € de solde initial + 2 000 € de salaire = 3 000 € disponibles pour 3 050 € de budgets.
-    updateEnvelope(t.db, t.courses.id, { monthlyTarget: 2950_00 });
+    updateEnvelope(t.db, t.courses.id, { monthlyExtra: 2950_00 });
     await confirmSalary();
     const allocs = await allocations();
     expect(allocs.map((a: any) => [a.envelopeId, a.amount]).sort()).toEqual([[t.courses.id, 2950_00], [t.loisirs.id, 50_00]].sort());

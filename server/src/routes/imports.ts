@@ -31,7 +31,7 @@ const commitSchema = z.object({
     .min(1, 'Aucune opération à importer'),
 });
 
-export const importRoutes = (deps: ImportDeps = {}) =>
+export const importRoutes = (deps: ImportDeps = {}, hooks: { onCommitted?: () => void } = {}) =>
   new Hono<AppEnv>()
   .get('/', (c) => c.json(listImports(c.get('db'))))
   .post('/preview', async (c) => {
@@ -49,5 +49,7 @@ export const importRoutes = (deps: ImportDeps = {}) =>
     return c.json({ ...(await previewImport(c.get('db'), { buffer, accountId, section }, deps)), fileName: file.name });
   })
   .post('/commit', validate('json', commitSchema), (c) => {
-    return c.json(commitImport(c.get('db'), c.req.valid('json')), 201);
+    const record = commitImport(c.get('db'), c.req.valid('json'));
+    hooks.onCommitted?.();
+    return c.json(record, 201);
   });

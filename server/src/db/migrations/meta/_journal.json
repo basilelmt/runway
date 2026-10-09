@@ -64,6 +64,27 @@
       "when": 1791468338467,
       "tag": "0008_drop_idea_source_url",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791497457111,
+      "tag": "0009_envelope_monthly_extra",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791537101416,
+      "tag": "0010_merchants",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791550100716,
+      "tag": "0011_compact_label_spaces",
+      "breakpoints": true
     }
   ]
 }

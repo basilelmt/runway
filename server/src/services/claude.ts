@@ -12,10 +12,10 @@ export type ExecResult = { stdout: string; stderr: string; exitCode: number };
 export type Exec = (args: string[], timeoutMs: number) => Promise<ExecResult>;
 
 export type ClaudeSortInput = {
-  transactions: Pick<Transaction, 'id' | 'date' | 'label' | 'amount'>[];
+  transactions: Pick<Transaction, 'id' | 'date' | 'label' | 'amount' | 'merchantName'>[];
   envelopes: Pick<Envelope, 'id' | 'name'>[];
   rules: Pick<SortingRule, 'pattern' | 'envelopeId'>[];
-  examples: { label: string; envelopeId: number }[];
+  examples: { label: string; merchantName: string | null; envelopeId: number }[];
   model?: string;
 };
 
@@ -80,15 +80,16 @@ export const execClaude: Exec = (args, timeoutMs) =>
   });
 
 export function buildPrompt(input: ClaudeSortInput): string {
+  const merchantOf = (name: string | null) => (name ? ` (marchand : ${name})` : '');
   const envelopes = input.envelopes.map((e) => `- ${e.id} : ${e.name}`).join('\n');
   const rules = input.rules.length
     ? input.rules.map((r) => `- "${r.pattern}" -> enveloppe ${r.envelopeId}`).join('\n')
     : '(aucune)';
   const examples = input.examples.length
-    ? input.examples.map((e) => `- "${e.label}" -> enveloppe ${e.envelopeId}`).join('\n')
+    ? input.examples.map((e) => `- "${e.label}"${merchantOf(e.merchantName)} -> enveloppe ${e.envelopeId}`).join('\n')
     : '(aucun)';
   const transactions = input.transactions
-    .map((t) => `- id ${t.id} | ${t.date} | ${(t.amount / 100).toFixed(2)} € | ${t.label}`)
+    .map((t) => `- id ${t.id} | ${t.date} | ${(t.amount / 100).toFixed(2)} € | ${t.label}${merchantOf(t.merchantName)}`)
     .join('\n');
 
   return `Tu aides à ranger des dépenses bancaires dans des enveloppes de budget.
@@ -109,6 +110,7 @@ Consignes :
 - Pour chaque dépense, propose l'id de l'enveloppe la plus plausible, ou null si tu n'as vraiment aucune idée.
 - Donne une justification très courte (quelques mots) dans "reason".
 - Suggère dans "rules" de nouvelles règles réutilisables : un motif court et stable extrait du libellé (nom de l'enseigne, sans date ni numéro de carte), avec l'enveloppe. Ne répète pas une règle existante. Ne propose une règle que si le motif désigne clairement une enseigne ou un créancier récurrent.
+- Le marchand entre parenthèses est le nom lisible de l'enseigne tiré du libellé : appuie-toi dessus pour la reconnaître, mais tire le motif d'une règle du libellé lui-même, car les règles de tri s'appliquent au libellé.
 - Réponds uniquement avec le JSON demandé.`;
 }
 

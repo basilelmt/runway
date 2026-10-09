@@ -22,7 +22,7 @@ export function EnvelopeRowHeader({ withActions = false, spentLabel = 'Dépensé
 
 /** Une enveloppe en une ligne : dépensé du mois face à son budget, et ce qu'il reste dedans. */
 export function EnvelopeRow({ envelope, menu, leading, onOpen, className }: EnvelopeRowProps) {
-  const target = envelope.monthlyTarget;
+  const target = envelope.monthlyBudget > 0 ? envelope.monthlyBudget : null;
   const ratio = target ? envelope.spentThisMonth / target : 0;
   const over = target !== null && envelope.spentThisMonth > target;
   const verb = envelope.isSavings ? 'versés' : 'dépensés';

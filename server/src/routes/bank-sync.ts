@@ -13,6 +13,8 @@ export type BankDeps = {
   /** Fabrique du fournisseur, injectable pour les tests. */
   provider?: (settings: Settings, psu: PsuInfo) => BankProvider;
   now?: () => Date;
+  /** Appelé après une synchro qui a écrit des opérations (créées, ou rapprochées : leur libellé change). */
+  onNewTransactions?: () => void;
 };
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
@@ -77,7 +79,9 @@ export const bankSyncRoutes = (deps: BankDeps = {}) => {
       const settings = getSettings(c.get('db'));
       if (!isConfigured(settings)) return c.json({ reason: 'not_configured', connections: [] });
       const p = makeProvider(settings, psuInfo(c));
-      return c.json(await runSync(c.get('db'), p, { today: c.get('today'), now: now(), onlyIfStaleMinutes: c.req.valid('json').onlyIfStaleMinutes }));
+      const result = await runSync(c.get('db'), p, { today: c.get('today'), now: now(), onlyIfStaleMinutes: c.req.valid('json').onlyIfStaleMinutes });
+      if (result.connections.some((r) => r.created > 0 || r.matched > 0)) deps.onNewTransactions?.();
+      return c.json(result);
     })
     .delete('/connections/:id', validate('param', idParam), async (c) => {
       const settings = getSettings(c.get('db'));

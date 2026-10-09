@@ -7,8 +7,9 @@ import { FundDialog } from './FundDialog';
 
 const base = { archived: false, isSavings: false, balance: 0, allocatedThisMonth: 0, spentThisMonth: 0 };
 const envelopes: EnvelopeWithBalance[] = [
-  { ...base, id: 10, name: 'Courses', color: '#4f8a5b', monthlyTarget: 15000, sortOrder: 0, toFundThisMonth: 15000 },
-  { ...base, id: 11, name: 'Restos', color: '#c2703d', monthlyTarget: null, sortOrder: 1, toFundThisMonth: 0 },
+  // Budget venu d'une charge fixe, sans complément.
+  { ...base, id: 10, name: 'Courses', color: '#4f8a5b', monthlyExtra: null, monthlyCharges: 15000, monthlyBudget: 15000, sortOrder: 0, toFundThisMonth: 15000 },
+  { ...base, id: 11, name: 'Restos', color: '#c2703d', monthlyExtra: null, monthlyCharges: 0, monthlyBudget: 0, sortOrder: 1, toFundThisMonth: 0 },
 ];
 
 describe('FundDialog', () => {
@@ -26,5 +27,7 @@ describe('FundDialog', () => {
     expect(await within(footer).findByText('À répartir')).toBeInTheDocument();
     expect(within(footer).getByRole('button', { name: /Répartir 150,00/, hidden: true })).toBeInTheDocument();
     expect(within(footer).getByText('Restera non réparti')).toBeInTheDocument();
+    expect(screen.getByText('il manque 150,00 € sur 150,00 €')).toBeInTheDocument();
+    expect(screen.getByText('sans budget mensuel')).toBeInTheDocument();
   });
 });

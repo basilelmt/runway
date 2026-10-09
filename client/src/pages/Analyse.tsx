@@ -32,6 +32,7 @@ import {
   Tabs,
 } from '@/components/ui';
 import { formatDateCompact, formatDateLong } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import { useCountUp } from '@/lib/motion';
 import styles from './Analyse.module.css';
 
@@ -165,7 +166,7 @@ function ByEnvelope({ report, months }: { report: SpendingReport; months: number
         {/* Barres relatives à la plus grosse enveloppe, trait au budget de la période */}
         <ul className={['ledger', 'stagger', styles.bars].join(' ')}>
           {report.byEnvelope.map((e) => {
-            const target = months && e.monthlyTarget ? e.monthlyTarget * months : null;
+            const target = months && e.monthlyBudget > 0 ? e.monthlyBudget * months : null;
             const over = target !== null && e.amount > target;
             const params = new URLSearchParams({ period: 'custom', from: report.from, to: report.to });
             if (e.envelopeId) params.set('envelope', String(e.envelopeId));
@@ -228,7 +229,7 @@ function TopExpenses({ from, to }: { from: string; to: string }) {
               <ListRow
                 key={t.id}
                 lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
-                title={t.label}
+                title={<span title={t.label}>{displayLabel(t)}</span>}
                 meta={env ? <EnvelopeTag name={env.name} color={env.color} /> : <Badge tone="marking">À ranger</Badge>}
                 trail={<Amount cents={t.amount} tone="neutral" />}
               />

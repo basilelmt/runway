@@ -18,7 +18,7 @@ function controllableSse() {
   };
 }
 
-const answer = (text: string) => ({ sessionId: SESSION, answer: text, highlight: null, chart: null, actions: [] });
+const answer = (text: string) => ({ sessionId: SESSION, answer: text, highlight: null, chart: null, actions: [], notices: [] });
 
 let api: AskApi;
 const expose = (a: AskApi) => {

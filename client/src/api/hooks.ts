@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
   BankAuthStart,
@@ -13,6 +14,8 @@ import type {
   IdeasView,
   ImportCommitInput,
   ImportPreview,
+  MerchantDetail,
+  MerchantStatus,
   MonthlyReport,
   NetWorthReport,
   Overview,
@@ -72,6 +75,8 @@ export const keys = {
   ideas: ['invest', 'ideas'] as const,
   ideaRun: (id: number) => ['invest', 'run', id] as const,
   binanceSync: ['invest', 'binance', 'sync'] as const,
+  merchant: (key: string) => ['merchants', 'detail', key] as const,
+  merchantStatus: ['merchants', 'status'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -277,7 +282,66 @@ export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: F
 
 export function useCommitImport(opts?: MutOpts<ImportRecord, ImportCommitInput & { bankAccountNumber?: string | null }>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts']); opts?.onSuccess?.(...a); } });
+  // Le serveur lance le nommage des marchands après un import : on invalide son état pour que le suivi global se relance.
+  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts'], keys.merchantStatus); opts?.onSuccess?.(...a); } });
+}
+
+// Marchands
+
+export const useMerchant = (key: string | null) =>
+  useQuery({ queryKey: keys.merchant(key ?? ''), queryFn: () => api.get<MerchantDetail>(`/api/merchants/${encodeURIComponent(key!)}`), enabled: key !== null });
+
+/** Renomme un marchand pour toutes ses opérations ; un nom vide le rend à Claude. */
+export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; name: string }>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: ({ key, name }) => api.put<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}`, { name }),
+    onSuccess: (...a) => {
+      invalidate(['merchants']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+/**
+ * État du nommage, lu tel quel (sans suivi ni invalidation : voir `useMerchantNamingSync`,
+ * monté une fois dans la coquille de l'appli, qui s'en charge pour toute la session).
+ */
+export const useMerchantStatus = () => useQuery({ queryKey: keys.merchantStatus, queryFn: () => api.get<MerchantStatus>('/api/merchants/status') });
+
+/**
+ * Suit le nommage par Claude en tâche de fond pour toute la session, même hors des Réglages :
+ * interroge toutes les 3 secondes pendant une exécution, puis rafraîchit les opérations et marchands affichés.
+ * Partage son cache avec `useMerchantStatus` : une fois montée ici, la page Réglages reçoit les mêmes mises à jour.
+ */
+export function useMerchantNamingSync(): void {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: keys.merchantStatus,
+    queryFn: () => api.get<MerchantStatus>('/api/merchants/status'),
+    refetchInterval: (q) => (q.state.data?.running ? 3000 : false),
+  });
+  const running = query.data?.running ?? false;
+  const wasRunning = useRef(running);
+  useEffect(() => {
+    if (wasRunning.current && !running) {
+      for (const key of [['transactions'], ['transaction'], ['merchants', 'detail']]) void qc.invalidateQueries({ queryKey: key });
+    }
+    wasRunning.current = running;
+  }, [running, qc]);
+}
+
+export function useNameMerchants(opts?: MutOpts<MerchantStatus, void>) {
+  const qc = useQueryClient();
+  return useMutation({
+    ...opts,
+    mutationFn: () => api.post<MerchantStatus>('/api/merchants/name'),
+    onSuccess: (...a) => {
+      qc.setQueryData(keys.merchantStatus, a[0]);
+      opts?.onSuccess?.(...a);
+    },
+  });
 }
 
 // Settings
@@ -332,7 +396,8 @@ export function useRunBankSync(opts?: MutOpts<BankSyncRunResult, number | undefi
     mutationKey: keys.bankSyncRun,
     mutationFn: (onlyIfStaleMinutes) => api.post<BankSyncRunResult>('/api/bank-sync/run', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}),
     onSuccess: (...a) => {
-      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts']);
+      // Le serveur lance le nommage des marchands sur les nouvelles opérations : on invalide son état pour relancer le suivi global.
+      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts'], keys.merchantStatus);
       opts?.onSuccess?.(...a);
     },
   });

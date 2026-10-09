@@ -1,22 +1,27 @@
 import type { Db } from '../db/client';
+import { listAccounts } from '../repos/accounts';
+import { listEnvelopes } from '../repos/envelopes';
 import { listFundings } from '../repos/fundings';
 import { listImports } from '../repos/imports';
+import { listMerchants } from '../repos/merchants';
+import { listRules } from '../repos/recurring-rules';
 import { listSortingRules } from '../repos/sorting-rules';
 import { getSettings } from '../repos/settings';
-import { loadState } from './state';
+import { allTransactions } from '../repos/transactions';
 
+/** Export complet des données saisies, sans les valeurs calculées (soldes, budgets). */
 export function exportJson(db: Db) {
-  const state = loadState(db);
   return {
     exportedAt: new Date().toISOString(),
     version: 1,
-    accounts: state.accounts,
-    envelopes: state.envelopes,
-    transactions: state.transactions,
-    recurringRules: state.rules,
+    accounts: listAccounts(db, { includeArchived: true }),
+    envelopes: listEnvelopes(db, { includeArchived: true }),
+    transactions: allTransactions(db),
+    recurringRules: listRules(db),
     sortingRules: listSortingRules(db),
     imports: listImports(db),
     fundings: listFundings(db),
+    merchants: listMerchants(db),
     // La clé privée Enable Banking ne sort jamais de la base : l'utilisateur garde le fichier .pem.
     settings: { ...getSettings(db), enableBankingPrivateKey: '' },
   };
@@ -29,12 +34,11 @@ function csvCell(value: unknown): string {
 
 /** CSV des opérations, séparateur `;`, montants en euros avec virgule, lisible par un tableur français. */
 export function exportCsv(db: Db): string {
-  const state = loadState(db);
-  const accountName = new Map(state.accounts.map((a) => [a.id, a.name]));
-  const envelopeName = new Map(state.envelopes.map((e) => [e.id, e.name]));
+  const accountName = new Map(listAccounts(db, { includeArchived: true }).map((a) => [a.id, a.name]));
+  const envelopeName = new Map(listEnvelopes(db, { includeArchived: true }).map((e) => [e.id, e.name]));
   const header = ['date', 'type', 'statut', 'libellé', 'montant', 'compte', 'compte destination', 'enveloppe', 'enveloppe source', 'note'];
   const lines = [header.join(';')];
-  for (const t of state.transactions) {
+  for (const t of allTransactions(db)) {
     const signed = t.kind === 'expense' ? -t.amount : t.amount;
     lines.push(
       [

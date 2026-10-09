@@ -38,8 +38,8 @@ describe('accounts', () => {
 
 describe('envelopes', () => {
   it('crée avec couleur par défaut et réordonne', async () => {
-    const created = await t.call('POST', '/api/envelopes', { name: 'Vacances', monthlyTarget: 100_00 });
-    expect(created.body).toMatchObject({ color: '#4f8a5b', monthlyTarget: 100_00, sortOrder: 2 });
+    const created = await t.call('POST', '/api/envelopes', { name: 'Vacances', monthlyExtra: 100_00 });
+    expect(created.body).toMatchObject({ color: '#4f8a5b', monthlyExtra: 100_00, sortOrder: 2 });
     const reordered = await t.call('PUT', '/api/envelopes/reorder', { ids: [created.body.id, t.courses.id, t.loisirs.id] });
     expect(reordered.body.map((e: any) => e.name)).toEqual(['Vacances', 'Courses', 'Loisirs']);
   });

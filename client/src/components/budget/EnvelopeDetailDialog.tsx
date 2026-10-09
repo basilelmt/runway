@@ -7,6 +7,7 @@ import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
 import { Amount, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Stat, StatGroup } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import styles from './EnvelopeDetailDialog.module.css';
 
 type Period = 'month' | 'last' | 'quarter';
@@ -59,7 +60,7 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
   const list = transactions.data ?? [];
   const confirmed = list.filter((t) => t.status === 'confirmed');
   const total = confirmed.reduce((s, t) => s + t.amount, 0);
-  const budget = envelope.monthlyTarget ? envelope.monthlyTarget * months : null;
+  const budget = envelope.monthlyBudget > 0 ? envelope.monthlyBudget * months : null;
   const verb = envelope.isSavings ? 'Versé' : 'Dépensé';
   const params = new URLSearchParams({ envelope: String(envelope.id), period: 'custom', from, to });
 
@@ -94,10 +95,10 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
                 muted={t.status === 'planned'}
                 lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
                 title={
-                  <>
-                    {t.label}
+                  <span title={t.label}>
+                    {displayLabel(t)}
                     {t.status === 'planned' ? <span className="muted"> · prévue</span> : null}
-                  </>
+                  </span>
                 }
                 trail={<Amount cents={-t.amount} tone="neutral" />}
               />

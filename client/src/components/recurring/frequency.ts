@@ -27,3 +27,18 @@ export function describeFrequency(rule: Schedule): string {
     }
   }
 }
+
+/** Rythme d'une charge pour expliquer son montant ramené au mois : « tous les 3 mois », « par an » ; null si mensuelle. */
+export function describeRhythm(rule: Pick<Schedule, 'frequency' | 'interval'>): string | null {
+  const n = Math.max(1, rule.interval);
+  switch (rule.frequency) {
+    case 'daily':
+      return n === 1 ? 'par jour' : `tous les ${n} jours`;
+    case 'weekly':
+      return n === 1 ? 'par semaine' : `toutes les ${n} semaines`;
+    case 'monthly':
+      return n === 1 ? null : `tous les ${n} mois`;
+    case 'yearly':
+      return n === 1 ? 'par an' : `tous les ${n} ans`;
+  }
+}

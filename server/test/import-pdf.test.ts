@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { ImportPreview } from '@shared/api-types';
 import { createApp } from '../src/app';
 import { updateAccount } from '../src/repos/accounts';
-import { createTestDb, type TestContext } from './helpers';
+import { createTestDb, quietMerchantNamer, type TestContext } from './helpers';
 
 const statementText = readFileSync(fileURLToPath(new URL('./fixtures/lbp-statement.txt', import.meta.url)), 'utf8');
 const fakePdf = Buffer.from('%PDF-1.4 faux relevé');
@@ -13,7 +13,7 @@ let ctx: TestContext;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   ctx = createTestDb();
-  app = createApp({ db: ctx.db, now: () => '2025-01-10', importDeps: { extractPdfText: async () => statementText } });
+  app = createApp({ db: ctx.db, now: () => '2025-01-10', importDeps: { extractPdfText: async () => statementText }, merchantNamer: quietMerchantNamer(ctx.db) });
 });
 
 async function preview(extra: Record<string, string> = {}): Promise<ImportPreview & { fileName: string }> {

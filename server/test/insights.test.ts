@@ -17,9 +17,9 @@ beforeEach(async () => {
 
 describe('GET /api/overview', () => {
   it('compare les budgets des enveloppes au revenu mensuel attendu', async () => {
-    await t.call('PATCH', `/api/envelopes/${t.courses.id}`, { monthlyTarget: 400_00 });
-    await t.call('PATCH', `/api/envelopes/${t.loisirs.id}`, { monthlyTarget: 3000_00 });
-    const epargne = await t.call('POST', '/api/envelopes', { name: 'Épargne', color: '#4f8a5b', monthlyTarget: 100_00, isSavings: true });
+    await t.call('PATCH', `/api/envelopes/${t.courses.id}`, { monthlyExtra: 400_00 });
+    // Loisirs n'a pas de complément : son budget est sa charge « Loyer » de 3 000 €.
+    const epargne = await t.call('POST', '/api/envelopes', { name: 'Épargne', color: '#4f8a5b', monthlyExtra: 100_00, isSavings: true });
     expect(epargne.status).toBe(201);
     const rule = (body: object) => t.call('POST', '/api/recurring-rules', { kind: 'income', label: 'Salaire', accountId: t.courant.id, startDate: '2026-01-01', ...body });
     await rule({ name: 'Salaire', amount: 2450_00, frequency: 'monthly', dayOfMonth: 28 });
@@ -47,15 +47,14 @@ describe('GET /api/overview', () => {
     const courses = body.envelopes.find((e: any) => e.id === t.courses.id);
     expect(courses).toMatchObject({ balance: 340_00, allocatedThisMonth: 400_00, spentThisMonth: 60_00, toFundThisMonth: 0 });
     // Dépenses du mois à trier comprises ; le virement vers le livret est mis de côté.
-    expect(body.month).toEqual({ start: '2026-03-01', end: '2026-03-31', spent: 75_00, budget: 0, variable: { spent: 75_00, budget: 0 }, saved: 500_00, toFund: 0, income: 0, planned: 0 });
+    // Loisirs porte la charge « Loyer » : 3 000 € de budget, encore à répartir.
+    expect(body.month).toEqual({ start: '2026-03-01', end: '2026-03-31', spent: 75_00, budget: 3000_00, variable: { spent: 75_00, budget: 0 }, saved: 500_00, toFund: 3000_00, income: 0, planned: 3000_00 });
+    expect(body.envelopes.find((e: any) => e.id === t.loisirs.id)).toMatchObject({ monthlyExtra: null, monthlyCharges: 3000_00, monthlyBudget: 3000_00, toFundThisMonth: 3000_00 });
     expect(body.unsortedCount).toBe(1);
     expect(body.latePlanned).toEqual([]);
-    // Même date : le solde le plus bas d'abord. Sur 90 jours, trois loyers font plonger le compte à -6 575 € ;
-    // l'enveloppe repart de zéro chaque mois, son creux est un loyer.
-    expect(body.alerts.map((a: any) => [a.kind, a.firstNegativeDate, a.minBalance])).toEqual([
-      ['account', '2026-03-20', -6575_00],
-      ['envelope', '2026-03-20', -3000_00],
-    ]);
+    // Sur 90 jours, trois loyers font plonger le compte à -6 575 €.
+    // L'enveloppe, elle, reçoit son budget chaque mois avant le loyer : pas d'alerte.
+    expect(body.alerts.map((a: any) => [a.kind, a.firstNegativeDate, a.minBalance])).toEqual([['account', '2026-03-20', -6575_00]]);
   });
 });
 
@@ -72,12 +71,13 @@ describe('prévues en retard', () => {
 
 describe('budget mensuel et épargne', () => {
   it('le résumé du mois sépare consommation et épargne, et compte ce qu’il reste à répartir', async () => {
-    await t.call('PATCH', `/api/envelopes/${t.courses.id}`, { monthlyTarget: 500_00 });
-    await t.call('PATCH', `/api/envelopes/${t.loisirs.id}`, { monthlyTarget: 100_00, isSavings: true });
+    await t.call('PATCH', `/api/envelopes/${t.courses.id}`, { monthlyExtra: 500_00 });
+    await t.call('PATCH', `/api/envelopes/${t.loisirs.id}`, { monthlyExtra: 100_00, isSavings: true });
     await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-03-05', amount: 40_00, label: 'PEA', accountId: t.courant.id, envelopeId: t.loisirs.id });
     const { body } = await t.call('GET', '/api/overview');
     expect(body.envelopes.find((e: any) => e.id === t.courses.id).toFundThisMonth).toBe(100_00);
-    expect(body.month).toMatchObject({ spent: 75_00, budget: 500_00, variable: { spent: 75_00, budget: 500_00 }, saved: 540_00, toFund: 200_00 });
+    // Loisirs (épargne) porte aussi la charge « Loyer » : 3 000 € + 100 € à répartir, plus les 100 € qui manquent à Courses.
+    expect(body.month).toMatchObject({ spent: 75_00, budget: 500_00, variable: { spent: 75_00, budget: 500_00 }, saved: 540_00, toFund: 3200_00 });
 
     const spending = await t.call('GET', '/api/reports/spending');
     expect(spending.body.byEnvelope.map((e: any) => e.name)).toEqual(['Courses', 'À ranger']);
@@ -85,13 +85,20 @@ describe('budget mensuel et épargne', () => {
     expect(spending.body.monthlyBudget).toBe(500_00);
   });
 
-  it('les dépenses courantes excluent les enveloppes portées par une charge fixe', async () => {
-    await t.call('PATCH', `/api/envelopes/${t.courses.id}`, { monthlyTarget: 300_00 });
-    await t.call('PATCH', `/api/envelopes/${t.loisirs.id}`, { monthlyTarget: 3000_00 });
-    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-03-08', amount: 900_00, label: 'Loyer payé', accountId: t.courant.id, envelopeId: t.loisirs.id });
+  it('les dépenses courantes excluent les opérations des charges fixes, pas le reste de leur enveloppe', async () => {
+    await t.call('PATCH', `/api/envelopes/${t.courses.id}`, { monthlyExtra: 300_00 });
+    await t.call('PATCH', `/api/envelopes/${t.loisirs.id}`, { monthlyExtra: 50_00 });
+    // Le 21, le loyer du 20 est attendu ; le relevé le confirme.
+    t.setToday('2026-03-21');
+    const planned = (await t.call('GET', '/api/transactions?status=planned')).body;
+    const loyer = planned.find((p: any) => p.label === 'Loyer');
+    expect((await t.call('POST', `/api/transactions/${loyer.id}/confirm`)).status).toBe(200);
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-03-21', amount: 20_00, label: 'Cinéma', accountId: t.courant.id, envelopeId: t.loisirs.id });
+
     const { body } = await t.call('GET', '/api/overview');
-    // Loisirs porte la règle "Loyer" : ses 900 € sont une charge fixe.
-    expect(body.month).toMatchObject({ spent: 975_00, budget: 3300_00, variable: { spent: 75_00, budget: 300_00 } });
+    // Le loyer (généré par la règle) n'est pas une dépense courante ; le cinéma, rangé dans la même enveloppe, l'est.
+    // Budget courant : les compléments seulement (300 + 50).
+    expect(body.month).toMatchObject({ spent: 3095_00, budget: 3350_00, variable: { spent: 95_00, budget: 350_00 } });
   });
 
   it('POST /api/envelopes/fund répartit en une fois', async () => {
@@ -131,7 +138,8 @@ describe('GET /api/forecast', () => {
     const { body } = await t.call('GET', '/api/forecast?horizon=30');
     expect(body.horizonDays).toBe(30);
     expect(body.days).toHaveLength(31);
-    expect(body.events.map((e: any) => e.date)).toEqual(['2026-03-20']);
+    // Le budget de Loisirs vient de sa charge « Loyer » : réparti aujourd'hui puis le 1er avril.
+    expect(body.events.map((e: any) => e.date)).toEqual(['2026-03-10', '2026-03-20', '2026-04-01']);
     expect(body.accounts.map((a: any) => a.name)).toEqual(['Courant', 'Livret']);
     expect((await t.call('GET', '/api/forecast?horizon=1')).status).toBe(400);
   });
@@ -140,10 +148,11 @@ describe('GET /api/forecast', () => {
 describe('reports', () => {
   it('dépenses par enveloppe sur le mois courant', async () => {
     const { body } = await t.call('GET', '/api/reports/spending');
-    expect(body).toMatchObject({ from: '2026-03-01', to: '2026-03-31', total: 75_00, monthlyBudget: 0 });
+    // Loisirs n'a rien dépensé mais sa charge compte dans le budget de dépenses.
+    expect(body).toMatchObject({ from: '2026-03-01', to: '2026-03-31', total: 75_00, monthlyBudget: 3000_00 });
     expect(body.byEnvelope).toEqual([
-      { envelopeId: t.courses.id, name: 'Courses', color: '#4f8a5b', amount: 60_00, monthlyTarget: null },
-      { envelopeId: null, name: 'À ranger', color: '#9a9a9a', amount: 15_00, monthlyTarget: null },
+      { envelopeId: t.courses.id, name: 'Courses', color: '#4f8a5b', amount: 60_00, monthlyBudget: 0 },
+      { envelopeId: null, name: 'À ranger', color: '#9a9a9a', amount: 15_00, monthlyBudget: 0 },
     ]);
   });
 
@@ -178,6 +187,9 @@ describe('export', () => {
     expect(body.transactions).toHaveLength(5);
     expect(body.recurringRules).toHaveLength(1);
     expect(body.settings.forecastHorizonDays).toBe(90);
+    // L'export garde les données saisies, pas les budgets calculés.
+    expect(body.envelopes[0]).toHaveProperty('monthlyExtra');
+    expect(body.envelopes[0]).not.toHaveProperty('monthlyBudget');
   });
 
   it('csv lisible', async () => {

@@ -7,13 +7,14 @@ import { useAccounts, useApplySorting, useEnvelopes, useSuggestSorting, useTrans
 import { RuleBanner } from '@/components/transactions/RuleBanner';
 import { Amount, Button, Dot, EmptyState, GroupLabel, InlinePill, ListRow, ListRowSkeleton, Notice, listRowDate, useToast } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import { prefersReducedMotion } from '@/lib/motion';
 import styles from './UnsortedList.module.css';
 
 /** Durée de la sortie d'une ligne rangée, alignée sur `.leaving` dans le CSS. */
 const LEAVE_MS = 260;
 
-type Banner = { transactionId: number; label: string; envelopeId: number };
+type Banner = { transactionId: number; label: string; name: string; envelopeId: number };
 
 function claudeErrorTitle(err: unknown): string {
   if (err instanceof ApiError) {
@@ -86,7 +87,7 @@ export function UnsortedList() {
           }),
         onSuccess: () => {
           toast.success(`Rangé dans ${envelopeName}`);
-          setBanner({ transactionId: t.id, label: t.label, envelopeId });
+          setBanner({ transactionId: t.id, label: t.label, name: displayLabel(t), envelopeId });
           setSuggestions((s) => (s ? { ...s, suggestions: s.suggestions.filter((x) => x.transactionId !== t.id) } : s));
         },
       },
@@ -172,7 +173,7 @@ export function UnsortedList() {
       {banner ? (
         <section className={styles.bannerBlock} aria-live="polite">
           <p className={styles.bannerTitle}>
-            <span className={styles.bannerLabel}>{banner.label}</span> rangé dans <strong>{envelopeMap.get(banner.envelopeId)?.name}</strong>
+            <span className={styles.bannerLabel}>{banner.name}</span> rangé dans <strong>{envelopeMap.get(banner.envelopeId)?.name}</strong>
           </p>
           <RuleBanner key={banner.transactionId} label={banner.label} envelopeId={banner.envelopeId} envelopeName={envelopeMap.get(banner.envelopeId)?.name ?? ''} onDone={() => setBanner(null)} />
         </section>
@@ -197,7 +198,7 @@ export function UnsortedList() {
                 <ListRow
                   as="div"
                   lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
-                  title={t.label}
+                  title={<span title={t.label}>{displayLabel(t)}</span>}
                   meta={account?.name}
                   trail={<Amount cents={-t.amount} tone="neutral" />}
                   actions={
@@ -208,7 +209,7 @@ export function UnsortedList() {
                         </span>
                       ) : null}
                       <InlinePill
-                        aria-label={`Enveloppe pour ${t.label}`}
+                        aria-label={`Enveloppe pour ${displayLabel(t)}`}
                         value={suggestedId}
                         placeholder="+ Enveloppe"
                         tone={suggestedId !== null ? 'suggested' : undefined}

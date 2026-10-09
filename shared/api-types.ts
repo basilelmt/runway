@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, BankConnectionStatus, Envelope, ImportRecord, RecurringRuleInput, SortingRule, Transaction } from './schemas';
+import type { Account, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRuleInput, SortingRule, Transaction } from './schemas';
 import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
@@ -55,7 +55,15 @@ export type ForecastResponse = ForecastResult & {
 
 export type AccountWithBalance = Account & { balance: Cents; lastImport: ImportRecord | null };
 
-export type EnvelopeWithBalance = Envelope & {
+/** Enveloppe avec son budget du mois, calculé à partir de ses charges fixes. */
+export type BudgetedEnvelope = Envelope & {
+  /** Charges fixes ramenées au mois. */
+  monthlyCharges: Cents;
+  /** monthlyCharges + (monthlyExtra ?? 0) ; 0 = pas de budget. */
+  monthlyBudget: Cents;
+};
+
+export type EnvelopeWithBalance = BudgetedEnvelope & {
   balance: Cents;
   allocatedThisMonth: Cents;
   spentThisMonth: Cents;
@@ -63,14 +71,20 @@ export type EnvelopeWithBalance = Envelope & {
   toFundThisMonth: Cents;
 };
 
+/** Enveloppe à surveiller sur l'Accueil : dépassée (`amount` = dépassement) ou presque vide (`amount` = disponible libre). */
+export type WatchedEnvelope = { envelopeId: number; name: string; kind: 'over' | 'low'; amount: Cents };
+
 export type MonthSummary = {
   start: ISODate;
   end: ISODate;
   /** Dépenses confirmées du mois, à trier comprises, hors enveloppes d'épargne. */
   spent: Cents;
-  /** Somme des budgets mensuels des enveloppes hors épargne. */
+  /** Somme des budgets mensuels (charges fixes + complément) des enveloppes hors épargne. */
   budget: Cents;
-  /** Dépenses courantes : hors enveloppes portées par une charge fixe active (loyer, prêt...). */
+  /**
+   * Dépenses courantes : dépenses confirmées hors épargne qui ne viennent pas d'une règle récurrente,
+   * face à la somme des compléments des enveloppes hors épargne.
+   */
   variable: { spent: Cents; budget: Cents };
   /** Mis de côté : virements nets vers l'épargne et dépenses des enveloppes d'épargne. */
   saved: Cents;
@@ -78,7 +92,7 @@ export type MonthSummary = {
   toFund: Cents;
   /** Revenu mensuel attendu : revenus récurrents actifs, ramenés au mois. */
   income: Cents;
-  /** Somme des budgets mensuels de toutes les enveloppes, épargne comprise : ce que le budget prélève sur le revenu. */
+  /** Somme des budgets mensuels (charges fixes + complément) de toutes les enveloppes, épargne comprise : ce que le budget prélève sur le revenu. */
   planned: Cents;
 };
 
@@ -105,16 +119,18 @@ export type Overview = {
   latePlanned: Transaction[];
   /** Dernière répartition automatique, tant qu'elle n'est ni annulée ni fermée. */
   latestFunding: FundingView | null;
+  /** Enveloppes dépassées ou presque vides, les plus urgentes d'abord. */
+  watch: WatchedEnvelope[];
 };
 
 export type SpendingReport = {
   from: ISODate;
   to: ISODate;
   total: Cents;
-  /** Somme des budgets mensuels des enveloppes de dépenses actives, pour comparer à la période. */
+  /** Somme des budgets mensuels (charges fixes + complément) des enveloppes de dépenses actives, pour comparer à la période. */
   monthlyBudget: Cents;
   /** Dépenses par enveloppe, hors enveloppes d'épargne ; `envelopeId` null = à trier. */
-  byEnvelope: { envelopeId: number | null; name: string; color: string; amount: Cents; monthlyTarget: Cents | null }[];
+  byEnvelope: { envelopeId: number | null; name: string; color: string; amount: Cents; monthlyBudget: Cents }[];
 };
 
 /** `expense` exclut les enveloppes d'épargne, comptées dans `saved`. */
@@ -361,7 +377,11 @@ export type IdeaRunStart = { run: IdeaRunView | null; started: boolean };
 export type AskActionView =
   | { type: 'sort'; transactionIds: number[]; envelopeId: number; envelopeName: string; rulePattern: string | null; count: number; total: Cents }
   | { type: 'move'; fromEnvelopeId: number | null; fromName: string; toEnvelopeId: number; toName: string; amount: Cents }
-  | { type: 'budget'; envelopeId: number; envelopeName: string; monthlyTarget: Cents | null; current: Cents | null }
+  /**
+   * `monthlyTarget` : budget voulu par Claude (null = retirer le complément) ; `monthlyExtra` : complément à enregistrer ;
+   * `charges` : charges fixes de l'enveloppe ramenées au mois ; `current` : budget actuel calculé.
+   */
+  | { type: 'budget'; envelopeId: number; envelopeName: string; monthlyTarget: Cents | null; monthlyExtra: Cents | null; charges: Cents; current: Cents }
   | { type: 'recurring'; rule: RecurringRuleInput; accountName: string };
 
 /** Graphique d'une réponse : les valeurs viennent de la requête exécutée par le serveur, pas de Claude. */
@@ -373,6 +393,8 @@ export type AskAnswerEvent = {
   highlight: { label: string; amount: Cents } | null;
   chart: AskChart | null;
   actions: AskActionView[];
+  /** Motifs des actions refusées par `validateActions`, à afficher sous la réponse ; vide s'il n'y en a pas. */
+  notices: string[];
 };
 
 /** Événements SSE de `POST /api/ask`. */
@@ -380,3 +402,9 @@ export type AskStreamEvent =
   | { event: 'step'; data: { text: string } }
   | { event: 'answer'; data: AskAnswerEvent }
   | { event: 'error'; data: { message: string; code: string } };
+
+/** État du nommage des marchands par Claude (`GET /api/merchants/status`). */
+export type MerchantStatus = { total: number; named: number; running: boolean; lastError: string | null };
+
+/** Un marchand et le nombre de ses opérations (`GET /api/merchants/:key`). */
+export type MerchantDetail = { key: string; name: string; source: MerchantSource | null; transactionCount: number };

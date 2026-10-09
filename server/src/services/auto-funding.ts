@@ -20,7 +20,8 @@ export function autoFund(db: Db, transactionId: number): Funding | null {
   if (!rule.triggersFunding || findFundingBySource(db, source.id)) return null;
 
   const date = rule.fundsNextMonth ? addMonths(startOfMonth(source.date), 1) : source.date;
-  const state = loadState(db);
+  // Budgets du mois financé : une charge terminée avant ce mois-là ne compte plus.
+  const state = loadState(db, date);
   const { toAllocate } = computeBalances(state, date);
   const plan = planAutoFunding(state.envelopes, monthActivity(state.transactions, date).allocated, toAllocate);
   if (plan.items.length === 0) return null;

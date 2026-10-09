@@ -12,8 +12,8 @@ const spending: SpendingReport = {
   total: 1200_00,
   monthlyBudget: 2000_00,
   byEnvelope: [
-    { envelopeId: 3, name: 'Logement', color: '#4a8a5c', amount: 1000_00, monthlyTarget: 1000_00 },
-    { envelopeId: 14, name: 'Sorties', color: '#9a4f9a', amount: 200_00, monthlyTarget: 400_00 },
+    { envelopeId: 3, name: 'Logement', color: '#4a8a5c', amount: 1000_00, monthlyBudget: 1000_00 },
+    { envelopeId: 14, name: 'Sorties', color: '#9a4f9a', amount: 200_00, monthlyBudget: 400_00 },
   ],
 };
 

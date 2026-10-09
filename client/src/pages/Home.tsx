@@ -1,14 +1,12 @@
 import { AlertTriangle, ArrowRight, Check, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import type { EnvelopeWithBalance, Overview } from '@shared/api-types';
+import type { Overview } from '@shared/api-types';
 import { daysBetween, formatDateShort } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useIsMutating } from '@tanstack/react-query';
 import { keys, useBankSync, useOverview } from '@/api/hooks';
-import { EnvelopeDetailDialog } from '@/components/budget/EnvelopeDetailDialog';
-import { EnvelopeRow, EnvelopeRowHeader } from '@/components/budget/EnvelopeRow';
 import { FundingBanner } from '@/components/budget/FundingBanner';
 import {
   Amount,
@@ -20,7 +18,6 @@ import {
   ListRowSkeleton,
   ProgressBar,
   SectionHeader,
-  SectionLink,
   Skeleton,
   Stat,
   StatGroup,
@@ -29,11 +26,9 @@ import {
 } from '@/components/ui';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { bankSyncTodo } from '@/lib/bank';
-import { budgetOverIncome, monthProgress } from '@/lib/budget';
+import { budgetOverIncome, monthProgress, watchTodo } from '@/lib/budget';
 import { plural } from '@/lib/format';
 import styles from './Home.module.css';
-
-const HOME_ENVELOPES = 6;
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const monthName = (iso: string) => capitalize(new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
@@ -84,7 +79,6 @@ export function HomePage() {
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
-      <EnvelopesPreview data={data} />
       <AccountsStrip data={data} />
     </div>
   );
@@ -93,7 +87,6 @@ export function HomePage() {
 function MonthHero({ data }: { data: Overview }) {
   const { spent, budget, saved, variable } = data.month;
   const progress = monthProgress(data.today, data.month.end);
-  const margin = budget - spent;
   // Le rythme ne vaut que pour les dépenses courantes : le loyer tombe en début de mois, pas au fil des jours.
   const pace = Math.round(variable.budget * progress) - variable.spent;
 
@@ -118,11 +111,6 @@ function MonthHero({ data }: { data: Overview }) {
       }
       aside={
         <StatGroup direction="column" divided>
-          {budget > 0 ? (
-            <Stat label={margin >= 0 ? 'Marge restante' : 'Budget dépassé de'}>
-              <Amount cents={Math.abs(margin)} size="lg" tone="neutral" className={margin < 0 ? styles.negative : ''} animate />
-            </Stat>
-          ) : null}
           <Stat label="Mis de côté">
             <Amount cents={saved} size="lg" tone="neutral" className={saved > 0 ? styles.positive : saved < 0 ? styles.negative : ''} animate />
           </Stat>
@@ -196,16 +184,37 @@ function TodoList({ data }: { data: Overview }) {
       tone: 'alert',
       text: (
         <>
-          Tes enveloppes prévoient {formatEuros(overIncome)} de plus que ton revenu
+          Tes enveloppes prévoient {formatEuros(overIncome)} de plus que ton revenu{' '}
           <span className={styles.todoDetail}>
-            {' '}
             · <span className={styles.nowrap}>{formatEuros(data.month.planned)}</span> pour <span className={styles.nowrap}>{formatEuros(data.month.income)}</span> par mois
           </span>
         </>
       ),
     });
   }
-  const alert = data.alerts[0];
+  const watch = watchTodo(data.watch);
+  if (watch) {
+    todos.push({
+      key: 'watch',
+      to: '/budget',
+      icon: <WalletCards />,
+      tone: watch.tone,
+      text: (
+        <>
+          {watch.text}
+          {watch.detail ? (
+            <>
+              {' '}
+              <span className={styles.todoDetail}>· {watch.detail}</span>
+            </>
+          ) : null}
+        </>
+      ),
+    });
+  }
+  // Une enveloppe déjà signalée dépassée dans la ligne de surveillance ne doit pas aussi sortir une alerte de prévision.
+  const overWatched = new Set(data.watch.filter((w) => w.kind === 'over').map((w) => w.envelopeId));
+  const alert = data.alerts.find((a) => a.kind !== 'envelope' || !overWatched.has(a.id));
   if (alert) {
     todos.push({
       key: 'alert',
@@ -214,8 +223,8 @@ function TodoList({ data }: { data: Overview }) {
       tone: 'alert',
       text: (
         <>
-          {alert.kind === 'account' ? 'Le compte' : 'L’enveloppe'} {alert.name} passe dans le rouge {alert.daysUntil <= 0 ? 'dès aujourd’hui' : `le ${formatDateShort(alert.firstNegativeDate)}`}
-          <span className={styles.todoDetail}> · point bas {formatEuros(alert.minBalance)}</span>
+          {alert.kind === 'account' ? 'Le compte' : 'L’enveloppe'} {alert.name} passe dans le rouge {alert.daysUntil <= 0 ? 'dès aujourd’hui' : `le ${formatDateShort(alert.firstNegativeDate)}`}{' '}
+          <span className={styles.todoDetail}>· point bas {formatEuros(alert.minBalance)}</span>
         </>
       ),
     });
@@ -230,13 +239,13 @@ function TodoList({ data }: { data: Overview }) {
       text:
         late.length === 1 ? (
           <>
-            {first.kind === 'income' ? 'Le revenu' : first.kind === 'transfer' ? 'Le virement' : 'Le prélèvement'} « {first.label} » de {formatEuros(first.amount)} prévu le {formatDateShort(first.date)} n’est pas passé
-            <span className={styles.todoDetail}> · confirme-le ou supprime-le</span>
+            {first.kind === 'income' ? 'Le revenu' : first.kind === 'transfer' ? 'Le virement' : 'Le prélèvement'} « {first.label} » de {formatEuros(first.amount)} prévu le {formatDateShort(first.date)} n’est pas passé{' '}
+            <span className={styles.todoDetail}>· confirme-le ou supprime-le</span>
           </>
         ) : (
           <>
-            {late.length} opérations prévues ne sont pas passées
-            <span className={styles.todoDetail}> · confirme-les ou supprime-les</span>
+            {late.length} opérations prévues ne sont pas passées{' '}
+            <span className={styles.todoDetail}>· confirme-les ou supprime-les</span>
           </>
         ),
     });
@@ -258,42 +267,6 @@ function TodoList({ data }: { data: Overview }) {
           ))}
         </ul>
       )}
-    </section>
-  );
-}
-
-function EnvelopesPreview({ data }: { data: Overview }) {
-  const spending = data.envelopes.filter((e) => !e.isSavings);
-  // Les plus serrées d'abord : part du budget déjà dépensée.
-  const tension = (e: (typeof spending)[number]) => (e.monthlyTarget ? e.spentThisMonth / e.monthlyTarget : e.spentThisMonth > 0 ? 0.5 : -1);
-  const shown = [...spending].sort((a, b) => tension(b) - tension(a)).slice(0, HOME_ENVELOPES);
-  const [detail, setDetail] = useState<EnvelopeWithBalance | null>(null);
-
-  return (
-    <section aria-labelledby="envelopes-title">
-      <SectionHeader
-        id="envelopes-title"
-        title="Enveloppes"
-        aside={<SectionLink to="/budget">{spending.length > HOME_ENVELOPES ? `Voir les ${spending.length}` : 'Voir le budget'}</SectionLink>}
-      />
-      {shown.length === 0 ? (
-        <EmptyState
-          icon={<WalletCards />}
-          title="Aucune enveloppe"
-          description="Une enveloppe est une part de ton argent réservée à un usage : courses, loyer, sorties."
-          action={<ButtonLink to="/budget">Créer une enveloppe</ButtonLink>}
-        />
-      ) : (
-        <>
-          <EnvelopeRowHeader />
-          <div className="ledger stagger">
-            {shown.map((e) => (
-              <EnvelopeRow key={e.id} envelope={e} onOpen={() => setDetail(e)} />
-            ))}
-          </div>
-        </>
-      )}
-      <EnvelopeDetailDialog envelope={detail} onClose={() => setDetail(null)} />
     </section>
   );
 }
@@ -329,7 +302,7 @@ function HomeSkeleton() {
         <Skeleton width={280} height={68} />
         <Skeleton height={10} />
       </div>
-      <ListRowSkeleton rows={4} meta={false} middle />
+      <ListRowSkeleton rows={3} meta={false} />
     </div>
   );
 }

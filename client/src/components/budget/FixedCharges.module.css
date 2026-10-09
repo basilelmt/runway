@@ -1,7 +1,4 @@
 .body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-8);
   padding-top: var(--s-3);
 }
 
@@ -9,8 +6,4 @@
   max-width: 62ch;
   color: var(--ink-mute);
   font-size: var(--text-sm);
-}
-
-.negative {
-  color: var(--negative);
 }

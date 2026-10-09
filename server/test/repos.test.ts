@@ -50,9 +50,10 @@ describe('envelopes', () => {
     expect(listEnvelopes(ctx.db).map((e) => e.name)).toEqual(['Vacances', 'Courses', 'Loisirs']);
   });
 
-  it('met à jour l’objectif', () => {
-    const e = updateEnvelope(ctx.db, ctx.courses.id, { monthlyTarget: 400_00 });
-    expect(e.monthlyTarget).toBe(400_00);
+  it('met à jour le complément', () => {
+    const e = updateEnvelope(ctx.db, ctx.courses.id, { monthlyExtra: 400_00 });
+    expect(e.monthlyExtra).toBe(400_00);
+    expect(updateEnvelope(ctx.db, ctx.courses.id, { monthlyExtra: null }).monthlyExtra).toBeNull();
   });
 });
 

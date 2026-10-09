@@ -4,6 +4,7 @@ import { settingsSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useSaveSettings, useSettings } from '@/api/hooks';
 import { Button, Field, Input, ListRow, SectionHeader, SkeletonRows, useToast } from '@/components/ui';
+import { MerchantSettings } from './MerchantSettings';
 import styles from './Settings.module.css';
 
 /** Télécharge un export sans quitter la page (la ligne qui le déclenche n'est pas un vrai lien). */
@@ -80,6 +81,8 @@ export function GeneralSettings() {
         )}
       </section>
 
+      <MerchantSettings />
+
       <section className={styles.section}>
         <SectionHeader
           title="Sauvegarde"
@@ -93,7 +96,7 @@ export function GeneralSettings() {
           <ListRow
             lead={<FileJson aria-hidden />}
             title="Export JSON"
-            meta="Tout : comptes, enveloppes, opérations, charges fixes, règles, réglages."
+            meta="Tout : comptes, enveloppes, opérations, marchands, charges fixes, règles, réglages."
             onClick={() => downloadExport('/api/export.json')}
             clickLabel="Télécharger l’export JSON"
           />

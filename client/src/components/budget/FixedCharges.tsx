@@ -14,12 +14,12 @@ import {
 } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
-import { Amount, Badge, Button, ConfirmDialog, Dialog, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, Stat, StatGroup, useToast } from '@/components/ui';
+import { Amount, Badge, Button, ConfirmDialog, Dialog, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
 import styles from './FixedCharges.module.css';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; rule: RecurringRuleView } | { mode: 'delete'; rule: RecurringRuleView } | null;
 
-/** Ce qui revient chaque mois (loyer, salaire, abonnements) et ce qu'il reste pour vivre et épargner. */
+/** Ce qui revient chaque mois : salaire, loyer, abonnements, virements programmés. */
 export function FixedCharges() {
   const rules = useRecurringRules();
   const accounts = useAccounts(true);
@@ -42,10 +42,6 @@ export function FixedCharges() {
   const list = (rules.data ?? []).filter((r) => r.kind !== 'allocation');
   const incomes = list.filter((r) => r.kind === 'income');
   const outgoings = list.filter((r) => r.kind !== 'income');
-  const monthly = (kind: RecurringRuleView['kind']) => list.filter((r) => r.active && r.kind === kind).reduce((s, r) => s + r.monthlyEquivalent, 0);
-  const income = monthly('income');
-  const expense = monthly('expense');
-  const transfer = monthly('transfer');
 
   /** Fréquence et destination : comptes du virement, enveloppe de la charge ou compte du revenu. */
   function meta(rule: RecurringRuleView) {
@@ -113,25 +109,8 @@ export function FixedCharges() {
         <ErrorState title="Impossible de charger les charges fixes" description={errorMessage(rules.error)} onRetry={() => rules.refetch()} />
       ) : (
         <div className={styles.body}>
-          <StatGroup>
-            <Stat label="Revenus par mois">
-              <Amount cents={income} size="lg" tone="neutral" />
-            </Stat>
-            <Stat label="Charges par mois">
-              <Amount cents={expense} size="lg" tone="neutral" />
-            </Stat>
-            {transfer > 0 ? (
-              <Stat label="Virements programmés">
-                <Amount cents={transfer} size="lg" tone="neutral" />
-              </Stat>
-            ) : null}
-            <Stat label="Reste pour vivre et investir" emphasis>
-              <Amount cents={income - expense - transfer} size="lg" tone="neutral" className={income - expense - transfer < 0 ? styles.negative : ''} animate />
-            </Stat>
-          </StatGroup>
-
           {list.length === 0 ? (
-            <p className={styles.empty}>Ajoute ton salaire, ton loyer et tes abonnements pour voir ce qu’il te reste chaque mois.</p>
+            <p className={styles.empty}>Ajoute ton salaire, ton loyer et tes abonnements : leurs montants comptent dans le budget de leur enveloppe.</p>
           ) : (
             <div>
               {incomes.length > 0 ? (

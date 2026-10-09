@@ -68,18 +68,27 @@ describe('ActionCard', () => {
     expect(screen.getByText(/Répartir 10,00\s€ vers Restos/)).toBeInTheDocument();
   });
 
-  it('change un budget mensuel ou le retire', async () => {
-    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Restos', monthlyTarget: 150_00, current: 180_00 });
-    expect(screen.getByText(/Passer Restos à 150,00\s€ par mois/)).toBeInTheDocument();
-    expect(screen.getByText(/au lieu de 180,00\s€/)).toBeInTheDocument();
+  it('change un budget mensuel en enregistrant le complément', async () => {
+    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Transports', monthlyTarget: 150_00, monthlyExtra: 110_00, charges: 40_00, current: 130_00 });
+    expect(screen.getByText(/Passer Transports à 150,00\s€ par mois/)).toBeInTheDocument();
+    expect(screen.getByText(/au lieu de 130,00\s€/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Appliquer' }));
     await screen.findByText('Fait');
-    expect(lastCall()).toEqual({ url: '/api/envelopes/4', method: 'PATCH', body: { monthlyTarget: 150_00 } });
+    expect(lastCall()).toEqual({ url: '/api/envelopes/4', method: 'PATCH', body: { monthlyExtra: 110_00 } });
   });
 
-  it('annonce le retrait d’un budget', () => {
-    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Restos', monthlyTarget: null, current: 180_00 });
+  it('annonce le retrait d’un budget sans charge', () => {
+    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Restos', monthlyTarget: null, monthlyExtra: null, charges: 0, current: 180_00 });
     expect(screen.getByText('Retirer le budget mensuel de Restos')).toBeInTheDocument();
+  });
+
+  it('retirer le complément ramène le budget aux charges fixes', async () => {
+    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Transports', monthlyTarget: null, monthlyExtra: null, charges: 40_00, current: 130_00 });
+    expect(screen.getByText(/Ramener Transports à ses charges fixes, 40,00\s€ par mois/)).toBeInTheDocument();
+    expect(screen.getByText(/au lieu de 130,00\s€/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Appliquer' }));
+    await screen.findByText('Fait');
+    expect(lastCall()).toEqual({ url: '/api/envelopes/4', method: 'PATCH', body: { monthlyExtra: null } });
   });
 
   it('crée une charge fixe avec sa fréquence et son compte', async () => {
@@ -97,7 +106,7 @@ describe('ActionCard', () => {
 
   it('affiche l’erreur du serveur et reste applicable', async () => {
     fetchMock.mockImplementationOnce(async () => new Response(JSON.stringify({ error: 'Enveloppe archivée' }), { status: 400 }));
-    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Restos', monthlyTarget: 150_00, current: null });
+    renderCard({ type: 'budget', envelopeId: 4, envelopeName: 'Restos', monthlyTarget: 150_00, monthlyExtra: 150_00, charges: 0, current: 0 });
     await userEvent.click(screen.getByRole('button', { name: 'Appliquer' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Enveloppe archivée');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Appliquer' })).toBeEnabled());

@@ -6,14 +6,14 @@ import { TransactionRow } from './TransactionRow';
 
 const courant: Account = { id: 1, name: 'Courant', initialBalance: 0, onBudget: true, bankAccountNumber: null, archived: false, createdAt: '' };
 const livret: Account = { id: 2, name: 'Livret', initialBalance: 0, onBudget: false, bankAccountNumber: null, archived: false, createdAt: '' };
-const courses: Envelope = { id: 10, name: 'Courses', color: '#4f8a5b', monthlyTarget: null, sortOrder: 0, archived: false, isSavings: false };
+const courses: Envelope = { id: 10, name: 'Courses', color: '#4f8a5b', monthlyExtra: null, sortOrder: 0, archived: false, isSavings: false };
 const accounts = new Map([[courant.id, courant], [livret.id, livret]]);
 const envelopes = new Map([[courses.id, courses]]);
 
 function tx(partial: Partial<Transaction> & Pick<Transaction, 'kind' | 'amount'>): Transaction {
   return {
     id: 1, date: '2026-03-01', label: 'op', note: null, accountId: 1, toAccountId: null, envelopeId: null, fromEnvelopeId: null,
-    status: 'confirmed', recurringRuleId: null, importId: null, fingerprint: null, fundingId: null, createdAt: '',
+    status: 'confirmed', recurringRuleId: null, importId: null, fingerprint: null, fundingId: null, merchantKey: null, merchantName: null, createdAt: '',
     ...partial,
   };
 }
@@ -76,5 +76,48 @@ describe('TransactionRow', () => {
     );
     expect(screen.getByText('Prévue')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirmer' })).toBeInTheDocument();
+  });
+
+  it('affiche un virement par le compte crédité, sans répéter le couple de comptes en dessous', () => {
+    render(
+      <ul>
+        <TransactionRow
+          transaction={tx({ kind: 'transfer', amount: 20000, label: 'VIREMENT PERMANENT POUR MR X COMPTE FR21 REFERENCE : 42', accountId: 1, toAccountId: 2 })}
+          accounts={accounts}
+          envelopes={envelopes}
+        />
+      </ul>,
+    );
+    expect(screen.getByText('Virement vers Livret')).toBeInTheDocument();
+    expect(screen.queryByText(/REFERENCE/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Courant → Livret')).not.toBeInTheDocument();
+  });
+
+  it('vu depuis le compte crédité, affiche un virement par le compte débité', () => {
+    render(
+      <ul>
+        <TransactionRow
+          transaction={tx({ kind: 'transfer', amount: 20000, label: 'VIREMENT PERMANENT', accountId: 1, toAccountId: 2 })}
+          accounts={accounts}
+          envelopes={envelopes}
+          viewAccountId={2}
+        />
+      </ul>,
+    );
+    expect(screen.getByText('Virement depuis Courant')).toBeInTheDocument();
+  });
+
+  it('affiche le nom du marchand, avec le libellé brut au survol', () => {
+    render(
+      <ul>
+        <TransactionRow
+          transaction={tx({ kind: 'expense', amount: 1250, label: 'ACHAT CB CARREFOUR EXPR 03.10.26', merchantKey: 'CARREFOUR EXPR', merchantName: 'Carrefour Express' })}
+          accounts={accounts}
+          envelopes={envelopes}
+        />
+      </ul>,
+    );
+    expect(screen.getByText('Carrefour Express')).toHaveAttribute('title', 'ACHAT CB CARREFOUR EXPR 03.10.26');
+    expect(screen.queryByText('ACHAT CB CARREFOUR EXPR 03.10.26')).not.toBeInTheDocument();
   });
 });

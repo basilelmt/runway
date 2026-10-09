@@ -16,6 +16,9 @@ export const transactionKinds = ['expense', 'income', 'transfer', 'allocation'] 
 export type TransactionKind = (typeof transactionKinds)[number];
 export const transactionStatuses = ['confirmed', 'planned'] as const;
 export type TransactionStatus = (typeof transactionStatuses)[number];
+/** Qui a donné le nom d'un marchand : Claude, ou l'utilisateur (jamais écrasé). */
+export const merchantSources = ['claude', 'user'] as const;
+export type MerchantSource = (typeof merchantSources)[number];
 export const frequencies = ['daily', 'weekly', 'monthly', 'yearly'] as const;
 export type Frequency = (typeof frequencies)[number];
 
@@ -52,7 +55,8 @@ export const envelopeSchema = z.object({
   id: idSchema,
   name: z.string(),
   color: z.string(),
-  monthlyTarget: centsSchema.nullable(),
+  /** Complément mensuel saisi à la main, en plus des charges fixes ; null = pas de complément. */
+  monthlyExtra: centsSchema.nullable(),
   sortOrder: z.number().int(),
   archived: z.boolean(),
   isSavings: z.boolean(),
@@ -62,7 +66,7 @@ export type Envelope = z.infer<typeof envelopeSchema>;
 const envelopeFields = {
   name: z.string().trim().min(1, 'Nom requis').max(80),
   color: colorSchema,
-  monthlyTarget: positiveCentsSchema.nullable().optional(),
+  monthlyExtra: positiveCentsSchema.nullable().optional(),
   isSavings: z.boolean(),
 };
 
@@ -147,6 +151,10 @@ export const transactionSchema = z.object({
   importId: idSchema.nullable(),
   fingerprint: z.string().nullable(),
   fundingId: idSchema.nullable(),
+  /** Clé du marchand tirée du libellé (dépenses et revenus), null sinon. */
+  merchantKey: z.string().nullable(),
+  /** Nom du marchand, ou son repli tant qu'il n'est pas nommé ; null sans clé. */
+  merchantName: z.string().nullable(),
   createdAt: z.string(),
 });
 export type Transaction = z.infer<typeof transactionSchema>;
@@ -312,6 +320,13 @@ export const sortingApplySchema = z.object({
   rules: z.array(sortingRuleInputSchema).default([]),
 });
 export type SortingApply = z.infer<typeof sortingApplySchema>;
+
+/** Renommage d'un marchand par l'utilisateur ; un nom vide le rend à Claude. */
+export const merchantRenameSchema = z.object({ name: z.string().trim().max(60, '60 caractères au plus') });
+export type MerchantRename = z.infer<typeof merchantRenameSchema>;
+
+/** Sortie brute du nommage des marchands par Claude, filtrée clé par clé ensuite. */
+export const merchantNamesResultSchema = z.object({ names: z.array(z.object({ key: z.string(), name: z.string() })) });
 
 /** Quantité décimale exacte, transportée en texte (« 0.04512 »). */
 export const decimalSchema = z
