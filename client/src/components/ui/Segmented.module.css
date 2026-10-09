@@ -10,6 +10,9 @@
 }
 
 .option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
   border: none;
   background: transparent;
   color: var(--ink-soft);
@@ -17,6 +20,17 @@
   font-weight: 500;
   white-space: nowrap;
   transition: background var(--dur) var(--ease-out);
+}
+
+.icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.icon :global(svg) {
+  width: 14px;
+  height: 14px;
 }
 
 .md .option {

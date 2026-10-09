@@ -23,6 +23,7 @@ export { MoneyInput } from './MoneyInput';
 export { Notice } from './Notice';
 export { FilterPill, InlinePill, SearchPill } from './Pills';
 export { ProgressBar } from './ProgressBar';
+export { Range } from './Range';
 export { RowMenu, type RowMenuItem } from './RowMenu';
 export { Segmented } from './Segmented';
 export { Skeleton, SkeletonRows } from './Skeleton';
