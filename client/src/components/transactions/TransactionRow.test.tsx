@@ -13,7 +13,7 @@ const envelopes = new Map([[courses.id, courses]]);
 function tx(partial: Partial<Transaction> & Pick<Transaction, 'kind' | 'amount'>): Transaction {
   return {
     id: 1, date: '2026-03-01', label: 'op', note: null, accountId: 1, toAccountId: null, envelopeId: null, fromEnvelopeId: null,
-    status: 'confirmed', recurringRuleId: null, importId: null, fingerprint: null, fundingId: null, createdAt: '',
+    status: 'confirmed', recurringRuleId: null, importId: null, fingerprint: null, fundingId: null, merchantKey: null, merchantName: null, createdAt: '',
     ...partial,
   };
 }

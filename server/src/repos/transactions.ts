@@ -1,8 +1,10 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { merchantDisplayName, merchantKeyFor } from '@core/merchants';
 import type { Transaction, TransactionFilter, TransactionInput } from '@shared/schemas';
 import type { Db } from '../db/client';
-import { transactions } from '../db/schema';
+import { merchants, transactions } from '../db/schema';
 import { NotFoundError } from '../errors';
+import { ensureMerchants } from './merchants';
 
 export type TransactionInsert = TransactionInput & {
   status?: Transaction['status'];
@@ -12,8 +14,16 @@ export type TransactionInsert = TransactionInput & {
   fundingId?: number | null;
 };
 
-function toRow(input: TransactionInsert): typeof transactions.$inferInsert {
-  return {
+/**
+ * Ajoute la clé marchand tirée du type et du libellé. Seul point de calcul de `merchant_key` à l'écriture :
+ * saisie, modification, matérialisation, import et rapprochement passent tous par `toRow`.
+ */
+export function withMerchantKey<T extends { kind: Transaction['kind']; label: string }>(values: T): T & { merchantKey: string | null } {
+  return { ...values, merchantKey: merchantKeyFor(values.kind, values.label) };
+}
+
+function toRow(input: TransactionInsert) {
+  return withMerchantKey({
     kind: input.kind,
     date: input.date,
     amount: input.amount,
@@ -28,7 +38,18 @@ function toRow(input: TransactionInsert): typeof transactions.$inferInsert {
     importId: input.importId ?? null,
     fingerprint: input.fingerprint ?? null,
     fundingId: input.fundingId ?? null,
-  };
+  } satisfies typeof transactions.$inferInsert);
+}
+
+const selection = { ...getTableColumns(transactions), storedMerchantName: merchants.name };
+
+/** Opérations jointes à leur marchand ; une clé sans ligne `merchants` reste valide (jointure gauche). */
+function selectTransactions(db: Db) {
+  return db.select(selection).from(transactions).leftJoin(merchants, eq(merchants.key, transactions.merchantKey));
+}
+
+function withMerchantName({ storedMerchantName, ...row }: typeof transactions.$inferSelect & { storedMerchantName: string | null }): Transaction {
+  return { ...row, merchantName: merchantDisplayName(row.merchantKey, storedMerchantName, row.label) };
 }
 
 export function listTransactions(db: Db, filter: Partial<TransactionFilter> = {}): Transaction[] {
@@ -37,36 +58,41 @@ export function listTransactions(db: Db, filter: Partial<TransactionFilter> = {}
   if (filter.envelope) where.push(or(eq(transactions.envelopeId, filter.envelope), eq(transactions.fromEnvelopeId, filter.envelope))!);
   if (filter.from) where.push(gte(transactions.date, filter.from));
   if (filter.to) where.push(lte(transactions.date, filter.to));
-  if (filter.q) where.push(like(sql`lower(${transactions.label})`, `%${filter.q.toLowerCase()}%`));
+  if (filter.q) {
+    const q = `%${filter.q.toLowerCase()}%`;
+    where.push(or(like(sql`lower(${transactions.label})`, q), like(sql`lower(${merchants.name})`, q))!);
+  }
   if (filter.status) where.push(eq(transactions.status, filter.status));
   if (filter.kind) where.push(eq(transactions.kind, filter.kind));
   if (filter.unsorted) where.push(and(eq(transactions.kind, 'expense'), isNull(transactions.envelopeId))!);
-  return db
-    .select()
-    .from(transactions)
+  return selectTransactions(db)
     .where(where.length ? and(...where) : undefined)
     .orderBy(desc(transactions.date), desc(transactions.id))
     .limit(filter.limit ?? 500)
-    .all();
+    .all()
+    .map(withMerchantName);
 }
 
 /** Toutes les opérations, dans l'ordre chronologique, pour les calculs. */
 export function allTransactions(db: Db): Transaction[] {
-  return db.select().from(transactions).orderBy(asc(transactions.date), asc(transactions.id)).all();
+  return selectTransactions(db).orderBy(asc(transactions.date), asc(transactions.id)).all().map(withMerchantName);
 }
 
 export function getTransaction(db: Db, id: number): Transaction {
-  const row = db.select().from(transactions).where(eq(transactions.id, id)).get();
+  const row = selectTransactions(db).where(eq(transactions.id, id)).get();
   if (!row) throw new NotFoundError('Opération introuvable');
-  return row;
+  return withMerchantName(row);
 }
 
 export function createTransaction(db: Db, input: TransactionInsert): Transaction {
-  return db.insert(transactions).values(toRow(input)).returning().get();
+  const row = toRow(input);
+  const { id } = db.insert(transactions).values(row).returning({ id: transactions.id }).get();
+  ensureMerchants(db, [row.merchantKey]);
+  return getTransaction(db, id);
 }
 
 export function bulkCreateTransactions(db: Db, inputs: TransactionInsert[]): Transaction[] {
-  return db.transaction((tx) => inputs.map((input) => tx.insert(transactions).values(toRow(input)).returning().get()));
+  return db.transaction((tx) => inputs.map((input) => createTransaction(tx as unknown as Db, input)));
 }
 
 export function updateTransaction(db: Db, id: number, input: Partial<TransactionInsert>): Transaction {
@@ -75,7 +101,10 @@ export function updateTransaction(db: Db, id: number, input: Partial<Transaction
     ...current,
     ...input,
   };
-  return db.update(transactions).set(toRow(merged)).where(eq(transactions.id, id)).returning().get()!;
+  const row = toRow(merged);
+  db.update(transactions).set(row).where(eq(transactions.id, id)).run();
+  ensureMerchants(db, [row.merchantKey]);
+  return getTransaction(db, id);
 }
 
 export function deleteTransaction(db: Db, id: number): void {
@@ -87,7 +116,7 @@ export function listPlanned(db: Db, accountId?: number): Transaction[] {
   const where = accountId
     ? and(eq(transactions.status, 'planned'), or(eq(transactions.accountId, accountId), eq(transactions.toAccountId, accountId)))
     : eq(transactions.status, 'planned');
-  return db.select().from(transactions).where(where).orderBy(asc(transactions.date)).all();
+  return selectTransactions(db).where(where).orderBy(asc(transactions.date)).all().map(withMerchantName);
 }
 
 export function findByFingerprints(db: Db, fingerprints: string[]): Set<string> {
@@ -102,12 +131,11 @@ export function findByFingerprints(db: Db, fingerprints: string[]): Set<string> 
 
 /** Transferts reçus par un compte, d'un montant donné, dans une fenêtre de dates. */
 export function findTransfersTo(db: Db, accountId: number, amount: number, from: string, to: string): Transaction[] {
-  return db
-    .select()
-    .from(transactions)
+  return selectTransactions(db)
     .where(and(eq(transactions.kind, 'transfer'), eq(transactions.toAccountId, accountId), eq(transactions.amount, amount), gte(transactions.date, from), lte(transactions.date, to)))
     .orderBy(asc(transactions.date))
-    .all();
+    .all()
+    .map(withMerchantName);
 }
 
 export function countUnsorted(db: Db): number {

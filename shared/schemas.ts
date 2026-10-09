@@ -151,6 +151,10 @@ export const transactionSchema = z.object({
   importId: idSchema.nullable(),
   fingerprint: z.string().nullable(),
   fundingId: idSchema.nullable(),
+  /** Clé du marchand tirée du libellé (dépenses et revenus), null sinon. */
+  merchantKey: z.string().nullable(),
+  /** Nom du marchand, ou son repli tant qu'il n'est pas nommé ; null sans clé. */
+  merchantName: z.string().nullable(),
   createdAt: z.string(),
 });
 export type Transaction = z.infer<typeof transactionSchema>;

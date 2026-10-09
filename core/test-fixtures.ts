@@ -49,6 +49,8 @@ export function tx(partial: Partial<Transaction> & { kind: Transaction['kind']; 
     importId: null,
     fingerprint: null,
     fundingId: null,
+    merchantKey: null,
+    merchantName: null,
     createdAt: '2026-03-01T00:00:00.000Z',
     ...partial,
   };

@@ -54,6 +54,8 @@ const planned: Transaction = {
   importId: null,
   fingerprint: null,
   fundingId: null,
+  merchantKey: 'MAIF',
+  merchantName: 'Maif',
   createdAt: '',
 };
 
