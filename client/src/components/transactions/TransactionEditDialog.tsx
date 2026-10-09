@@ -2,10 +2,12 @@ import { Check, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Transaction } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useConfirmTransaction, useDeleteTransaction, useUpdateTransaction } from '@/api/hooks';
+import { useConfirmTransaction, useDeleteTransaction, useMerchant, useUpdateTransaction } from '@/api/hooks';
 import { AllocationForm } from '@/components/envelopes/AllocationForm';
 import { Button, ConfirmDialog, Dialog, useToast } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
+import { MerchantHeading } from './MerchantHeading';
 import { QuickEntry } from './QuickEntry';
 
 type TransactionEditDialogProps = { transaction: Transaction | null; onClose: () => void };
@@ -43,6 +45,9 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
   };
 
   const t = transaction;
+  // Le nom suit le marchand en cache : il change dès qu'on le renomme, sans rouvrir le dialogue.
+  const merchant = useMerchant(t?.merchantKey ?? null);
+  const title = !t ? '' : t.merchantKey ? (merchant.data?.name ?? displayLabel(t)) : `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}`;
   const serverError = update.error ? errorMessage(update.error) : null;
   const deleteButton = (
     <Button variant="danger-quiet" icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
@@ -55,7 +60,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
       <Dialog
         open={t !== null && !confirmDelete}
         onClose={close}
-        title={t ? `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}` : ''}
+        title={title}
         description={t?.status === 'planned' ? 'Opération prévue par une règle récurrente, pas encore passée en banque.' : undefined}
         size={t?.kind === 'allocation' ? 'md' : 'lg'}
       >
@@ -72,22 +77,25 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
               footerStart={deleteButton}
             />
           ) : (
-            <QuickEntry
-              key={t.id}
-              mode="edit"
-              initial={t}
-              submitting={update.isPending}
-              serverError={serverError}
-              onSubmit={(input) => update.mutate({ id: t.id, ...input })}
-              footerStart={deleteButton}
-              footerExtra={
-                t.status === 'planned' ? (
-                  <Button variant="ghost" icon={<Check />} loading={confirm.isPending} onClick={() => confirm.mutate(t.id)}>
-                    Confirmer sans modifier
-                  </Button>
-                ) : null
-              }
-            />
+            <>
+              {t.merchantKey ? <MerchantHeading key={t.id} merchantKey={t.merchantKey} label={t.label} /> : null}
+              <QuickEntry
+                key={t.id}
+                mode="edit"
+                initial={t}
+                submitting={update.isPending}
+                serverError={serverError}
+                onSubmit={(input) => update.mutate({ id: t.id, ...input })}
+                footerStart={deleteButton}
+                footerExtra={
+                  t.status === 'planned' ? (
+                    <Button variant="ghost" icon={<Check />} loading={confirm.isPending} onClick={() => confirm.mutate(t.id)}>
+                      Confirmer sans modifier
+                    </Button>
+                  ) : null
+                }
+              />
+            </>
           )
         ) : null}
       </Dialog>
@@ -100,7 +108,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
         confirmLabel="Supprimer"
         loading={remove.isPending}
       >
-        {t?.label}
+        {t ? displayLabel(t) : null}
       </ConfirmDialog>
     </>
   );

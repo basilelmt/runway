@@ -13,6 +13,7 @@ import type {
   IdeasView,
   ImportCommitInput,
   ImportPreview,
+  MerchantDetail,
   MonthlyReport,
   NetWorthReport,
   Overview,
@@ -72,6 +73,7 @@ export const keys = {
   ideas: ['invest', 'ideas'] as const,
   ideaRun: (id: number) => ['invest', 'run', id] as const,
   binanceSync: ['invest', 'binance', 'sync'] as const,
+  merchant: (key: string) => ['merchants', 'detail', key] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -278,6 +280,24 @@ export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: F
 export function useCommitImport(opts?: MutOpts<ImportRecord, ImportCommitInput & { bankAccountNumber?: string | null }>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts']); opts?.onSuccess?.(...a); } });
+}
+
+// Marchands
+
+export const useMerchant = (key: string | null) =>
+  useQuery({ queryKey: keys.merchant(key ?? ''), queryFn: () => api.get<MerchantDetail>(`/api/merchants/${encodeURIComponent(key!)}`), enabled: key !== null });
+
+/** Renomme un marchand pour toutes ses opérations ; un nom vide le rend à Claude. */
+export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; name: string }>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: ({ key, name }) => api.put<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}`, { name }),
+    onSuccess: (...a) => {
+      invalidate(['merchants']);
+      opts?.onSuccess?.(...a);
+    },
+  });
 }
 
 // Settings
