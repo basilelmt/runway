@@ -47,6 +47,15 @@ export function AskMessage({ turn, onRetry }: AskMessageProps) {
               ))}
             </ul>
           ) : null}
+          {turn.answer.notices.length > 0 ? (
+            <ul className={styles.notices}>
+              {turn.answer.notices.map((notice, i) => (
+                <li key={i} className={styles.notice}>
+                  {keepTogether(notice)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
     </li>

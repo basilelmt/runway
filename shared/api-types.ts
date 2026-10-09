@@ -388,6 +388,8 @@ export type AskAnswerEvent = {
   highlight: { label: string; amount: Cents } | null;
   chart: AskChart | null;
   actions: AskActionView[];
+  /** Motifs des actions refusées par `validateActions`, à afficher sous la réponse ; vide s'il n'y en a pas. */
+  notices: string[];
 };
 
 /** Événements SSE de `POST /api/ask`. */

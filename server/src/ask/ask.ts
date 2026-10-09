@@ -106,8 +106,9 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
     const parsed = askAnswerSchema.safeParse(result?.structured_output);
     if (!parsed.success) throw new ClaudeError(`Réponse de Claude illisible${stderr ? ` : ${stderr.slice(0, 200)}` : ''}`, 'claude_invalid_output');
 
-    const { actions, rejected, reasons } = validateActions(db, parsed.data.actions, input.today);
-    if (rejected > 0) console.warn(`Demander : ${rejected} action(s) proposée(s) écartée(s)${reasons.length > 0 ? ` (${reasons.join(' ; ')})` : ''}`);
+    // Les actions simplement invalides (enveloppe inconnue, etc.) sont écartées sans un mot ; seuls les refus
+    // avec un motif explicite (budget sous les charges fixes) ont quelque chose à dire à l'utilisateur.
+    const { actions, reasons } = validateActions(db, parsed.data.actions, input.today);
     emit({
       event: 'answer',
       data: {
@@ -116,6 +117,7 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
         highlight: parsed.data.highlight,
         chart: parsed.data.chart ? runChart(db, deps.dbPath, parsed.data.chart) : null,
         actions,
+        notices: reasons,
       },
     });
   } catch (err) {

@@ -9,8 +9,9 @@ import { listAccounts } from '../repos/accounts';
 import { listBudgetedEnvelopes } from '../services/state';
 
 /**
- * Valide les actions proposées par Claude et les enrichit pour l'affichage ; les invalides sont écartées.
- * `reasons` explique les refus qui parlent à l'utilisateur (budget sous les charges fixes).
+ * Valide les actions proposées par Claude et les enrichit pour l'affichage ; les invalides sont écartées
+ * silencieusement. `reasons` liste les motifs des refus destinés à l'utilisateur (ex. budget sous les
+ * charges fixes) : c'est à l'appelant (`runAsk`) de les transmettre, dans `notices` de la réponse.
  */
 export function validateActions(db: Db, raw: unknown[], today: ISODate): { actions: AskActionView[]; rejected: number; reasons: string[] } {
   const envelopes = new Map(listBudgetedEnvelopes(db, today).map((e) => [e.id, e]));

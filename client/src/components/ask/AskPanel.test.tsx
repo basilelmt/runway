@@ -60,7 +60,7 @@ function renderPanel() {
 }
 
 const panel = () => screen.queryByRole('complementary', { name: 'Demander à Claude' });
-const answer = { sessionId: SESSION, answer: 'Tu as dépensé 412,80 € en restos.', highlight: { label: 'Restos ce mois-ci', amount: 412_80 }, chart: { kind: 'bar', title: 'Restos par mois', rows: [{ label: '2026-09', value: 412_80 }] }, actions: [] };
+const answer = { sessionId: SESSION, answer: 'Tu as dépensé 412,80 € en restos.', highlight: { label: 'Restos ce mois-ci', amount: 412_80 }, chart: { kind: 'bar', title: 'Restos par mois', rows: [{ label: '2026-09', value: 412_80 }] }, actions: [], notices: [] };
 
 describe('AskPanel', () => {
   it('s’ouvre avec k, met le focus dans le champ, se ferme avec Échap et rend le focus', async () => {

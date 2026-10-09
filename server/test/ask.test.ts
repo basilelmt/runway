@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { recurringRuleInputSchema } from '@shared/schemas';
+import { createRule } from '../src/repos/recurring-rules';
 import { createTransaction } from '../src/repos/transactions';
 import type { StreamExec } from '../src/services/claude';
 import { createTestApp, type TestApp } from './helpers';
@@ -6,14 +8,14 @@ import { createTestApp, type TestApp } from './helpers';
 const SESSION = '11111111-1111-4111-8111-111111111111';
 const line = (o: unknown) => JSON.stringify(o);
 
-/** Faux `claude` : rejoue un appel d'outil puis une réponse structurée. */
-function fakeStream(structured: unknown, calls: string[][] = []): StreamExec {
+/** Faux `claude` : rejoue un appel d'outil puis une réponse structurée ; `structured` peut être différé (le test a besoin de connaître un id créé après coup). */
+function fakeStream(structured: unknown | (() => unknown), calls: string[][] = []): StreamExec {
   return async (args, { onLine }) => {
     calls.push(args);
     onLine(line({ type: 'system', subtype: 'init', session_id: SESSION, mcp_servers: [{ name: 'runway', status: 'connected' }] }));
     onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__runway__query', input: { sql: 'select sum(amount) from transactions' } }] } }));
     onLine(line({ type: 'user', message: { content: [{ type: 'tool_result', content: [{ type: 'text', text: '{"rows":[]}' }] }] } }));
-    onLine(line({ type: 'result', subtype: 'success', is_error: false, session_id: SESSION, structured_output: structured }));
+    onLine(line({ type: 'result', subtype: 'success', is_error: false, session_id: SESSION, structured_output: typeof structured === 'function' ? (structured as () => unknown)() : structured }));
     return { stderr: '', exitCode: 0 };
   };
 }
@@ -68,6 +70,30 @@ describe('POST /api/ask', () => {
         highlight: { label: 'Restos', amount: 20_00 },
         chart: { kind: 'bar', title: 'Par jour', rows: [{ label: '2026-03-01', value: 12_00 }, { label: '2026-03-02', value: 8_00 }] },
         actions: [],
+        notices: [],
+      },
+    });
+  });
+
+  it('transmet au client le motif d’une action refusée', async () => {
+    t = createTestApp('2026-03-12', {
+      askStream: fakeStream(() => ({ answer: 'Ok', highlight: null, chart: null, actions: [{ type: 'budget', envelopeId: t.courses.id, monthlyTarget: 10_00 }] })),
+      askSessionId: () => SESSION,
+    });
+    createRule(
+      t.db,
+      recurringRuleInputSchema.parse({ name: 'Navigo', kind: 'expense', amount: 40_00, label: 'NAVIGO', accountId: t.courant.id, envelopeId: t.courses.id, frequency: 'monthly', dayOfMonth: 5, startDate: '2026-01-05' }),
+    );
+    const { events } = await ask('Q');
+    expect(events.at(-1)).toEqual({
+      event: 'answer',
+      data: {
+        sessionId: SESSION,
+        answer: 'Ok',
+        highlight: null,
+        chart: null,
+        actions: [],
+        notices: ['Le budget de Courses ne peut pas descendre sous ses charges fixes (40,00 €)'],
       },
     });
   });
