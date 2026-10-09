@@ -1,5 +1,6 @@
 import { Settings, Sparkles } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router';
+import { useMerchantNamingSync } from '@/api/hooks';
 import { useAsk } from '@/components/ask/ask-context';
 import { AskProvider } from '@/components/ask/AskProvider';
 import { useAutoBankSync } from '@/components/import/useAutoBankSync';
@@ -10,6 +11,8 @@ import styles from './Shell.module.css';
 
 export function Shell() {
   useAutoBankSync();
+  // Le suivi du nommage des marchands par Claude vit ici pour continuer même hors des Réglages.
+  useMerchantNamingSync();
   return (
     <AskProvider>
       <QuickAddProvider>

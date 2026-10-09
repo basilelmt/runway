@@ -282,7 +282,8 @@ export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: F
 
 export function useCommitImport(opts?: MutOpts<ImportRecord, ImportCommitInput & { bankAccountNumber?: string | null }>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts']); opts?.onSuccess?.(...a); } });
+  // Le serveur lance le nommage des marchands après un import : on invalide son état pour que le suivi global se relance.
+  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts'], keys.merchantStatus); opts?.onSuccess?.(...a); } });
 }
 
 // Marchands
@@ -303,8 +304,18 @@ export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; 
   });
 }
 
-/** État du nommage ; suivi toutes les 3 secondes pendant une exécution, puis les noms affichés sont rafraîchis. */
-export function useMerchantStatus() {
+/**
+ * État du nommage, lu tel quel (sans suivi ni invalidation : voir `useMerchantNamingSync`,
+ * monté une fois dans la coquille de l'appli, qui s'en charge pour toute la session).
+ */
+export const useMerchantStatus = () => useQuery({ queryKey: keys.merchantStatus, queryFn: () => api.get<MerchantStatus>('/api/merchants/status') });
+
+/**
+ * Suit le nommage par Claude en tâche de fond pour toute la session, même hors des Réglages :
+ * interroge toutes les 3 secondes pendant une exécution, puis rafraîchit les opérations et marchands affichés.
+ * Partage son cache avec `useMerchantStatus` : une fois montée ici, la page Réglages reçoit les mêmes mises à jour.
+ */
+export function useMerchantNamingSync(): void {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: keys.merchantStatus,
@@ -319,7 +330,6 @@ export function useMerchantStatus() {
     }
     wasRunning.current = running;
   }, [running, qc]);
-  return query;
 }
 
 export function useNameMerchants(opts?: MutOpts<MerchantStatus, void>) {
@@ -386,7 +396,8 @@ export function useRunBankSync(opts?: MutOpts<BankSyncRunResult, number | undefi
     mutationKey: keys.bankSyncRun,
     mutationFn: (onlyIfStaleMinutes) => api.post<BankSyncRunResult>('/api/bank-sync/run', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}),
     onSuccess: (...a) => {
-      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts']);
+      // Le serveur lance le nommage des marchands sur les nouvelles opérations : on invalide son état pour relancer le suivi global.
+      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts'], keys.merchantStatus);
       opts?.onSuccess?.(...a);
     },
   });
