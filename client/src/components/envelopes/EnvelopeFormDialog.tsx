@@ -1,23 +1,32 @@
 import { useId, useState } from 'react';
+import { isEnvelopeCharge } from '@core/budget';
+import { today } from '@shared/dates';
+import { formatEuros } from '@shared/money';
 import { envelopeInputSchema, type Envelope } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useCreateEnvelope, useUpdateEnvelope } from '@/api/hooks';
+import { useCreateEnvelope, useRecurringRules, useUpdateEnvelope, type RecurringRuleView } from '@/api/hooks';
+import { describeRhythm } from '@/components/recurring/frequency';
 import { Button, Checkbox, Dialog, DialogFooter, Field, Input, MoneyInput, useToast } from '@/components/ui';
 import styles from './EnvelopeFormDialog.module.css';
 
 export const ENVELOPE_COLORS = ['#4f8a5b', '#c2703d', '#3f6fae', '#9a4f9c', '#b8961a', '#2a8f8a', '#b74a5e', '#6b7280'];
 
-type FormState = { name: string; color: string; monthlyTarget: number | null; isSavings: boolean };
+type FormState = { name: string; color: string; monthlyExtra: number | null; isSavings: boolean };
 
 type EnvelopeFormDialogProps = { open: boolean; envelope?: Envelope; onClose: () => void };
 
 export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDialogProps) {
   const toast = useToast();
   const formId = useId();
+  const chargesId = useId();
+  const rules = useRecurringRules();
+  const now = today();
+  // Une nouvelle enveloppe n'a pas encore de charges.
+  const charges = envelope ? (rules.data ?? []).filter((r) => r.envelopeId === envelope.id && isEnvelopeCharge(r, now)) : [];
   const [form, setForm] = useState<FormState>({
     name: envelope?.name ?? '',
     color: envelope?.color ?? ENVELOPE_COLORS[0]!,
-    monthlyTarget: envelope?.monthlyTarget ?? null,
+    monthlyExtra: envelope?.monthlyExtra ?? null,
     isSavings: envelope?.isSavings ?? false,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -42,7 +51,7 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
 
   function submit(e: { preventDefault(): void }) {
     e.preventDefault();
-    const parsed = envelopeInputSchema.safeParse({ name: form.name, color: form.color, monthlyTarget: form.monthlyTarget, isSavings: form.isSavings });
+    const parsed = envelopeInputSchema.safeParse({ name: form.name, color: form.color, monthlyExtra: form.monthlyExtra, isSavings: form.isSavings });
     if (!parsed.success) {
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
@@ -83,9 +92,22 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
             </div>
           )}
         </Field>
-        <Field label="Budget mensuel" hint="Ce que tu prévois d’y mettre chaque mois. « Répartir » le propose automatiquement et la prévision en tient compte." error={errors.monthlyTarget}>
-          {(id, describedBy) => <MoneyInput id={id} aria-describedby={describedBy} value={form.monthlyTarget} onChange={(c) => set('monthlyTarget', c)} placeholder="Facultatif" />}
+        <Field
+          label={charges.length > 0 ? 'En plus des charges' : 'Budget mensuel'}
+          hint={charges.length > 0 ? undefined : 'Ce que tu prévois d’y mettre chaque mois. « Répartir » le propose automatiquement et la prévision en tient compte.'}
+          error={errors.monthlyExtra}
+        >
+          {(id, describedBy) => (
+            <MoneyInput
+              id={id}
+              aria-describedby={[describedBy, charges.length > 0 ? chargesId : null].filter(Boolean).join(' ') || undefined}
+              value={form.monthlyExtra}
+              onChange={(c) => set('monthlyExtra', c)}
+              placeholder="Facultatif"
+            />
+          )}
         </Field>
+        {charges.length > 0 ? <ChargesBreakdown id={chargesId} charges={charges} extra={form.monthlyExtra} /> : null}
         <Checkbox
           label="Enveloppe d’épargne"
           hint="Ce qui en sort (versement vers un courtier, un PEA) compte comme mis de côté, pas comme une dépense."
@@ -107,5 +129,26 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
         </DialogFooter>
       </form>
     </Dialog>
+  );
+}
+
+/** Budget de l'enveloppe : chaque charge ramenée au mois, puis le complément et le total. */
+function ChargesBreakdown({ id, charges, extra }: { id: string; charges: RecurringRuleView[]; extra: number | null }) {
+  const total = charges.reduce((s, r) => s + r.monthlyEquivalent, 0) + (extra ?? 0);
+  return (
+    <ul id={id} className={styles.charges} aria-label="Charges de l’enveloppe">
+      {charges.map((r) => {
+        const rhythm = describeRhythm(r);
+        return (
+          <li key={r.id}>
+            <span>{r.name}</span> <span className="num">{formatEuros(r.monthlyEquivalent)}</span>
+            {rhythm ? <span> ({formatEuros(r.amount)} {rhythm})</span> : null}
+          </li>
+        );
+      })}
+      <li className={styles.total}>
+        {extra ? `+ ${formatEuros(extra)} ` : ''}= <strong className="num">{formatEuros(total)}</strong> par mois
+      </li>
+    </ul>
   );
 }

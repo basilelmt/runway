@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { describeFrequency } from './frequency';
+import { describeFrequency, describeRhythm } from './frequency';
+
+describe('describeRhythm', () => {
+  it('donne le rythme d’une charge non mensuelle, rien pour une mensuelle', () => {
+    expect(describeRhythm({ frequency: 'monthly', interval: 1 })).toBeNull();
+    expect(describeRhythm({ frequency: 'monthly', interval: 3 })).toBe('tous les 3 mois');
+    expect(describeRhythm({ frequency: 'yearly', interval: 1 })).toBe('par an');
+    expect(describeRhythm({ frequency: 'yearly', interval: 2 })).toBe('tous les 2 ans');
+    expect(describeRhythm({ frequency: 'weekly', interval: 1 })).toBe('par semaine');
+    expect(describeRhythm({ frequency: 'weekly', interval: 2 })).toBe('toutes les 2 semaines');
+    expect(describeRhythm({ frequency: 'daily', interval: 1 })).toBe('par jour');
+    expect(describeRhythm({ frequency: 'daily', interval: 3 })).toBe('tous les 3 jours');
+  });
+});
 
 describe('describeFrequency', () => {
   it.each([
