@@ -4,6 +4,7 @@ import { settingsSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useSaveSettings, useSettings } from '@/api/hooks';
 import { Button, Field, Input, SkeletonRows, useToast } from '@/components/ui';
+import { MerchantSettings } from './MerchantSettings';
 import styles from './Settings.module.css';
 
 export function GeneralSettings() {
@@ -71,6 +72,8 @@ export function GeneralSettings() {
         </div>
       </section>
 
+      <MerchantSettings />
+
       <section className={styles.section}>
         <div className={styles.aside}>
           <h2>Sauvegarde</h2>
@@ -85,7 +88,7 @@ export function GeneralSettings() {
                 <FileJson aria-hidden />
                 <span>
                   <strong>Export JSON</strong>
-                  <span className={styles.downloadHint}>Tout : comptes, enveloppes, opérations, charges fixes, règles, réglages.</span>
+                  <span className={styles.downloadHint}>Tout : comptes, enveloppes, opérations, marchands, charges fixes, règles, réglages.</span>
                 </span>
               </a>
             </li>

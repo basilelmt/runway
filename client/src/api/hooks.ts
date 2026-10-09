@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
   BankAuthStart,
@@ -14,6 +15,7 @@ import type {
   ImportCommitInput,
   ImportPreview,
   MerchantDetail,
+  MerchantStatus,
   MonthlyReport,
   NetWorthReport,
   Overview,
@@ -74,6 +76,7 @@ export const keys = {
   ideaRun: (id: number) => ['invest', 'run', id] as const,
   binanceSync: ['invest', 'binance', 'sync'] as const,
   merchant: (key: string) => ['merchants', 'detail', key] as const,
+  merchantStatus: ['merchants', 'status'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -295,6 +298,37 @@ export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; 
     mutationFn: ({ key, name }) => api.put<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}`, { name }),
     onSuccess: (...a) => {
       invalidate(['merchants']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+/** État du nommage ; suivi toutes les 3 secondes pendant une exécution, puis les noms affichés sont rafraîchis. */
+export function useMerchantStatus() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: keys.merchantStatus,
+    queryFn: () => api.get<MerchantStatus>('/api/merchants/status'),
+    refetchInterval: (q) => (q.state.data?.running ? 3000 : false),
+  });
+  const running = query.data?.running ?? false;
+  const wasRunning = useRef(running);
+  useEffect(() => {
+    if (wasRunning.current && !running) {
+      for (const key of [['transactions'], ['transaction'], ['merchants', 'detail']]) void qc.invalidateQueries({ queryKey: key });
+    }
+    wasRunning.current = running;
+  }, [running, qc]);
+  return query;
+}
+
+export function useNameMerchants(opts?: MutOpts<MerchantStatus, void>) {
+  const qc = useQueryClient();
+  return useMutation({
+    ...opts,
+    mutationFn: () => api.post<MerchantStatus>('/api/merchants/name'),
+    onSuccess: (...a) => {
+      qc.setQueryData(keys.merchantStatus, a[0]);
       opts?.onSuccess?.(...a);
     },
   });
