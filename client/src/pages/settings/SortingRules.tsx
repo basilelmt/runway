@@ -1,11 +1,11 @@
 import { ChevronDown, ChevronUp, GripVertical, ListFilter, Pencil, Plus, Trash2, Wand2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import type { SortingRule } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useApplySortingRules, useCreateSortingRule, useDeleteSortingRule, useEnvelopes, useReorderSortingRules, useSortingRules, useUpdateSortingRule } from '@/api/hooks';
 import { RuleTester } from '@/components/sorting/RuleTester';
 import { SortingRuleDialog } from '@/components/sorting/SortingRuleDialog';
-import { Button, Dot, EmptyState, SkeletonRows, useToast } from '@/components/ui';
+import { Button, ConfirmDialog, EmptyState, EnvelopeTag, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
 import styles from './SortingRules.module.css';
 
 type DialogState = { open: false } | { open: true; rule: SortingRule | null };
@@ -15,13 +15,14 @@ export function SortingRulesSettings() {
   const rules = useSortingRules();
   const envelopes = useEnvelopes();
   const [dialog, setDialog] = useState<DialogState>({ open: false });
+  const [deleting, setDeleting] = useState<SortingRule | null>(null);
   const [dragId, setDragId] = useState<number | null>(null);
   const [overId, setOverId] = useState<number | null>(null);
 
   const close = () => setDialog({ open: false });
   const create = useCreateSortingRule({ onSuccess: () => { toast.success('Règle créée'); close(); } });
   const update = useUpdateSortingRule({ onSuccess: () => { toast.success('Règle enregistrée'); close(); } });
-  const remove = useDeleteSortingRule({ onSuccess: () => toast.success('Règle supprimée'), onError: (e) => toast.error(errorMessage(e)) });
+  const remove = useDeleteSortingRule({ onSuccess: () => { toast.success('Règle supprimée'); setDeleting(null); } });
   const reorder = useReorderSortingRules({ onError: (e) => toast.error(errorMessage(e)) });
 
   const list = rules.data ?? [];
@@ -35,9 +36,20 @@ export function SortingRulesSettings() {
     reorder.mutate(ids);
   }
 
+  function moveId(id: number, delta: number) {
+    move(list.findIndex((r) => r.id === id), list.findIndex((r) => r.id === id) + delta);
+  }
+
   function dropOn(targetId: number) {
     if (dragId === null || dragId === targetId) return;
     move(list.findIndex((r) => r.id === dragId), list.findIndex((r) => r.id === targetId));
+  }
+
+  function onHandleKey(e: KeyboardEvent, id: number) {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveId(id, e.key === 'ArrowUp' ? -1 : 1);
+    }
   }
 
   const activeMutation = dialog.open && dialog.rule ? update : create;
@@ -47,25 +59,26 @@ export function SortingRulesSettings() {
   });
 
   return (
-    <div className={styles.page}>
-      <div className={styles.toolbar}>
-        <p className={styles.explain}>
-          Chaque nouvelle dépense dont le libellé contient le motif est rangée dans l’enveloppe, sans tenir compte des majuscules ni des accents. La première règle qui correspond l’emporte.
-        </p>
-        <div className={styles.toolbarActions}>
-          <Button icon={<Wand2 />} onClick={() => applyAll.mutate()} loading={applyAll.isPending} disabled={(rules.data?.length ?? 0) === 0}>
-            Appliquer aux opérations à ranger
-          </Button>
-          <Button variant="primary" icon={<Plus />} onClick={() => setDialog({ open: true, rule: null })}>
-            Nouvelle règle
-          </Button>
-        </div>
-      </div>
+    <div>
+      <SectionHeader
+        title="Règles de tri"
+        description="Chaque nouvelle dépense dont le libellé contient le motif est rangée dans l’enveloppe, sans tenir compte des majuscules ni des accents. La première règle qui correspond l’emporte."
+        aside={
+          <div className={styles.toolbarActions}>
+            <Button size="sm" variant="ghost" icon={<Wand2 />} onClick={() => applyAll.mutate()} loading={applyAll.isPending} disabled={list.length === 0}>
+              Appliquer aux opérations à ranger
+            </Button>
+            <Button size="sm" icon={<Plus />} onClick={() => setDialog({ open: true, rule: null })}>
+              Nouvelle règle
+            </Button>
+          </div>
+        }
+      />
 
       <RuleTester envelopes={envelopes.data ?? []} refreshKey={rules.dataUpdatedAt} />
 
       {rules.isPending ? (
-        <SkeletonRows rows={4} />
+        <ListRowSkeleton rows={6} actions />
       ) : list.length === 0 ? (
         <EmptyState
           icon={<ListFilter />}
@@ -78,13 +91,13 @@ export function SortingRulesSettings() {
           }
         />
       ) : (
-        <ol className={['ledger', styles.list].join(' ')} aria-label="Règles par priorité">
+        <ol className="ledger" aria-label="Règles par priorité">
           {list.map((rule, i) => {
             const env = envelopeOf(rule.envelopeId);
             return (
               <li
                 key={rule.id}
-                className={['hover-row', styles.row, dragId === rule.id ? styles.dragging : '', overId === rule.id && dragId !== rule.id ? styles.over : ''].join(' ')}
+                className={[styles.dragRow, dragId === rule.id ? styles.dragging : '', overId === rule.id && dragId !== rule.id ? styles.over : ''].join(' ')}
                 draggable
                 onDragStart={(e) => {
                   setDragId(rule.id);
@@ -104,38 +117,39 @@ export function SortingRulesSettings() {
                   setOverId(null);
                 }}
               >
-                <span className={styles.handle} aria-hidden>
-                  <GripVertical />
-                </span>
-                <span className={['num', styles.priority].join(' ')}>{i + 1}</span>
-                <span className={['mono', styles.pattern].join(' ')}>{rule.pattern}</span>
-                <span className={styles.arrow} aria-hidden>
-                  →
-                </span>
-                <span className={styles.envelope}>
-                  {env ? (
+                <ListRow
+                  as="div"
+                  lead={
                     <>
-                      <Dot color={env.color} /> {env.name}
+                      <button
+                        type="button"
+                        className={styles.handle}
+                        aria-label={`Déplacer la règle « ${rule.pattern} » dans la liste (flèches haut et bas)`}
+                        onKeyDown={(e) => onHandleKey(e, rule.id)}
+                      >
+                        <GripVertical aria-hidden />
+                      </button>
+                      <span className={['num', styles.priority].join(' ')}>{i + 1}</span>
                     </>
-                  ) : (
-                    <span className="muted">Enveloppe supprimée</span>
-                  )}
-                </span>
-                <span className={styles.actions}>
-                  <Button size="sm" variant="ghost" aria-label={`Monter « ${rule.pattern} »`} title="Monter" icon={<ChevronUp />} disabled={i === 0 || reorder.isPending} onClick={() => move(i, i - 1)} />
-                  <Button size="sm" variant="ghost" aria-label={`Descendre « ${rule.pattern} »`} title="Descendre" icon={<ChevronDown />} disabled={i === list.length - 1 || reorder.isPending} onClick={() => move(i, i + 1)} />
-                  <Button size="sm" variant="ghost" aria-label={`Modifier « ${rule.pattern} »`} title="Modifier" icon={<Pencil />} onClick={() => setDialog({ open: true, rule })} />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Supprimer « ${rule.pattern} »`}
-                    title="Supprimer"
-                    icon={<Trash2 />}
-                    onClick={() => {
-                      if (window.confirm(`Supprimer la règle « ${rule.pattern} » ?`)) remove.mutate(rule.id);
-                    }}
-                  />
-                </span>
+                  }
+                  title={
+                    <>
+                      <span className="mono">{rule.pattern}</span> <span className={styles.arrow}>→</span>{' '}
+                      {env ? <EnvelopeTag name={env.name} color={env.color} /> : <span className="muted">Enveloppe supprimée</span>}
+                    </>
+                  }
+                  actions={
+                    <RowMenu
+                      label={`Actions pour « ${rule.pattern} »`}
+                      items={[
+                        { label: 'Monter', icon: <ChevronUp />, onSelect: () => moveId(rule.id, -1), disabled: i === 0 || reorder.isPending },
+                        { label: 'Descendre', icon: <ChevronDown />, onSelect: () => moveId(rule.id, 1), disabled: i === list.length - 1 || reorder.isPending },
+                        { label: 'Modifier', icon: <Pencil />, onSelect: () => setDialog({ open: true, rule }) },
+                        { label: 'Supprimer', icon: <Trash2 />, onSelect: () => setDeleting(rule), danger: true },
+                      ]}
+                    />
+                  }
+                />
               </li>
             );
           })}
@@ -154,6 +168,18 @@ export function SortingRulesSettings() {
           else create.mutate(input);
         }}
       />
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+        title="Supprimer cette règle ?"
+        confirmLabel="Supprimer"
+        loading={remove.isPending}
+        error={remove.error ? errorMessage(remove.error) : null}
+      >
+        <span className="mono">{deleting?.pattern}</span>
+      </ConfirmDialog>
     </div>
   );
 }

@@ -3,8 +3,16 @@ import { useState } from 'react';
 import { settingsSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useSaveSettings, useSettings } from '@/api/hooks';
-import { Button, Field, Input, SkeletonRows, useToast } from '@/components/ui';
+import { Button, Field, Input, ListRow, SectionHeader, SkeletonRows, useToast } from '@/components/ui';
 import styles from './Settings.module.css';
+
+/** Télécharge un export sans quitter la page (la ligne qui le déclenche n'est pas un vrai lien). */
+function downloadExport(href: string) {
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = '';
+  a.click();
+}
 
 export function GeneralSettings() {
   const toast = useToast();
@@ -42,64 +50,61 @@ export function GeneralSettings() {
   return (
     <div>
       <section className={styles.section}>
-        <div className={styles.aside}>
-          <h2>Prévision et tri</h2>
-          <p>Jusqu’où Runway regarde devant pour repérer un découvert, et quel modèle Claude range tes opérations.</p>
-          <p>
-            Le tri lance Claude Code installé sur cette machine (<code className="mono">claude -p</code>), sans clé API. S’il n’est pas connecté, lance <code className="mono">claude</code> puis{' '}
-            <code className="mono">/login</code> dans un terminal.
-          </p>
-        </div>
-        <div className={styles.content}>
-          {settings.isPending ? (
-            <SkeletonRows rows={2} />
-          ) : (
-            <form className={styles.form} onSubmit={submit} noValidate>
-              <Field label="Horizon de prévision (jours)" error={errors.horizon} hint="Entre 7 et 730.">
-                {(id, describedBy) => <Input id={id} aria-describedby={describedBy} type="number" min={7} max={730} value={horizon} onChange={(e) => setHorizon(e.target.value)} className={styles.short} />}
-              </Field>
-              <Field label="Modèle Claude" error={errors.model} hint="Vide pour le modèle par défaut de Claude Code, sinon par exemple sonnet, opus ou haiku.">
-                {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={model} onChange={(e) => setModel(e.target.value)} placeholder="Par défaut" className={styles.short} />}
-              </Field>
-              <div className={styles.actions}>
-                <Button type="submit" variant="primary" loading={save.isPending}>
-                  Enregistrer
-                </Button>
-              </div>
-            </form>
-          )}
-        </div>
+        <SectionHeader
+          title="Prévision et tri"
+          description={
+            <>
+              Jusqu’où Runway regarde devant pour repérer un découvert, et quel modèle Claude range tes opérations.
+              <br />
+              Le tri lance Claude Code installé sur cette machine (<code className="mono">claude -p</code>), sans clé API. S’il n’est pas connecté, lance <code className="mono">claude</code> puis{' '}
+              <code className="mono">/login</code> dans un terminal.
+            </>
+          }
+        />
+        {settings.isPending ? (
+          <SkeletonRows rows={2} />
+        ) : (
+          <form className={styles.form} onSubmit={submit} noValidate>
+            <Field label="Horizon de prévision (jours)" error={errors.horizon} hint="Entre 7 et 730.">
+              {(id, describedBy) => <Input id={id} aria-describedby={describedBy} type="number" min={7} max={730} value={horizon} onChange={(e) => setHorizon(e.target.value)} className={styles.short} />}
+            </Field>
+            <Field label="Modèle Claude" error={errors.model} hint="Vide pour le modèle par défaut de Claude Code, sinon par exemple sonnet, opus ou haiku.">
+              {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={model} onChange={(e) => setModel(e.target.value)} placeholder="Par défaut" className={styles.short} />}
+            </Field>
+            <div className={styles.actions}>
+              <Button type="submit" variant="primary" loading={save.isPending}>
+                Enregistrer
+              </Button>
+            </div>
+          </form>
+        )}
       </section>
 
       <section className={styles.section}>
-        <div className={styles.aside}>
-          <h2>Sauvegarde</h2>
-          <p>
-            Toutes les données tiennent dans un fichier local, <code className="mono">data/runway.db</code>. Ces exports en sont une copie lisible.
-          </p>
-        </div>
-        <div className={styles.content}>
-          <ul className={styles.downloads}>
-            <li>
-              <a className={['hover-row', styles.download].join(' ')} href="/api/export.json" download>
-                <FileJson aria-hidden />
-                <span>
-                  <strong>Export JSON</strong>
-                  <span className={styles.downloadHint}>Tout : comptes, enveloppes, opérations, charges fixes, règles, réglages.</span>
-                </span>
-              </a>
-            </li>
-            <li>
-              <a className={['hover-row', styles.download].join(' ')} href="/api/export.csv" download>
-                <Download aria-hidden />
-                <span>
-                  <strong>Export CSV</strong>
-                  <span className={styles.downloadHint}>Les opérations seules, lisibles dans un tableur.</span>
-                </span>
-              </a>
-            </li>
-          </ul>
-        </div>
+        <SectionHeader
+          title="Sauvegarde"
+          description={
+            <>
+              Toutes les données tiennent dans un fichier local, <code className="mono">data/runway.db</code>. Ces exports en sont une copie lisible.
+            </>
+          }
+        />
+        <ul className="ledger">
+          <ListRow
+            lead={<FileJson aria-hidden />}
+            title="Export JSON"
+            meta="Tout : comptes, enveloppes, opérations, charges fixes, règles, réglages."
+            onClick={() => downloadExport('/api/export.json')}
+            clickLabel="Télécharger l’export JSON"
+          />
+          <ListRow
+            lead={<Download aria-hidden />}
+            title="Export CSV"
+            meta="Les opérations seules, lisibles dans un tableur."
+            onClick={() => downloadExport('/api/export.csv')}
+            clickLabel="Télécharger l’export CSV"
+          />
+        </ul>
       </section>
     </div>
   );

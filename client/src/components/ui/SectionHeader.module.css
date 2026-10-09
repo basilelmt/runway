@@ -74,4 +74,8 @@
   .header {
     flex-wrap: wrap;
   }
+
+  .aside {
+    max-width: 100%;
+  }
 }

@@ -13,7 +13,7 @@ import {
   useRunBankSync,
   useStartBankConnection,
 } from '@/api/hooks';
-import { Badge, Button, Input, Select, SkeletonRows, useToast } from '@/components/ui';
+import { Badge, Button, ConfirmDialog, FieldError, Input, Notice, Select, SkeletonRows, useToast } from '@/components/ui';
 import { formatDateLong, formatDateTime, plural, syncSummary } from '@/lib/format';
 import styles from './BankSyncPanel.module.css';
 
@@ -55,6 +55,7 @@ export function BankSyncPanel() {
   const [auth, setAuth] = useState<Auth | null>(null);
   const [pasted, setPasted] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [disconnectId, setDisconnectId] = useState<number | null>(null);
 
   const start = useStartBankConnection({
     onSuccess: (a) => {
@@ -83,7 +84,12 @@ export function BankSyncPanel() {
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
-  const disconnect = useDisconnectBank({ onSuccess: () => toast.success('Banque déconnectée'), onError: (e) => toast.error(errorMessage(e)) });
+  const disconnect = useDisconnectBank({
+    onSuccess: () => {
+      setDisconnectId(null);
+      toast.success('Banque déconnectée');
+    },
+  });
 
   function submitPaste() {
     if (!auth) return;
@@ -97,7 +103,7 @@ export function BankSyncPanel() {
 
   if (state.isPending) {
     return (
-      <div className={styles.card}>
+      <div className={styles.panel}>
         <SkeletonRows rows={2} />
       </div>
     );
@@ -108,7 +114,7 @@ export function BankSyncPanel() {
   const connection = visible.at(-1) ?? null;
 
   return (
-    <div className={styles.card}>
+    <div className={styles.panel}>
       {connection ? (
         <div className={styles.head}>
           <Badge tone={STATUS_LABEL[connection.status].tone}>{STATUS_LABEL[connection.status].label}</Badge>
@@ -143,9 +149,7 @@ export function BankSyncPanel() {
             </Button>
           </div>
           {pasteError ? (
-            <p id="bank-paste-error" className={styles.error} role="alert">
-              {pasteError}
-            </p>
+            <FieldError id="bank-paste-error">{pasteError}</FieldError>
           ) : (
             <p className={styles.text}>
               L'onglet ne s'est pas ouvert ?{' '}
@@ -186,11 +190,19 @@ export function BankSyncPanel() {
           onRenew={() => start.mutate(connection.id)}
           renewing={start.isPending}
           disconnecting={disconnect.isPending}
-          onDisconnect={() => {
-            if (window.confirm('Déconnecter La Banque Postale ? Les opérations déjà importées restent.')) disconnect.mutate(connection.id);
-          }}
+          onDisconnect={() => setDisconnectId(connection.id)}
         />
       )}
+      <ConfirmDialog
+        open={disconnectId !== null}
+        onClose={() => setDisconnectId(null)}
+        onConfirm={() => disconnectId !== null && disconnect.mutate(disconnectId)}
+        title="Déconnecter La Banque Postale ?"
+        description="Les opérations déjà importées restent."
+        confirmLabel="Déconnecter"
+        loading={disconnect.isPending}
+        error={disconnect.error ? errorMessage(disconnect.error) : null}
+      />
     </div>
   );
 }
@@ -256,11 +268,7 @@ function LinkStep({
           </div>
         ))}
       </div>
-      {duplicates ? (
-        <p className={styles.error} role="alert">
-          Deux comptes de la banque pointent vers le même compte Runway.
-        </p>
-      ) : null}
+      {duplicates ? <Notice tone="negative">Deux comptes de la banque pointent vers le même compte Runway.</Notice> : null}
       <div className={styles.actions}>
         <Button
           variant="primary"
@@ -327,13 +335,9 @@ function ActiveState({
           </div>
         ))}
       </div>
-      {connection.lastError ? (
-        <p className={styles.error} role="status">
-          Dernière synchronisation en échec : {connection.lastError}
-        </p>
-      ) : null}
+      {connection.lastError ? <Notice tone="negative" role="status">Dernière synchronisation en échec : {connection.lastError}</Notice> : null}
       {expired ? (
-        <p className={styles.error}>Le consentement a expiré : la banque n'envoie plus rien tant que tu ne l'as pas renouvelé.</p>
+        <Notice tone="negative">Le consentement a expiré : la banque n'envoie plus rien tant que tu ne l'as pas renouvelé.</Notice>
       ) : expiringSoon ? (
         <p className={styles.text}>Le consentement expire {expiresIn! <= 0 ? "aujourd'hui" : `dans ${plural(expiresIn!, 'jour')}`}. Renouvelle-le pour ne pas interrompre la synchronisation.</p>
       ) : null}

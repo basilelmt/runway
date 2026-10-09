@@ -1,51 +1,11 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-6);
-}
-
-.toolbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s-6);
-}
-
 .toolbarActions {
   display: flex;
   gap: var(--s-2);
-  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 767px) {
-  .toolbar {
-    flex-direction: column;
-  }
-
-  .toolbarActions {
-    flex-wrap: wrap;
-  }
-}
-
-.explain {
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
-  max-width: 56ch;
-}
-
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 20px 28px minmax(140px, 1fr) 20px minmax(140px, 1fr) auto;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-2) 0;
-  min-height: 52px;
+.dragRow {
+  transition: opacity var(--dur) var(--ease-out);
 }
 
 .dragging {
@@ -57,9 +17,13 @@
 }
 
 .handle {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
   color: var(--ink-mute);
   cursor: grab;
-  display: flex;
 }
 
 .handle :global(svg) {
@@ -68,81 +32,11 @@
 }
 
 .priority {
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
+  min-width: 20px;
   text-align: right;
-}
-
-.pattern {
-  font-weight: 500;
-  overflow-wrap: anywhere;
+  color: var(--ink-mute);
 }
 
 .arrow {
   color: var(--ink-mute);
-  text-align: center;
-}
-
-.envelope {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--text-sm);
-}
-
-.actions {
-  display: flex;
-  gap: 2px;
-  justify-content: flex-end;
-  opacity: 0.35;
-  transition: opacity var(--dur) var(--ease-out);
-}
-
-.row:hover .actions,
-.row:focus-within .actions {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .actions {
-    opacity: 1;
-  }
-}
-
-@media (max-width: 767px) {
-  .row {
-    grid-template-columns: 20px 28px 1fr;
-    grid-template-areas:
-      'handle priority pattern'
-      '. . envelope'
-      '. . actions';
-    row-gap: var(--s-1);
-    padding: var(--s-3) 0;
-  }
-
-  .handle {
-    grid-area: handle;
-  }
-
-  .priority {
-    grid-area: priority;
-  }
-
-  .pattern {
-    grid-area: pattern;
-  }
-
-  .arrow {
-    display: none;
-  }
-
-  .envelope {
-    grid-area: envelope;
-  }
-
-  .actions {
-    grid-area: actions;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
 }
