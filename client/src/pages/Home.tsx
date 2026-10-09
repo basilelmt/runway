@@ -1,22 +1,18 @@
 import { AlertTriangle, ArrowRight, Check, ChevronRight, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import type { EnvelopeWithBalance, Overview } from '@shared/api-types';
+import type { Overview } from '@shared/api-types';
 import { daysBetween, formatDateShort } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useIsMutating } from '@tanstack/react-query';
 import { keys, useBankSync, useOverview } from '@/api/hooks';
-import { EnvelopeDetailDialog } from '@/components/budget/EnvelopeDetailDialog';
-import { EnvelopeRow, EnvelopeRowHeader } from '@/components/budget/EnvelopeRow';
 import { FundingBanner } from '@/components/budget/FundingBanner';
 import { Amount, Button, ButtonLink, EmptyState, ProgressBar, Skeleton } from '@/components/ui';
 import { bankSyncTodo } from '@/lib/bank';
-import { budgetOverIncome, monthProgress } from '@/lib/budget';
+import { budgetOverIncome, monthProgress, watchTodo } from '@/lib/budget';
 import { plural } from '@/lib/format';
 import styles from './Home.module.css';
-
-const HOME_ENVELOPES = 6;
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const monthName = (iso: string) => capitalize(new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
@@ -67,7 +63,6 @@ export function HomePage() {
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
-      <EnvelopesPreview data={data} />
       <AccountsStrip data={data} />
     </div>
   );
@@ -76,7 +71,6 @@ export function HomePage() {
 function MonthHero({ data }: { data: Overview }) {
   const { spent, budget, saved, variable } = data.month;
   const progress = monthProgress(data.today, data.month.end);
-  const margin = budget - spent;
   // Le rythme ne vaut que pour les dépenses courantes : le loyer tombe en début de mois, pas au fil des jours.
   const pace = Math.round(variable.budget * progress) - variable.spent;
 
@@ -122,14 +116,6 @@ function MonthHero({ data }: { data: Overview }) {
       </div>
 
       <dl className={styles.stats}>
-        {budget > 0 ? (
-          <div className={styles.stat}>
-            <dt>{margin >= 0 ? 'Marge restante' : 'Budget dépassé de'}</dt>
-            <dd>
-              <Amount cents={Math.abs(margin)} size="lg" tone="neutral" className={margin < 0 ? styles.negative : ''} animate />
-            </dd>
-          </div>
-        ) : null}
         <div className={styles.stat}>
           <dt>Mis de côté</dt>
           <dd>
@@ -185,6 +171,26 @@ function TodoList({ data }: { data: Overview }) {
             {' '}
             · <span className={styles.nowrap}>{formatEuros(data.month.planned)}</span> pour <span className={styles.nowrap}>{formatEuros(data.month.income)}</span> par mois
           </span>
+        </>
+      ),
+    });
+  }
+  const watch = watchTodo(data.watch);
+  if (watch) {
+    todos.push({
+      key: 'watch',
+      to: '/budget',
+      icon: <WalletCards />,
+      tone: watch.tone,
+      text: (
+        <>
+          {watch.text}
+          {watch.detail ? (
+            <>
+              {' '}
+              <span className={styles.todoDetail}>· {watch.detail}</span>
+            </>
+          ) : null}
         </>
       ),
     });
@@ -254,43 +260,6 @@ function TodoList({ data }: { data: Overview }) {
   );
 }
 
-function EnvelopesPreview({ data }: { data: Overview }) {
-  const spending = data.envelopes.filter((e) => !e.isSavings);
-  // Les plus serrées d'abord : part du budget déjà dépensée.
-  const tension = (e: (typeof spending)[number]) => (e.monthlyBudget > 0 ? e.spentThisMonth / e.monthlyBudget : e.spentThisMonth > 0 ? 0.5 : -1);
-  const shown = [...spending].sort((a, b) => tension(b) - tension(a)).slice(0, HOME_ENVELOPES);
-  const [detail, setDetail] = useState<EnvelopeWithBalance | null>(null);
-
-  return (
-    <section aria-labelledby="envelopes-title">
-      <div className="section-title">
-        <h2 id="envelopes-title">Enveloppes</h2>
-        <Link to="/budget" className="section-link">
-          {spending.length > HOME_ENVELOPES ? `Voir les ${spending.length}` : 'Voir le budget'} →
-        </Link>
-      </div>
-      {shown.length === 0 ? (
-        <EmptyState
-          icon={<WalletCards />}
-          title="Aucune enveloppe"
-          description="Une enveloppe est une part de ton argent réservée à un usage : courses, loyer, sorties."
-          action={<ButtonLink to="/budget">Créer une enveloppe</ButtonLink>}
-        />
-      ) : (
-        <>
-          <EnvelopeRowHeader />
-          <div className="ledger stagger">
-          {shown.map((e) => (
-            <EnvelopeRow key={e.id} envelope={e} onOpen={() => setDetail(e)} />
-          ))}
-          </div>
-        </>
-      )}
-      <EnvelopeDetailDialog envelope={detail} onClose={() => setDetail(null)} />
-    </section>
-  );
-}
-
 function AccountsStrip({ data }: { data: Overview }) {
   return (
     <section aria-labelledby="accounts-title" className={styles.accounts}>
@@ -329,7 +298,6 @@ function HomeSkeleton() {
           <Skeleton height={10} />
         </div>
         <div className={styles.stats}>
-          <Skeleton width={140} height={48} />
           <Skeleton width={140} height={48} />
         </div>
       </div>
