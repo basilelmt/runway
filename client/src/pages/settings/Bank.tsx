@@ -177,8 +177,14 @@ function ImportHistory() {
       key={imp.id}
       lead={<span className={listRowDate}>{formatDateCompact(imp.importedAt.slice(0, 10))}</span>}
       title={<span className={['mono', bank.fileName].join(' ')}>{imp.fileName}</span>}
-      meta={`${plural(imp.newCount, 'ajoutée')}${NBSP}· ${plural(imp.matchedCount, 'rapprochée')}${NBSP}· ${plural(imp.duplicateCount, 'doublon')}`}
-      trail={accountName(imp.accountId)}
+      meta={
+        <>
+          {/* Sur mobile, le compte passe sous le nom du fichier plutôt que de lui prendre la largeur. */}
+          <span className={bank.metaAccount}>{accountName(imp.accountId)}</span>
+          <span>{`${plural(imp.newCount, 'ajoutée')}${NBSP}· ${plural(imp.matchedCount, 'rapprochée')}${NBSP}· ${plural(imp.duplicateCount, 'doublon')}`}</span>
+        </>
+      }
+      trail={<span className={bank.trailAccount}>{accountName(imp.accountId)}</span>}
     />
   );
 
@@ -212,10 +218,10 @@ function ImportHistory() {
               trail="Compte"
             />
           </div>
-          <ul className="ledger">{imports.data.slice(0, HISTORY_PREVIEW).map(row)}</ul>
+          <ul className={['ledger', bank.history].join(' ')}>{imports.data.slice(0, HISTORY_PREVIEW).map(row)}</ul>
           {imports.data.length > HISTORY_PREVIEW ? (
             <Disclosure label="Afficher tout l’historique" openLabel="Masquer l’historique complet" count={imports.data.length}>
-              <ul className="ledger">{imports.data.slice(HISTORY_PREVIEW).map(row)}</ul>
+              <ul className={['ledger', bank.history].join(' ')}>{imports.data.slice(HISTORY_PREVIEW).map(row)}</ul>
             </Disclosure>
           ) : null}
         </>
