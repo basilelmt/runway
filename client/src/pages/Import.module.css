@@ -21,29 +21,3 @@
 .accountPick {
   max-width: 420px;
 }
-
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-4);
-}
-
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  align-self: flex-start;
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  transition: color var(--dur) var(--ease-out);
-}
-
-.back:hover {
-  color: var(--ink);
-}
-
-.back :global(svg) {
-  width: 16px;
-  height: 16px;
-}
