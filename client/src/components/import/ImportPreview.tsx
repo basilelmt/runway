@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ImportPreviewRow } from '@shared/api-types';
 import type { Account, Envelope } from '@shared/schemas';
-import { Amount, Badge, Button, Disclosure, EmptyState, InlinePill, ListRow, listRowDate, Stat, StatGroup } from '@/components/ui';
+import { Amount, Badge, Button, Disclosure, EmptyState, InlinePill, ListRow, listRowDate, Stat, StatGroup, statNumber } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import styles from './ImportPreview.module.css';
 
@@ -51,13 +51,13 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
     <div className={styles.wrap}>
       <StatGroup>
         <Stat label="Nouvelles">
-          <span className={styles.num}>{fresh.length}</span>
+          <span className={statNumber}>{fresh.length}</span>
         </Stat>
         <Stat label="Rapprochées">
-          <span className={styles.num}>{matched.length}</span>
+          <span className={statNumber}>{matched.length}</span>
         </Stat>
         <Stat label="Doublons ignorés">
-          <span className={styles.num}>{duplicates.length}</span>
+          <span className={statNumber}>{duplicates.length}</span>
         </Stat>
       </StatGroup>
 
@@ -132,7 +132,7 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
               <ListRow
                 key={row.index}
                 compact
-                className={styles.duplicateRow}
+                muted
                 lead={<span className={listRowDate}>{formatDateCompact(row.date)}</span>}
                 title={row.label}
                 meta={row.status === 'internal' ? <Badge tone="info">virement déjà saisi</Badge> : null}

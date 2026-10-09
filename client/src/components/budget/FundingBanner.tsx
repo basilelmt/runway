@@ -21,7 +21,7 @@ export function FundingBanner({ funding, budgetLink = false }: FundingBannerProp
 
   return (
     <Notice
-      tone="marking"
+      tone="neutral"
       icon={<WalletCards />}
       label="Répartition du salaire"
       action={

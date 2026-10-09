@@ -4,33 +4,6 @@
   flex-wrap: wrap;
 }
 
-.dragRow {
-  transition: opacity var(--dur) var(--ease-out);
-}
-
-.dragging {
-  opacity: 0.4;
-}
-
-.over {
-  box-shadow: inset 0 var(--stroke-mark) 0 var(--marking);
-}
-
-.handle {
-  display: flex;
-  align-items: center;
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--ink-mute);
-  cursor: grab;
-}
-
-.handle :global(svg) {
-  width: 16px;
-  height: 16px;
-}
-
 .priority {
   min-width: 20px;
   text-align: right;
@@ -41,7 +14,7 @@
   color: var(--ink-mute);
 }
 
-/* Le motif (long, parfois) rétrécit en premier ; la flèche et l'enveloppe gardent leur taille. */
+/* Sur ordinateur, le motif (long, parfois) rétrécit en premier ; la flèche et l'enveloppe gardent leur taille. */
 .ruleTitle {
   display: flex;
   align-items: center;
@@ -61,4 +34,20 @@
   align-items: center;
   gap: var(--s-2);
   flex-shrink: 0;
+}
+
+/* Sur mobile, le motif passe à la ligne en entier plutôt que de perdre l'essentiel dans une ellipse ;
+   la flèche et l'enveloppe restent groupées. */
+@media (max-width: 767px) {
+  .ruleTitle {
+    flex-wrap: wrap;
+    row-gap: var(--s-1);
+    white-space: normal;
+  }
+
+  .pattern {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
 }

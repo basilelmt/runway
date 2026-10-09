@@ -1,4 +1,4 @@
-import { Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { Pause, Pencil, Play, Plus, Repeat, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { formatDateShort } from '@shared/dates';
 import { errorMessage } from '@/api/client';
@@ -14,7 +14,7 @@ import {
 } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
-import { Amount, Badge, Button, ConfirmDialog, Dialog, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
+import { Amount, Badge, Button, ConfirmDialog, Dialog, EmptyState, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
 import styles from './FixedCharges.module.css';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; rule: RecurringRuleView } | { mode: 'delete'; rule: RecurringRuleView } | null;
@@ -66,6 +66,8 @@ export function FixedCharges() {
     <ListRow
       key={rule.id}
       muted={!rule.active}
+      onClick={() => setDialog({ mode: 'edit', rule })}
+      clickLabel={`Modifier ${rule.name}`}
       title={rule.name}
       meta={
         <>
@@ -110,7 +112,16 @@ export function FixedCharges() {
       ) : (
         <div className={styles.body}>
           {list.length === 0 ? (
-            <p className={styles.empty}>Ajoute ton salaire, ton loyer et tes abonnements : leurs montants comptent dans le budget de leur enveloppe.</p>
+            <EmptyState
+              icon={<Repeat />}
+              title="Aucune charge fixe ni revenu"
+              description="Ajoute ton salaire, ton loyer et tes abonnements : leurs montants comptent dans le budget de leur enveloppe."
+              action={
+                <Button variant="secondary" icon={<Plus />} onClick={() => setDialog({ mode: 'create' })}>
+                  Ajouter
+                </Button>
+              }
+            />
           ) : (
             <div>
               {incomes.length > 0 ? (

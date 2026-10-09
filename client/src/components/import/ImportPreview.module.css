@@ -4,19 +4,9 @@
   gap: var(--s-4);
 }
 
-.num {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 500;
-}
-
 .replaces {
   color: var(--ink-mute);
   font-size: var(--text-xs);
-}
-
-.duplicateRow {
-  opacity: 0.6;
 }
 
 .actions {

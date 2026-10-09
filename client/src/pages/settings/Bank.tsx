@@ -1,12 +1,12 @@
-import { KeyRound, Landmark, Upload } from 'lucide-react';
+import { CircleCheck, KeyRound, Landmark, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { settingsSchema } from '@shared/schemas';
 import type { ImportRecord } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useImports, useSaveSettings, useSettings, useTestBankCredentials } from '@/api/hooks';
 import { BankSyncPanel } from '@/components/import/BankSyncPanel';
-import { Button, ButtonLink, ColumnHeader, Disclosure, EmptyState, ErrorState, Field, Input, ListRow, ListRowSkeleton, SectionHeader, Textarea, listRowDate, useToast } from '@/components/ui';
-import { formatDateCompact, plural } from '@/lib/format';
+import { Button, ButtonLink, ColumnHeader, Disclosure, EmptyState, ErrorState, Field, Input, ListRow, ListRowSkeleton, Notice, SectionHeader, Textarea, listRowDate, useToast } from '@/components/ui';
+import { formatDateCompact, NBSP, plural } from '@/lib/format';
 import styles from './Settings.module.css';
 import bank from './Bank.module.css';
 
@@ -34,10 +34,10 @@ function BankCredentials() {
   const [errors, setErrors] = useState<{ appId?: string; privateKey?: string }>({});
   // Une clé déjà enregistrée n'est jamais réaffichée : on peut seulement la remplacer.
   const [replacingKey, setReplacingKey] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const test = useTestBankCredentials({
-    onSuccess: (r) => setTestResult(`Connexion réussie : application « ${r.name} » (${r.environment.toLowerCase()})`),
-    onError: (e) => setTestResult(`Échec : ${errorMessage(e)}`),
+    onSuccess: (r) => setTestResult({ ok: true, text: `Connexion réussie : application « ${r.name} » (${r.environment.toLowerCase()})` }),
+    onError: (e) => setTestResult({ ok: false, text: `Échec : ${errorMessage(e)}` }),
   });
 
   const [loaded, setLoaded] = useState<typeof settings.data | null>(null);
@@ -92,6 +92,8 @@ function BankCredentials() {
       />
       {settings.isPending ? (
         <ListRowSkeleton rows={2} />
+      ) : settings.isError ? (
+        <ErrorState title="Impossible de charger l’accès Enable Banking" description={errorMessage(settings.error)} onRetry={() => settings.refetch()} />
       ) : (
         <form className={styles.form} onSubmit={submit} noValidate>
           <Field label="Application ID" error={errors.appId} hint="Affiché dans la console Enable Banking, onglet API applications.">
@@ -124,9 +126,13 @@ function BankCredentials() {
             </Field>
           )}
           {testResult ? (
-            <p className={styles.status} role="status">
-              {testResult}
-            </p>
+            testResult.ok ? (
+              <Notice tone="neutral" icon={<CircleCheck />} role="status">
+                {testResult.text}
+              </Notice>
+            ) : (
+              <Notice tone="negative">{testResult.text}</Notice>
+            )
           ) : null}
           <div className={styles.actions}>
             <Button type="submit" variant="primary" loading={save.isPending}>
@@ -170,8 +176,8 @@ function ImportHistory() {
     <ListRow
       key={imp.id}
       lead={<span className={listRowDate}>{formatDateCompact(imp.importedAt.slice(0, 10))}</span>}
-      title={<span className="mono">{imp.fileName}</span>}
-      meta={`${plural(imp.newCount, 'ajoutée')}\u00A0· ${plural(imp.matchedCount, 'rapprochée')}\u00A0· ${plural(imp.duplicateCount, 'doublon')}`}
+      title={<span className={['mono', bank.fileName].join(' ')}>{imp.fileName}</span>}
+      meta={`${plural(imp.newCount, 'ajoutée')}${NBSP}· ${plural(imp.matchedCount, 'rapprochée')}${NBSP}· ${plural(imp.duplicateCount, 'doublon')}`}
       trail={accountName(imp.accountId)}
     />
   );
@@ -195,15 +201,17 @@ function ImportHistory() {
         <EmptyState icon={<Upload />} title="Aucun import pour le moment" />
       ) : (
         <>
-          <ColumnHeader
-            title={
-              <span className={bank.columnTitle}>
-                <span className={listRowDate}>Date</span>
-                Fichier
-              </span>
-            }
-            trail="Compte"
-          />
+          <div className={bank.columns}>
+            <ColumnHeader
+              title={
+                <span className={bank.columnTitle}>
+                  <span className={listRowDate}>Date</span>
+                  Fichier
+                </span>
+              }
+              trail="Compte"
+            />
+          </div>
           <ul className="ledger">{imports.data.slice(0, HISTORY_PREVIEW).map(row)}</ul>
           {imports.data.length > HISTORY_PREVIEW ? (
             <Disclosure label="Afficher tout l’historique" openLabel="Masquer l’historique complet" count={imports.data.length}>

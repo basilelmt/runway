@@ -6,7 +6,7 @@ import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
 import { operationsHref } from '@/components/transactions/TransactionFilters';
-import { Amount, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Skeleton, Stat, StatGroup } from '@/components/ui';
+import { Amount, Badge, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Skeleton, Stat, StatGroup } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import styles from './EnvelopeDetailDialog.module.css';
@@ -114,10 +114,15 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
                   muted={t.status === 'planned'}
                   lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
                   title={
-                    <span title={t.label}>
-                      {displayLabel(t)}
-                      {t.status === 'planned' ? <span className="muted"> · prévue</span> : null}
-                    </span>
+                    <>
+                      <span title={t.label}>{displayLabel(t)}</span>
+                      {t.status === 'planned' ? (
+                        <>
+                          {' '}
+                          <Badge tone="warning">Prévue</Badge>
+                        </>
+                      ) : null}
+                    </>
                   }
                   trail={<Amount cents={-t.amount} tone="neutral" />}
                 />

@@ -13,8 +13,8 @@ import {
   useRunBankSync,
   useStartBankConnection,
 } from '@/api/hooks';
-import { Badge, Button, ConfirmDialog, FieldError, Input, ListRowSkeleton, Notice, Select, useToast } from '@/components/ui';
-import { formatDateLong, formatDateTime, plural, syncSummary } from '@/lib/format';
+import { Badge, Button, ConfirmDialog, ErrorState, FieldError, Input, ListRowSkeleton, Notice, Select, useToast } from '@/components/ui';
+import { formatDateLong, formatDateTime, NBSP, plural, syncSummary } from '@/lib/format';
 import styles from './BankSyncPanel.module.css';
 
 const EXPIRY_WARNING_DAYS = 15;
@@ -108,7 +108,14 @@ export function BankSyncPanel() {
       </div>
     );
   }
-  if (!state.data) return null;
+  // Une erreur de rafraîchissement garde les données déjà là ; sans données, c'est un échec de chargement.
+  if (!state.data) {
+    return (
+      <div className={styles.panel}>
+        <ErrorState title="Impossible de charger la synchronisation bancaire" description={errorMessage(state.error)} onRetry={() => state.refetch()} />
+      </div>
+    );
+  }
 
   const visible = state.data.connections.filter((c) => c.status !== 'revoked');
   const connection = visible.at(-1) ?? null;
@@ -168,7 +175,7 @@ export function BankSyncPanel() {
         <>
           <p className={styles.text}>Les doublons, virements internes et opérations prévues sont traités comme pour un relevé.</p>
           <div className={styles.actions}>
-            <Button variant="primary" icon={<Landmark aria-hidden />} loading={start.isPending} onClick={() => start.mutate(undefined)}>
+            <Button variant="secondary" icon={<Landmark aria-hidden />} loading={start.isPending} onClick={() => start.mutate(undefined)}>
               Connecter La Banque Postale
             </Button>
           </div>
@@ -318,7 +325,7 @@ function ActiveState({
       <div className={styles.meta}>
         <span>
           {connection.lastSyncAt ? `Dernière synchronisation ${formatDateTime(connection.lastSyncAt)}` : 'Jamais synchronisé'}
-          {connection.validUntil ? ' ·' : ''}
+          {connection.validUntil ? `${NBSP}·` : ''}
         </span>
         {/* Le séparateur reste collé à la phrase précédente (espace insécable) : il ne peut pas se retrouver seul en début de ligne quand ce bloc passe à la ligne. */}
         {connection.validUntil ? <span className="muted">consentement jusqu'au {formatDateLong(connection.validUntil.slice(0, 10))}</span> : null}
@@ -334,8 +341,8 @@ function ActiveState({
             <span>
               {accountName(a.accountId!)}
               {/* Espace insécable avant le séparateur : il ne commence jamais une ligne quand ça renvoie à la ligne. */}
-              {a.syncFrom ? <span className="muted">{' · '}depuis le {formatDateLong(a.syncFrom)}</span> : null}
-              {a.lastSyncedDate ? <span className="muted">{' · '}à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
+              {a.syncFrom ? <span className="muted">{`${NBSP}· `}depuis le {formatDateLong(a.syncFrom)}</span> : null}
+              {a.lastSyncedDate ? <span className="muted">{`${NBSP}· `}à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
             </span>
           </div>
         ))}
@@ -353,7 +360,7 @@ function ActiveState({
           </Button>
         ) : null}
         {!expired ? (
-          <Button variant={expiringSoon ? 'secondary' : 'primary'} icon={<RefreshCw aria-hidden />} loading={syncing} onClick={onSync}>
+          <Button variant="secondary" icon={<RefreshCw aria-hidden />} loading={syncing} onClick={onSync}>
             Synchroniser maintenant
           </Button>
         ) : null}

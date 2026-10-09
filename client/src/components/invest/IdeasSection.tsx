@@ -4,7 +4,7 @@ import type { IdeaRunView, IdeaView } from '@shared/api-types';
 import { IDEA_ANGLES } from '@shared/invest';
 import { errorMessage } from '@/api/client';
 import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
-import { Button, Disclosure, EmptyState, Notice, PulseDot, SectionHeader, Skeleton } from '@/components/ui';
+import { Button, Disclosure, EmptyState, ErrorState, Notice, PulseDot, SectionHeader, Skeleton } from '@/components/ui';
 import { keepTogether } from '@/lib/format';
 import { failedAnglesText, runOutcome } from '@/lib/invest';
 import { IdeaCard } from './IdeaCard';
@@ -63,7 +63,7 @@ export function IdeasSection() {
       {start.error ? <Notice tone="negative">{errorMessage(start.error)}</Notice> : null}
 
       {ideas.isError ? (
-        <EmptyState title="Impossible de charger les idées" description={errorMessage(ideas.error)} action={<Button onClick={() => ideas.refetch()}>Réessayer</Button>} />
+        <ErrorState title="Impossible de charger les idées" description={errorMessage(ideas.error)} onRetry={() => ideas.refetch()} />
       ) : !data ? (
         <div className={styles.grid}>
           <Skeleton height={260} />

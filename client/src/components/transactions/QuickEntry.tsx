@@ -261,7 +261,8 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
 
       {kind === 'expense' ? (
         <div className={styles.group}>
-          <GroupLabel as="p">
+          {/* Le groupe est nommé par son intitulé entier : « proposée par tes règles » est annoncé avec. */}
+          <GroupLabel as="p" id={`${formId}-envelope`}>
             Enveloppe{' '}
             {envelopeSource === 'rule' || envelopeSource === 'history' ? (
               <span className={styles.auto}>
@@ -270,7 +271,7 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
             ) : null}
           </GroupLabel>
           <ChipPicker
-            aria-label="Enveloppe"
+            aria-labelledby={`${formId}-envelope`}
             value={envelopeId}
             onChange={chooseEnvelope}
             options={[{ value: null, label: 'À ranger plus tard' }, ...(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))]}

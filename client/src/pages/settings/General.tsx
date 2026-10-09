@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { settingsSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useSaveSettings, useSettings } from '@/api/hooks';
-import { Button, Field, Input, ListRow, ListRowSkeleton, SectionHeader, useToast } from '@/components/ui';
+import { Button, ErrorState, Field, Input, ListRow, ListRowSkeleton, SectionHeader, useToast } from '@/components/ui';
 import { MerchantSettings } from './MerchantSettings';
 import styles from './Settings.module.css';
 
@@ -64,6 +64,8 @@ export function GeneralSettings() {
         />
         {settings.isPending ? (
           <ListRowSkeleton rows={2} />
+        ) : settings.isError ? (
+          <ErrorState title="Impossible de charger les réglages" description={errorMessage(settings.error)} onRetry={() => settings.refetch()} />
         ) : (
           <form className={styles.form} onSubmit={submit} noValidate>
             <Field label="Horizon de prévision (jours)" error={errors.horizon} hint="Entre 7 et 730.">

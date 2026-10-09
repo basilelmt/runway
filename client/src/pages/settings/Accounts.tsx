@@ -182,7 +182,7 @@ export function AccountsSettings() {
           title="Aucun compte"
           description="Commence par créer ton compte courant avec son solde actuel."
           action={
-            <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
+            <Button variant="secondary" icon={<Plus />} onClick={() => setCreating(true)}>
               Créer un compte
             </Button>
           }

@@ -1,11 +1,11 @@
-import { ChevronDown, ChevronUp, GripVertical, ListFilter, Pencil, Plus, Trash2, Wand2 } from 'lucide-react';
-import { useState, type KeyboardEvent } from 'react';
+import { ChevronDown, ChevronUp, ListFilter, Pencil, Plus, Trash2, Wand2 } from 'lucide-react';
+import { useState } from 'react';
 import type { SortingRule } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useApplySortingRules, useCreateSortingRule, useDeleteSortingRule, useEnvelopes, useReorderSortingRules, useSortingRules, useUpdateSortingRule } from '@/api/hooks';
 import { RuleTester } from '@/components/sorting/RuleTester';
 import { SortingRuleDialog } from '@/components/sorting/SortingRuleDialog';
-import { Button, ConfirmDialog, EmptyState, EnvelopeTag, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
+import { Button, ConfirmDialog, DragHandle, dragRow, EmptyState, EnvelopeTag, ErrorState, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
 import styles from './SortingRules.module.css';
 
 type DialogState = { open: false } | { open: true; rule: SortingRule | null };
@@ -45,13 +45,6 @@ export function SortingRulesSettings() {
     move(list.findIndex((r) => r.id === dragId), list.findIndex((r) => r.id === targetId));
   }
 
-  function onHandleKey(e: KeyboardEvent, id: number) {
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      moveId(id, e.key === 'ArrowUp' ? -1 : 1);
-    }
-  }
-
   const activeMutation = dialog.open && dialog.rule ? update : create;
   const applyAll = useApplySortingRules({
     onSuccess: ({ assigned }) => toast.success(assigned === 0 ? 'Rien à ranger : aucune opération ne correspond' : `${assigned} opération${assigned > 1 ? 's' : ''} rangée${assigned > 1 ? 's' : ''}`),
@@ -79,13 +72,15 @@ export function SortingRulesSettings() {
 
       {rules.isPending ? (
         <ListRowSkeleton rows={6} actions />
+      ) : rules.isError ? (
+        <ErrorState title="Impossible de charger les règles de tri" description={errorMessage(rules.error)} onRetry={() => rules.refetch()} />
       ) : list.length === 0 ? (
         <EmptyState
           icon={<ListFilter />}
           title="Aucune règle de tri"
           description="Une règle range automatiquement les dépenses importées dont le libellé contient un motif, par exemple « carrefour » dans Courses."
           action={
-            <Button variant="primary" onClick={() => setDialog({ open: true, rule: null })}>
+            <Button variant="secondary" onClick={() => setDialog({ open: true, rule: null })}>
               Créer une règle
             </Button>
           }
@@ -97,7 +92,7 @@ export function SortingRulesSettings() {
             return (
               <li
                 key={rule.id}
-                className={[styles.dragRow, dragId === rule.id ? styles.dragging : '', overId === rule.id && dragId !== rule.id ? styles.over : ''].join(' ')}
+                className={[dragRow.row, dragId === rule.id ? dragRow.dragging : '', overId === rule.id && dragId !== rule.id ? dragRow.over : ''].join(' ')}
                 draggable
                 onDragStart={(e) => {
                   setDragId(rule.id);
@@ -119,23 +114,18 @@ export function SortingRulesSettings() {
               >
                 <ListRow
                   as="div"
+                  onClick={() => setDialog({ open: true, rule })}
+                  clickLabel={`Modifier la règle « ${rule.pattern} »`}
                   lead={
                     <>
-                      <button
-                        type="button"
-                        className={styles.handle}
-                        aria-label={`Déplacer la règle « ${rule.pattern} » dans la liste (flèches haut et bas)`}
-                        onKeyDown={(e) => onHandleKey(e, rule.id)}
-                      >
-                        <GripVertical aria-hidden />
-                      </button>
+                      <DragHandle label={`Déplacer la règle « ${rule.pattern} » dans la liste (flèches haut et bas)`} onMove={(delta) => moveId(rule.id, delta)} />
                       <span className={['num', styles.priority].join(' ')}>{i + 1}</span>
                     </>
                   }
                   title={
                     <span className={styles.ruleTitle}>
                       <span className={['mono', styles.pattern].join(' ')}>{rule.pattern}</span>
-                      {/* Le motif s'ellipse en premier : la flèche et l'enveloppe restent lisibles, jamais compressées. */}
+                      {/* La flèche et l'enveloppe restent ensemble, jamais compressées ; sur mobile, le motif passe à la ligne. */}
                       <span className={styles.tail}>
                         <span className={styles.arrow}>→</span>
                         {env ? <EnvelopeTag name={env.name} color={env.color} /> : <span className="muted">Enveloppe supprimée</span>}

@@ -36,7 +36,7 @@ export function DropZone({ onFile, busy = false }: DropZoneProps) {
         title={busy ? 'Lecture du relevé' : 'Dépose ici un relevé La Banque Postale'}
         description="Export CSV des opérations, ou relevé mensuel PDF (tous les comptes du relevé sont lus)."
         action={
-          <Button variant="primary" onClick={() => inputRef.current?.click()} disabled={busy}>
+          <Button variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
             Choisir un fichier
           </Button>
         }

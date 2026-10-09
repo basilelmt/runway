@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { errorMessage } from '@/api/client';
 import { useMerchantStatus, useNameMerchants } from '@/api/hooks';
-import { Button, Notice, PulseDot, SectionHeader, Skeleton, useToast } from '@/components/ui';
+import { Button, ErrorState, Notice, PulseDot, SectionHeader, Skeleton, useToast } from '@/components/ui';
 import { plural } from '@/lib/format';
 import styles from './Settings.module.css';
 
@@ -29,7 +29,9 @@ export function MerchantSettings() {
           </Button>
         }
       />
-      {!data ? (
+      {!data && status.isError ? (
+        <ErrorState title="Impossible de charger les marchands" description={errorMessage(status.error)} onRetry={() => status.refetch()} />
+      ) : !data ? (
         <Skeleton width={180} height={14} />
       ) : (
         <div className="stack">

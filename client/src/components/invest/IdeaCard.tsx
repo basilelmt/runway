@@ -16,7 +16,7 @@ export function IdeaCard({ idea, onOpen }: { idea: IdeaView; onOpen: () => void 
       <button type="button" className={styles.cardButton} onClick={onOpen} aria-label={`Voir le raisonnement : ${idea.title}`} />
       <header className={styles.cardHead}>
         <h3 className={styles.cardTitle}>{keepTogether(idea.title)}</h3>
-        <span className={styles.horizon}>{closed ? `Close le ${formatDateCompact(idea.horizon)}` : `D’ici le ${formatDateCompact(idea.horizon)}`}</span>
+        <span className="eyebrow">{closed ? `Close le ${formatDateCompact(idea.horizon)}` : `D’ici le ${formatDateCompact(idea.horizon)}`}</span>
       </header>
 
       <div className={styles.asset}>
