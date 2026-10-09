@@ -8,8 +8,8 @@ import type { ISODate } from '@shared/dates';
 import { askAnswerSchema, type AskRequest } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { listAccounts } from '../repos/accounts';
-import { listEnvelopes } from '../repos/envelopes';
 import { ClaudeError, claudeErrorFromResult, claudeNotInstalled, spawnClaudeStream, type StreamExec } from '../services/claude';
+import { listBudgetedEnvelopes } from '../services/state';
 import { validateActions } from './actions';
 import { answerJsonSchema, buildAskSystemPrompt, stepText } from './prompt';
 import { openReadOnly, runReadOnlyQuery } from './query';
@@ -66,7 +66,7 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
       question: input.question,
       sessionId: input.sessionId,
       newSessionId,
-      systemPrompt: buildAskSystemPrompt({ today: input.today, envelopes: listEnvelopes(db), accounts: listAccounts(db) }),
+      systemPrompt: buildAskSystemPrompt({ today: input.today, envelopes: listBudgetedEnvelopes(db, input.today), accounts: listAccounts(db) }),
       dbPath: deps.dbPath,
       model: deps.model,
     });
@@ -106,8 +106,8 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
     const parsed = askAnswerSchema.safeParse(result?.structured_output);
     if (!parsed.success) throw new ClaudeError(`Réponse de Claude illisible${stderr ? ` : ${stderr.slice(0, 200)}` : ''}`, 'claude_invalid_output');
 
-    const { actions, rejected } = validateActions(db, parsed.data.actions);
-    if (rejected > 0) console.warn(`Demander : ${rejected} action(s) proposée(s) écartée(s)`);
+    const { actions, rejected, reasons } = validateActions(db, parsed.data.actions, input.today);
+    if (rejected > 0) console.warn(`Demander : ${rejected} action(s) proposée(s) écartée(s)${reasons.length > 0 ? ` (${reasons.join(' ; ')})` : ''}`);
     emit({
       event: 'answer',
       data: {

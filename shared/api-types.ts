@@ -372,7 +372,11 @@ export type IdeaRunStart = { run: IdeaRunView | null; started: boolean };
 export type AskActionView =
   | { type: 'sort'; transactionIds: number[]; envelopeId: number; envelopeName: string; rulePattern: string | null; count: number; total: Cents }
   | { type: 'move'; fromEnvelopeId: number | null; fromName: string; toEnvelopeId: number; toName: string; amount: Cents }
-  | { type: 'budget'; envelopeId: number; envelopeName: string; monthlyTarget: Cents | null; current: Cents | null }
+  /**
+   * `monthlyTarget` : budget voulu par Claude (null = retirer le complément) ; `monthlyExtra` : complément à enregistrer ;
+   * `charges` : charges fixes de l'enveloppe ramenées au mois ; `current` : budget actuel calculé.
+   */
+  | { type: 'budget'; envelopeId: number; envelopeName: string; monthlyTarget: Cents | null; monthlyExtra: Cents | null; charges: Cents; current: Cents }
   | { type: 'recurring'; rule: RecurringRuleInput; accountName: string };
 
 /** Graphique d'une réponse : les valeurs viennent de la requête exécutée par le serveur, pas de Claude. */

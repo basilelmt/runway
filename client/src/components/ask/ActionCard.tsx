@@ -18,10 +18,13 @@ function describe(action: AskActionView): { title: string; detail: string | null
       return action.fromEnvelopeId === null
         ? { title: `Répartir ${formatEuros(action.amount)} vers ${action.toName}`, detail: null }
         : { title: `Déplacer ${formatEuros(action.amount)} de ${action.fromName} vers ${action.toName}`, detail: null };
-    case 'budget':
-      return action.monthlyTarget === null
-        ? { title: `Retirer le budget mensuel de ${action.envelopeName}`, detail: null }
-        : { title: `Passer ${action.envelopeName} à ${formatEuros(action.monthlyTarget)} par mois`, detail: action.current ? `au lieu de ${formatEuros(action.current)}` : null };
+    case 'budget': {
+      const detail = action.current ? `au lieu de ${formatEuros(action.current)}` : null;
+      if (action.monthlyTarget !== null) return { title: `Passer ${action.envelopeName} à ${formatEuros(action.monthlyTarget)} par mois`, detail };
+      return action.charges > 0
+        ? { title: `Ramener ${action.envelopeName} à ses charges fixes, ${formatEuros(action.charges)} par mois`, detail }
+        : { title: `Retirer le budget mensuel de ${action.envelopeName}`, detail: null };
+    }
     case 'recurring':
       return { title: `Créer la charge fixe ${action.rule.name} : ${formatEuros(action.rule.amount)}`, detail: `${describeFrequency({ ...action.rule, dayOfMonth: action.rule.dayOfMonth ?? null })} · ${action.accountName}` };
   }
@@ -58,7 +61,7 @@ export function ActionCard({ action }: { action: AskActionView }) {
           fromEnvelopeId: action.fromEnvelopeId,
         });
       case 'budget':
-        return envelope.mutate({ id: action.envelopeId, monthlyTarget: action.monthlyTarget });
+        return envelope.mutate({ id: action.envelopeId, monthlyExtra: action.monthlyExtra });
       case 'recurring':
         return recurring.mutate(action.rule);
     }
