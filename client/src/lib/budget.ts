@@ -1,4 +1,5 @@
-import type { Overview } from '@shared/api-types';
+import type { Overview, WatchedEnvelope } from '@shared/api-types';
+import { formatEuros } from '@shared/money';
 
 /** Le budget réclame une action : de l'argent attend d'être réparti dans des enveloppes qui en manquent, trop a été réparti, ou les enveloppes prévoient plus que le revenu. */
 export function budgetNeedsAttention(overview: Pick<Overview, 'toAllocate' | 'month'>): boolean {
@@ -15,4 +16,17 @@ export function monthProgress(today: string, monthEnd: string): number {
   const day = Number(today.slice(8, 10));
   const days = Number(monthEnd.slice(8, 10));
   return day / days;
+}
+
+export type WatchTodo = { text: string; detail?: string; tone?: 'alert' };
+
+/** Ligne « À faire » des enveloppes à surveiller, ou null s'il n'y en a aucune. */
+export function watchTodo(watch: WatchedEnvelope[]): WatchTodo | null {
+  const first = watch[0];
+  if (!first) return null;
+  if (watch.length > 1) {
+    const todo: WatchTodo = { text: `${watch.length} enveloppes à surveiller`, detail: watch.map((w) => w.name).join(', ') };
+    return watch.some((w) => w.kind === 'over') ? { ...todo, tone: 'alert' } : todo;
+  }
+  return first.kind === 'over' ? { text: `${first.name} dépassée de ${formatEuros(first.amount)}`, tone: 'alert' } : { text: `Plus que ${formatEuros(first.amount)} dans ${first.name}` };
 }
