@@ -1,0 +1,155 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: var(--row-h);
+  padding: var(--s-2) 0;
+  list-style: none;
+}
+
+.compact {
+  min-height: var(--row-h-compact);
+  padding: var(--s-1) 0;
+}
+
+.open {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+}
+
+.open:focus-visible {
+  outline-offset: -2px;
+}
+
+.lead {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--ink-mute);
+}
+
+.date {
+  width: 64px;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-mute);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-half);
+}
+
+.title {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact .title {
+  font-weight: 400;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-2);
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+}
+
+.middle {
+  flex: 0 0 var(--list-middle, 34%);
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.trail {
+  flex-shrink: 0;
+  min-width: var(--list-trail, 110px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-half);
+  text-align: right;
+}
+
+.trailSub {
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+}
+
+.muted .trail {
+  opacity: 0.55;
+}
+
+.actions {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-1);
+  min-width: 38px;
+}
+
+.header {
+  min-height: 0;
+  padding: 0 0 var(--s-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.headerEnd {
+  justify-content: flex-end;
+}
+
+.group {
+  padding: var(--s-6) 0 var(--s-2);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.group:first-child {
+  padding-top: 0;
+}
+
+/* Sur mobile, la progression passe sous le titre et le montant */
+@media (max-width: 767px) {
+  .row:has(.middle) {
+    flex-wrap: wrap;
+    row-gap: var(--s-2);
+  }
+
+  .middle {
+    order: 10;
+    flex-basis: 100%;
+  }
+
+  .header .middle {
+    display: none;
+  }
+}
