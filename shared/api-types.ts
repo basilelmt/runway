@@ -119,6 +119,8 @@ export type Overview = {
   latePlanned: Transaction[];
   /** Dernière répartition automatique, tant qu'elle n'est ni annulée ni fermée. */
   latestFunding: FundingView | null;
+  /** Enveloppes dépassées ou presque vides, les plus urgentes d'abord. */
+  watch: WatchedEnvelope[];
 };
 
 export type SpendingReport = {

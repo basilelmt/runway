@@ -1,5 +1,5 @@
 import { computeBalances } from '@core/balances';
-import { monthActivity, remainingToFund, savedInMonth } from '@core/budget';
+import { envelopesToWatch, monthActivity, remainingToFund, savedInMonth } from '@core/budget';
 import { forecast } from '@core/forecast';
 import { MATCH_TOLERANCE_DAYS } from '@core/matching';
 import { monthlyEquivalent } from '@core/recurrence';
@@ -79,5 +79,6 @@ export function buildOverview(db: Db, today: ISODate): Overview {
       .filter((t) => t.status === 'planned' && t.date < addDays(today, -MATCH_TOLERANCE_DAYS))
       .sort((a, b) => (a.date < b.date ? -1 : 1)),
     latestFunding: latestFundingView(db),
+    watch: envelopesToWatch(state.envelopes, balances.envelopes, state.rules, state.transactions, today),
   };
 }
