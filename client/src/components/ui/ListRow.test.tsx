@@ -31,6 +31,7 @@ describe('ListRow', () => {
     expect(onClick).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Voir les dépenses de Courses' }));
     expect(onClick).toHaveBeenCalledOnce();
+    expect(screen.getByRole('listitem').className).not.toMatch(/undefined/);
   });
 
   it('peut être un div hors liste', () => {
