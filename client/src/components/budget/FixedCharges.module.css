@@ -14,38 +14,6 @@
   max-width: 62ch;
 }
 
-.totals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-10);
-  margin: 0 0 var(--s-8);
-}
-
-.totals > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-}
-
-.totals dt {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
-.totals dd {
-  margin: 0;
-}
-
-/* Le chiffre qui compte : séparé par un filet, marqué en jaune */
-.rest {
-  padding-left: var(--s-10);
-  border-left: 2px solid var(--marking);
-}
-
-.negative {
-  color: var(--negative);
-}
-
 .groups {
   display: flex;
   flex-direction: column;
@@ -129,14 +97,6 @@
 }
 
 @media (max-width: 767px) {
-  .totals {
-    gap: var(--s-6);
-  }
-
-  .rest {
-    padding-left: var(--s-4);
-  }
-
   .row {
     grid-template-columns: minmax(0, 1fr) auto;
     row-gap: var(--s-1);
