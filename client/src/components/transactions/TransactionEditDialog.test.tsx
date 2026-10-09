@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Transaction } from '@shared/schemas';
@@ -61,11 +61,12 @@ function renderDialog(transaction: Transaction) {
 }
 
 describe('TransactionEditDialog', () => {
-  it('montre le marchand en titre et le libellé brut dessous, et renomme le marchand pour toutes ses opérations', async () => {
+  it('montre le marchand en titre, le libellé brut une seule fois dans le champ libellé, et renomme le marchand pour toutes ses opérations', async () => {
     const user = userEvent.setup();
     renderDialog(expense);
     expect(screen.getByRole('heading', { name: 'Carrefour Express', hidden: true })).toBeInTheDocument();
-    expect(screen.getByText(expense.label)).toBeInTheDocument();
+    // Le libellé brut n'apparaît qu'une fois, dans le champ éditable du formulaire, pas sous le titre.
+    expect(screen.getAllByDisplayValue(expense.label)).toHaveLength(1);
 
     await user.click(screen.getByRole('button', { name: 'Renommer', hidden: true }));
     expect(await screen.findByText(/52 opérations/)).toBeInTheDocument();
@@ -76,6 +77,23 @@ describe('TransactionEditDialog', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/merchants/CARREFOUR%20EXPR', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ name: 'Carrefour' }) }));
     expect(await screen.findByRole('heading', { name: 'Carrefour', hidden: true })).toBeInTheDocument();
+  });
+
+  it('Échap pendant le renommage annule et rend le focus à Renommer, sans soumettre ni fermer le dialogue', async () => {
+    const user = userEvent.setup();
+    renderDialog(expense);
+    await user.click(screen.getByRole('button', { name: 'Renommer', hidden: true }));
+    const input = await screen.findByLabelText('Nom du marchand');
+    await user.clear(input);
+    await user.type(input, 'Un autre nom');
+
+    expect(fireEvent.keyDown(input, { key: 'Escape' })).toBe(false); // false : preventDefault() a été appelé
+
+    expect(screen.queryByLabelText('Nom du marchand')).not.toBeInTheDocument();
+    const renameButton = screen.getByRole('button', { name: 'Renommer', hidden: true });
+    expect(renameButton).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: 'Carrefour Express', hidden: true })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/merchants/CARREFOUR%20EXPR', expect.objectContaining({ method: 'PUT' }));
   });
 
   it('un virement garde son titre et n’a pas de marchand à renommer', () => {

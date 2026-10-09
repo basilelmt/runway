@@ -78,7 +78,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
             />
           ) : (
             <>
-              {t.merchantKey ? <MerchantHeading key={t.id} merchantKey={t.merchantKey} label={t.label} /> : null}
+              {t.merchantKey ? <MerchantHeading key={t.id} merchantKey={t.merchantKey} /> : null}
               <QuickEntry
                 key={t.id}
                 mode="edit"

@@ -1,18 +1,21 @@
 import { Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { errorMessage } from '@/api/client';
 import { useMerchant, useRenameMerchant } from '@/api/hooks';
 import { Button, Field, Input, useToast } from '@/components/ui';
 import { plural } from '@/lib/format';
 import styles from './MerchantHeading.module.css';
 
-type MerchantHeadingProps = { merchantKey: string; label: string };
+type MerchantHeadingProps = { merchantKey: string };
 
-/** Libellé brut sous le nom du marchand, et renommage du marchand pour toutes ses opérations. */
-export function MerchantHeading({ merchantKey, label }: MerchantHeadingProps) {
+/** Renommage du marchand pour toutes ses opérations ; le libellé brut reste visible dans le champ libellé du formulaire. */
+export function MerchantHeading({ merchantKey }: MerchantHeadingProps) {
   const toast = useToast();
   const merchant = useMerchant(merchantKey);
   const [draft, setDraft] = useState<string | null>(null);
+  const renameButtonRef = useRef<HTMLButtonElement>(null);
+  // Le focus ne peut revenir sur le bouton Renommer qu'une fois le formulaire démonté.
+  const pendingFocus = useRef(false);
   const rename = useRenameMerchant({
     onSuccess: (m) => {
       toast.success(m.source === 'user' ? 'Marchand renommé' : 'Claude renommera ce marchand');
@@ -20,13 +23,23 @@ export function MerchantHeading({ merchantKey, label }: MerchantHeadingProps) {
     },
   });
 
+  useEffect(() => {
+    if (draft === null && pendingFocus.current) {
+      pendingFocus.current = false;
+      renameButtonRef.current?.focus();
+    }
+  }, [draft]);
+
+  function cancelRename() {
+    rename.reset();
+    pendingFocus.current = true;
+    setDraft(null);
+  }
+
   if (draft === null) {
     return (
       <div className={styles.heading}>
-        <p className={styles.label} title={label}>
-          {label}
-        </p>
-        <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => setDraft(merchant.data?.name ?? '')}>
+        <Button ref={renameButtonRef} size="sm" variant="ghost" icon={<Pencil />} onClick={() => setDraft(merchant.data?.name ?? '')}>
           Renommer
         </Button>
       </div>
@@ -39,6 +52,13 @@ export function MerchantHeading({ merchantKey, label }: MerchantHeadingProps) {
     <form
       className={styles.form}
       noValidate
+      onKeyDown={(e: KeyboardEvent<HTMLFormElement>) => {
+        // Échap annule le renommage sans fermer le dialogue englobant (qui se fermerait sinon sur son événement `cancel`).
+        if (e.key !== 'Escape') return;
+        e.preventDefault();
+        e.stopPropagation();
+        cancelRename();
+      }}
       onSubmit={(e) => {
         e.preventDefault();
         rename.mutate({ key: merchantKey, name: draft.trim() });
@@ -48,14 +68,7 @@ export function MerchantHeading({ merchantKey, label }: MerchantHeadingProps) {
         {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={60} autoFocus />}
       </Field>
       <div className={styles.actions}>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            rename.reset();
-            setDraft(null);
-          }}
-        >
+        <Button size="sm" variant="ghost" onClick={cancelRename}>
           Annuler
         </Button>
         <Button size="sm" variant="primary" type="submit" loading={rename.isPending}>
