@@ -28,9 +28,7 @@
 }
 
 .swatchActive {
-  box-shadow:
-    0 0 0 2px var(--paper-raised),
-    0 0 0 4px var(--ink);
+  box-shadow: var(--ring-selected);
 }
 
 .custom {

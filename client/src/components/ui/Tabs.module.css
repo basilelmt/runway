@@ -37,7 +37,7 @@
   left: 0;
   bottom: 0;
   height: 2px;
-  border-radius: var(--s-half) var(--s-half) 0 0;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
   background: var(--ink);
   transition:
     transform 280ms var(--ease-out),

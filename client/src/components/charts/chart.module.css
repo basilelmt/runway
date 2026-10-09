@@ -52,7 +52,7 @@
 .swatch {
   width: 10px;
   height: 10px;
-  border-radius: var(--s-half);
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
 }
 

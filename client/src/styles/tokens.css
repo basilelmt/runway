@@ -62,11 +62,14 @@
   --text-4xl: 4.25rem;
   /* 16px : taille minimale pour qu'un champ ne déclenche pas le zoom automatique sur mobile */
   --text-input: 1rem;
-  /* Échelle d'un texte secondaire accolé à un chiffre clé (ex. devise de AmountHero) */
-  --text-scale-sub: 0.55;
-
   /* Trait d'un pixel simulé en box-shadow (séparateurs, contours fins) */
   --hairline: 1px;
+  /* Trait de marquage : repère de dépôt, halo d'un point, souligné de focus d'un champ */
+  --stroke-mark: 2px;
+  /* Anneau de focus détaché : un liseré de papier puis le jaune */
+  --ring-focus: 0 0 0 var(--stroke-mark) var(--paper), 0 0 0 calc(var(--stroke-mark) * 2) var(--marking);
+  /* Anneau d'un choix sélectionné posé sur un dialogue (pastille de couleur) */
+  --ring-selected: 0 0 0 var(--stroke-mark) var(--paper-raised), 0 0 0 calc(var(--stroke-mark) * 2) var(--ink);
 
   /* Espacement 4px */
   --s-half: 2px;
@@ -81,6 +84,7 @@
   --s-12: 48px;
   --s-16: 64px;
 
+  --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 14px;
