@@ -6,11 +6,6 @@
   font-weight: 500;
 }
 
-.subject + .error {
+.subject + p {
   margin-top: var(--s-3);
-}
-
-.error {
-  color: var(--negative);
-  font-size: var(--text-sm);
 }

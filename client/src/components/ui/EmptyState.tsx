@@ -6,12 +6,13 @@ type EmptyStateProps = {
   title: string;
   description?: string;
   action?: ReactNode;
+  tone?: 'neutral' | 'negative';
 };
 
 /** Un écran vide est une invitation à agir : titre, une phrase, une action. */
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, tone = 'neutral' }: EmptyStateProps) {
   return (
-    <div className={styles.empty}>
+    <div className={[styles.empty, tone === 'negative' ? styles.negative : ''].join(' ')}>
       {icon ? <div className={styles.icon}>{icon}</div> : null}
       <h3 className={styles.title}>{title}</h3>
       {description ? <p className={styles.description}>{description}</p> : null}
