@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { EnvelopeWithBalance } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
-import { Amount, ColumnHeader, Dot, ListRow, ProgressBar, RowMenu, type RowMenuItem } from '@/components/ui';
+import { Amount, ColumnHeader, Dot, ListRow, ProgressBar, type ListRowClick, RowMenu, type RowMenuItem } from '@/components/ui';
 import styles from './EnvelopeRow.module.css';
 
 type EnvelopeRowProps = {
@@ -26,13 +26,13 @@ export function EnvelopeRow({ envelope, menu, leading, onOpen, className }: Enve
   const ratio = target ? envelope.spentThisMonth / target : 0;
   const over = target !== null && envelope.spentThisMonth > target;
   const verb = envelope.isSavings ? 'versés' : 'dépensés';
+  const click: ListRowClick = onOpen ? { onClick: onOpen, clickLabel: `Voir les dépenses de ${envelope.name}` } : {};
 
   return (
     <ListRow
       as="div"
       className={className}
-      onClick={onOpen}
-      clickLabel={`Voir les dépenses de ${envelope.name}`}
+      {...click}
       lead={
         <>
           {leading}

@@ -12,6 +12,9 @@ export function StatGroup({ direction = 'row', divided = false, children }: Stat
   return <dl className={[styles.group, styles[direction], divided ? styles.divided : ''].join(' ')}>{children}</dl>;
 }
 
+/** Valeur non monétaire d'une stat (un nombre d'opérations...) au format d'un `Amount size="lg"`. */
+export const statNumber = styles.number;
+
 /** Un libellé et sa valeur, en général un `Amount size="lg"`. */
 export function Stat({ label, children, emphasis = false }: { label: ReactNode; children: ReactNode; emphasis?: boolean }) {
   return (

@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import type { Account, Envelope, Transaction } from '@shared/schemas';
-import { Amount, Badge, Button, EnvelopeTag, ListRow } from '@/components/ui';
+import { Amount, Badge, Button, EnvelopeTag, ListRow, type ListRowClick } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import { signedAmount } from './signed';
@@ -33,6 +33,7 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
   const account = t.accountId != null ? accounts.get(t.accountId) : undefined;
   const planned = t.status === 'planned';
   const name = displayLabel(t, accounts, viewAccountId);
+  const click: ListRowClick = onClick ? { onClick, clickLabel: `Modifier ${name}` } : {};
 
   const where =
     // Le titre dit déjà « Virement vers/depuis » : pas la peine de répéter le même couple de comptes en dessous.
@@ -45,8 +46,7 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
   return (
     <ListRow
       muted={planned}
-      onClick={onClick}
-      clickLabel={onClick ? `Modifier ${name}` : undefined}
+      {...click}
       title={<span title={t.label}>{name}</span>}
       meta={
         <>

@@ -19,7 +19,7 @@ export function Notice({ tone = 'neutral', icon, children, action, label, role }
   const shownIcon = icon === undefined ? (tone === 'negative' || tone === 'warning' ? <AlertCircle /> : null) : icon;
   const resolvedRole = role ?? (tone === 'negative' ? 'alert' : label ? 'group' : undefined);
   return (
-    <div className={[styles.notice, styles[tone]].join(' ')} role={resolvedRole} aria-label={resolvedRole === 'group' ? label : undefined}>
+    <div className={[styles.notice, styles[tone]].join(' ')} role={resolvedRole} aria-label={label}>
       {shownIcon ? (
         <span className={styles.icon} aria-hidden>
           {shownIcon}

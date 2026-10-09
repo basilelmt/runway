@@ -2,7 +2,17 @@ import type { ReactNode } from 'react';
 import { Skeleton } from './Skeleton';
 import styles from './ListRow.module.css';
 
-type ListRowProps = {
+/** Ligne cliquable : le bouton qui la couvre doit avoir un nom (« Modifier … »). */
+export type ListRowClick =
+  | {
+      onClick: () => void;
+      clickLabel: string;
+      /** Ligne choisie parmi d'autres (série tracée...) : annoncée par `aria-pressed`. */
+      pressed?: boolean;
+    }
+  | { onClick?: undefined; clickLabel?: undefined; pressed?: undefined };
+
+type ListRowProps = ListRowClick & {
   /** Début : date, point, icône. */
   lead?: ReactNode;
   title: ReactNode;
@@ -18,10 +28,6 @@ type ListRowProps = {
   compact?: boolean;
   /** Opération prévue : la fin est atténuée. */
   muted?: boolean;
-  onClick?: () => void;
-  clickLabel?: string;
-  /** Ligne choisie parmi d'autres (série tracée...) : annoncée par `aria-pressed`, seulement avec `onClick`. */
-  pressed?: boolean;
   as?: 'li' | 'div';
   className?: string;
 };
@@ -94,6 +100,10 @@ export function ColumnHeader({ title, middle, trail, actions = false }: ColumnHe
 }
 
 /** Libellé au-dessus d'un groupe de lignes (un jour, une catégorie). */
-export function GroupLabel({ as: Tag = 'h3', children }: { as?: 'h2' | 'h3' | 'p'; children: ReactNode }) {
-  return <Tag className={styles.group}>{children}</Tag>;
+export function GroupLabel({ as: Tag = 'h3', id, children }: { as?: 'h2' | 'h3' | 'p' | 'legend'; id?: string; children: ReactNode }) {
+  return (
+    <Tag id={id} className={styles.group}>
+      {children}
+    </Tag>
+  );
 }

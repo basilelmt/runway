@@ -40,7 +40,9 @@ describe('Kbd', () => {
 describe('CountBadge', () => {
   it('annonce son libellé', () => {
     render(<CountBadge count={10} label="10 opérations à ranger" />);
-    expect(screen.getByLabelText('10 opérations à ranger')).toHaveTextContent('10');
+    // Le chiffre est montré, le libellé est lu : texte masqué visuellement plutôt qu'un aria-label sur un span sans rôle.
+    expect(screen.getByText('10')).toHaveAttribute('aria-hidden');
+    expect(screen.getByText('10 opérations à ranger')).toHaveClass('visually-hidden');
   });
 
   it('ne rend rien à zéro', () => {

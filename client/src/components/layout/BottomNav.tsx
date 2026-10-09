@@ -18,7 +18,9 @@ export function BottomNav() {
           <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => [styles.link, isActive ? styles.active : ''].join(' ')}>
             {item.liftoff ? <LiftoffArrow className={styles.liftoff} /> : <item.icon aria-hidden strokeWidth={1.75} />}
             <span>{item.label}</span>
-            {dot ? <span className={styles.dot} aria-label={item.badge === 'unsorted' ? `${unsorted} à ranger` : 'Argent à répartir'} /> : null}
+            {dot ? <span className={styles.dot}>
+                <span className="visually-hidden">{item.badge === 'unsorted' ? `${unsorted} à ranger` : 'Argent à répartir'}</span>
+              </span> : null}
           </NavLink>
         );
       })}

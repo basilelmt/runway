@@ -18,7 +18,7 @@ export function AskMessage({ turn, onRetry }: AskMessageProps) {
       <p className={styles.question}>{turn.question}</p>
       {turn.status === 'pending' ? (
         <p className={styles.pending}>
-          <PulseDot label="Claude réfléchit" />
+          <PulseDot />
           <span role="status" aria-live="polite">
             {turn.step ?? 'Je réfléchis…'}
           </span>

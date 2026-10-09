@@ -26,7 +26,11 @@ export function SideNav() {
       {item.liftoff ? <LiftoffArrow className={styles.icon} /> : <item.icon className={styles.icon} aria-hidden strokeWidth={1.75} />}
       <span className={styles.label}>{item.label}</span>
       {item.badge === 'unsorted' ? <CountBadge count={unsorted} label={`${unsorted} à ranger`} /> : null}
-      {item.badge === 'toAllocate' && budgetDot ? <span className={styles.dot} aria-label="Argent à répartir" /> : null}
+      {item.badge === 'toAllocate' && budgetDot ? (
+        <span className={styles.dot}>
+          <span className="visually-hidden">Argent à répartir</span>
+        </span>
+      ) : null}
     </NavLink>
   );
 

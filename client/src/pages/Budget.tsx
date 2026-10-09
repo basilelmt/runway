@@ -1,5 +1,5 @@
-import { Archive, ArchiveRestore, ArrowRightLeft, GripVertical, Pencil, Plus, WalletCards } from 'lucide-react';
-import { useState, type KeyboardEvent } from 'react';
+import { Archive, ArchiveRestore, ArrowRightLeft, Pencil, Plus, WalletCards } from 'lucide-react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { EnvelopeWithBalance, Overview } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
@@ -13,7 +13,7 @@ import { FundingBanner } from '@/components/budget/FundingBanner';
 import { AllocateDialog } from '@/components/envelopes/AllocateDialog';
 import { EnvelopeFormDialog } from '@/components/envelopes/EnvelopeFormDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Amount, Button, ConfirmDialog, Disclosure, Dot, EmptyState, ErrorState, KeyFigure, ListRow, ListRowSkeleton, Notice, SectionHeader, Skeleton, Total, useToast } from '@/components/ui';
+import { Amount, Button, ConfirmDialog, Disclosure, Dot, DragHandle, dragRow, EmptyState, ErrorState, KeyFigure, ListRow, ListRowSkeleton, Notice, SectionHeader, Skeleton, Total, useToast } from '@/components/ui';
 import { budgetOverIncome } from '@/lib/budget';
 import styles from './Budget.module.css';
 
@@ -52,7 +52,6 @@ export function BudgetPage() {
       toast.success('Enveloppe archivée');
       setArchiving(null);
     },
-    onError: (e) => toast.error(errorMessage(e)),
   });
 
   // Copie locale pour un réordonnancement optimiste, resynchronisée quand le serveur répond.
@@ -79,13 +78,6 @@ export function BudgetPage() {
     setOverId(null);
   }
 
-  function onHandleKey(e: KeyboardEvent, id: number) {
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      move(id, e.key === 'ArrowUp' ? -1 : 1);
-    }
-  }
-
   const data = overview.data;
   const spending = order.filter((e) => !e.isSavings);
   const savings = order.filter((e) => e.isSavings);
@@ -97,7 +89,7 @@ export function BudgetPage() {
         {list.map((env) => (
           <div
             key={env.id}
-            className={[styles.dragRow, dragId === env.id ? styles.dragging : '', overId === env.id && dragId !== env.id ? styles.dragOver : ''].join(' ')}
+            className={[dragRow.row, dragId === env.id ? dragRow.dragging : '', overId === env.id && dragId !== env.id ? dragRow.over : ''].join(' ')}
             draggable
             onDragStart={(e) => {
               setDragId(env.id);
@@ -119,11 +111,7 @@ export function BudgetPage() {
             <EnvelopeRow
               envelope={env}
               onOpen={() => setDetail(env)}
-              leading={
-                <button type="button" className={styles.handle} aria-label={`Déplacer ${env.name} dans la liste (flèches haut et bas)`} onKeyDown={(e) => onHandleKey(e, env.id)}>
-                  <GripVertical aria-hidden />
-                </button>
-              }
+              leading={<DragHandle label={`Déplacer ${env.name} dans la liste (flèches haut et bas)`} onMove={(delta) => move(env.id, delta)} />}
               menu={[
                 { label: 'Ajouter de l’argent', icon: <Plus />, onSelect: () => setAlloc({ mode: 'allocate', envelope: env }) },
                 { label: 'Déplacer vers une autre enveloppe', icon: <ArrowRightLeft />, onSelect: () => setAlloc({ mode: 'move', envelope: env }) },
@@ -222,12 +210,16 @@ export function BudgetPage() {
       {editing ? <EnvelopeFormDialog key={editing.id} open envelope={editing} onClose={() => setEditing(null)} /> : null}
       <ConfirmDialog
         open={archiving !== null}
-        onClose={() => setArchiving(null)}
+        onClose={() => {
+          setArchiving(null);
+          archive.reset();
+        }}
         onConfirm={() => archiving && archive.mutate({ id: archiving.id, archived: true })}
         title="Archiver cette enveloppe ?"
         description="Elle disparaît du budget et son solde revient dans « Pas encore réparti ». Les dépenses déjà rangées dedans sont conservées."
         confirmLabel="Archiver"
         loading={archive.isPending}
+        error={archive.error ? errorMessage(archive.error) : null}
       >
         {archiving ? (
           <>
