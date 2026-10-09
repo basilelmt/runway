@@ -72,6 +72,8 @@ describe('TransactionEditDialog', () => {
     const dialog = screen.getByRole('dialog', { name: 'Carrefour Express', hidden: true });
     const renameButton = screen.getByRole('button', { name: 'Renommer', hidden: true });
     expect(dialog.querySelector('header')!.contains(renameButton)).toBe(true);
+    // Quand un long titre le pousse sur sa propre ligne, son icône doit retomber sous le titre, pas sous son rembourrage.
+    expect(renameButton.className).toMatch(/renameButton/);
 
     await user.click(renameButton);
     expect(await screen.findByText(/52 opérations/)).toBeInTheDocument();

@@ -52,7 +52,7 @@ export function useMerchantHeading(merchantKey: string | null): MerchantHeading 
 
   if (draft === null) {
     const action = (
-      <Button ref={renameButtonRef} size="sm" variant="ghost" icon={<Pencil />} onClick={() => setDraft(merchant.data?.name ?? '')}>
+      <Button ref={renameButtonRef} size="sm" variant="ghost" icon={<Pencil />} className={styles.renameButton} onClick={() => setDraft(merchant.data?.name ?? '')}>
         Renommer
       </Button>
     );

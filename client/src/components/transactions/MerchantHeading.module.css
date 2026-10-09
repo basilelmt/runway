@@ -1,4 +1,17 @@
 /* Renommage du marchand en place, sous l'en-tête du dialogue (le bouton Renommer est sur la ligne de titre) */
+
+/*
+ * Sur la ligne du titre, le rembourrage horizontal du bouton (var(--s-3)) s'ajoute au gap de la ligne :
+ * aligné avec le titre, son icône paraît correctement espacée. Mais si le titre est long et le fait
+ * passer seul sur sa propre ligne (flex-wrap), ce même rembourrage décale l'icône vers la droite,
+ * désalignée du bord gauche du titre. La marge négative annule ce rembourrage dans les deux cas :
+ * sur la ligne du titre, le gap de la ligne suffit alors à l'espacement ; seul sur sa ligne, l'icône
+ * retombe pile sous le titre.
+ */
+.renameButton {
+  margin-inline-start: calc(-1 * var(--s-3));
+}
+
 .form {
   display: flex;
   flex-direction: column;
