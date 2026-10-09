@@ -193,4 +193,18 @@
     flex-basis: 100%;
     justify-content: flex-end;
   }
+
+  /* Le seul bouton ⋯ d'un menu de ligne est assez étroit pour rester à côté du montant. */
+  .row:has(> .actions > [data-row-menu]):not(:has(.middle)) {
+    flex-wrap: nowrap;
+    --list-trail: 110px;
+  }
+
+  .row:has(> .actions > [data-row-menu]):not(:has(.middle)) > .trail {
+    margin-left: 0;
+  }
+
+  .row:has(> .actions > [data-row-menu]):not(:has(.middle)) > .actions {
+    flex-basis: auto;
+  }
 }

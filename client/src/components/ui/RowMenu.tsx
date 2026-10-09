@@ -84,6 +84,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
+        data-row-menu
         popoverTarget={id}
         className={open ? styles.triggerOpen : undefined}
         style={anchor(`--${id}`, 'anchorName')}
