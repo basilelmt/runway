@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { errorMessage } from '@/api/client';
 import { useMerchantStatus, useNameMerchants } from '@/api/hooks';
-import { Button, SkeletonRows, useToast } from '@/components/ui';
+import { Button, Notice, PulseDot, SectionHeader, Skeleton, useToast } from '@/components/ui';
 import { plural } from '@/lib/format';
 import styles from './Settings.module.css';
 
@@ -14,35 +14,34 @@ export function MerchantSettings() {
 
   return (
     <section className={styles.section}>
-      <div className={styles.aside}>
-        <h2>Marchands</h2>
-        <p>Runway tire un marchand de chaque libellé, et Claude lui donne un nom lisible une fois pour toutes.</p>
-        <p>Un nom que tu choisis dans une opération n’est jamais remplacé.</p>
-      </div>
-      <div className={styles.content}>
-        {!data ? (
-          <SkeletonRows rows={2} />
-        ) : (
+      <SectionHeader
+        title="Marchands"
+        description={
           <>
-            <p className={styles.text}>{`${plural(data.total, 'marchand')}, ${plural(data.named, 'nommé')}`}</p>
-            {data.running ? (
-              <p className={styles.status} aria-live="polite">
-                Claude nomme les nouveaux marchands…
-              </p>
-            ) : null}
-            {data.lastError && !data.running ? (
-              <p className={styles.error} role="alert">
-                {data.lastError}
-              </p>
-            ) : null}
-            <div className={styles.actions}>
-              <Button icon={<Sparkles />} loading={data.running || name.isPending} onClick={() => name.mutate()}>
-                Nommer avec Claude
-              </Button>
-            </div>
+            Runway tire un marchand de chaque libellé, et Claude lui donne un nom lisible une fois pour toutes.
+            <br />
+            Un nom que tu choisis dans une opération n’est jamais remplacé.
           </>
-        )}
-      </div>
+        }
+        aside={
+          <Button size="sm" icon={<Sparkles />} loading={data?.running || name.isPending} disabled={!data} onClick={() => name.mutate()}>
+            Nommer avec Claude
+          </Button>
+        }
+      />
+      {!data ? (
+        <Skeleton width={180} height={14} />
+      ) : (
+        <div className="stack">
+          <p className={styles.text}>{`${plural(data.total, 'marchand')}, ${plural(data.named, 'nommé')}`}</p>
+          {data.running ? (
+            <Notice tone="neutral" icon={<PulseDot />} role="status">
+              Claude nomme les nouveaux marchands…
+            </Notice>
+          ) : null}
+          {data.lastError && !data.running ? <Notice tone="negative">{data.lastError}</Notice> : null}
+        </div>
+      )}
     </section>
   );
 }
