@@ -75,6 +75,18 @@ describe('Dialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('place l’action d’en-tête sur la ligne du titre, avant le bouton de fermeture', () => {
+    render(
+      <Dialog open onClose={vi.fn()} title="Carrefour Express" headerAction={<button type="button">Renommer</button>}>
+        <p>contenu</p>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Carrefour Express', hidden: true });
+    const header = dialog.querySelector('header')!;
+    const positions = Array.from(header.querySelectorAll('h2, button')).map((el) => el.textContent);
+    expect(positions).toEqual(['Carrefour Express', 'Renommer', '']); // titre, action, puis le bouton Fermer (icône sans texte)
+  });
+
   it('rend le pied sur place hors dialogue', () => {
     render(
       <DialogFooter>

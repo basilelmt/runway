@@ -7,7 +7,7 @@ import { AllocationForm } from '@/components/envelopes/AllocationForm';
 import { Button, ConfirmDialog, Dialog, useToast } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
-import { MerchantHeading } from './MerchantHeading';
+import { useMerchantHeading } from './MerchantHeading';
 import { QuickEntry } from './QuickEntry';
 
 type TransactionEditDialogProps = { transaction: Transaction | null; onClose: () => void };
@@ -47,6 +47,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
   const t = transaction;
   // Le nom suit le marchand en cache : il change dès qu'on le renomme, sans rouvrir le dialogue.
   const merchant = useMerchant(t?.merchantKey ?? null);
+  const merchantHeading = useMerchantHeading(t?.merchantKey ?? null);
   const title = !t ? '' : t.merchantKey ? (merchant.data?.name ?? displayLabel(t)) : `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}`;
   const serverError = update.error ? errorMessage(update.error) : null;
   const deleteButton = (
@@ -62,6 +63,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
         onClose={close}
         title={title}
         description={t?.status === 'planned' ? 'Opération prévue par une règle récurrente, pas encore passée en banque.' : undefined}
+        headerAction={merchantHeading.action}
         size={t?.kind === 'allocation' ? 'md' : 'lg'}
       >
         {t ? (
@@ -78,7 +80,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
             />
           ) : (
             <>
-              {t.merchantKey ? <MerchantHeading key={t.id} merchantKey={t.merchantKey} /> : null}
+              {merchantHeading.form}
               <QuickEntry
                 key={t.id}
                 mode="edit"

@@ -68,7 +68,12 @@ describe('TransactionEditDialog', () => {
     // Le libellé brut n'apparaît qu'une fois, dans le champ éditable du formulaire, pas sous le titre.
     expect(screen.getAllByDisplayValue(expense.label)).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: 'Renommer', hidden: true }));
+    // « Renommer » est sur la ligne du titre, dans l'en-tête du dialogue, pas dans le corps.
+    const dialog = screen.getByRole('dialog', { name: 'Carrefour Express', hidden: true });
+    const renameButton = screen.getByRole('button', { name: 'Renommer', hidden: true });
+    expect(dialog.querySelector('header')!.contains(renameButton)).toBe(true);
+
+    await user.click(renameButton);
     expect(await screen.findByText(/52 opérations/)).toBeInTheDocument();
     const input = screen.getByLabelText('Nom du marchand');
     await user.clear(input);

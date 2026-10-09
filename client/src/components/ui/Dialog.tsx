@@ -18,11 +18,13 @@ type DialogProps = {
   children: ReactNode;
   /** Actions simples (confirmation). Un formulaire passe plutôt par `<DialogFooter>`. */
   footer?: ReactNode;
+  /** Action discrète sur la ligne du titre, avant le bouton de fermeture (ex. « Renommer »). */
+  headerAction?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
 };
 
 /** Boîte de dialogue modale native (`<dialog>`), fermée par Échap ou clic sur le fond, avec une sortie animée. */
-export function Dialog({ open, onClose, title, description, children, footer, size = 'md' }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, headerAction, size = 'md' }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -35,14 +37,22 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   // Le contenu reste affiché pendant l'animation de sortie, puis le dialogue se ferme vraiment.
   const [rendered, setRendered] = useState(open);
   const [closing, setClosing] = useState(false);
-  const [content, setContent] = useState({ title, description, children, footer, size });
+  const [content, setContent] = useState({ title, description, children, footer, headerAction, size });
 
   if (open && !rendered) setRendered(true);
   if (open && closing) setClosing(false);
   if (!open && rendered && !closing) setClosing(true);
   // Pendant la sortie, on garde le dernier contenu : le parent l'a souvent déjà vidé.
-  if (open && (content.title !== title || content.description !== description || content.children !== children || content.footer !== footer || content.size !== size)) {
-    setContent({ title, description, children, footer, size });
+  if (
+    open &&
+    (content.title !== title ||
+      content.description !== description ||
+      content.children !== children ||
+      content.footer !== footer ||
+      content.headerAction !== headerAction ||
+      content.size !== size)
+  ) {
+    setContent({ title, description, children, footer, headerAction, size });
   }
 
   useEffect(() => {
@@ -90,7 +100,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     return () => observer.disconnect();
   }, [rendered, measure]);
 
-  const shown = open ? { title, description, children, footer, size } : content;
+  const shown = open ? { title, description, children, footer, headerAction, size } : content;
 
   return (
     <dialog
@@ -113,9 +123,12 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         <div className={styles.panel}>
           <header className={[styles.header, edges.top ? styles.edgeBelow : ''].join(' ')}>
             <div className={styles.heading}>
-              <h2 id={titleId} className={styles.title}>
-                {shown.title}
-              </h2>
+              <div className={styles.titleRow}>
+                <h2 id={titleId} className={styles.title}>
+                  {shown.title}
+                </h2>
+                {shown.headerAction}
+              </div>
               {shown.description ? <p id={descriptionId} className={styles.description}>
                   {shown.description}
                 </p> : null}

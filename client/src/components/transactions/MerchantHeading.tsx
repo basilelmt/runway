@@ -1,15 +1,20 @@
 import { Pencil } from 'lucide-react';
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { errorMessage } from '@/api/client';
 import { useMerchant, useRenameMerchant } from '@/api/hooks';
 import { Button, Field, Input, useToast } from '@/components/ui';
 import { plural } from '@/lib/format';
 import styles from './MerchantHeading.module.css';
 
-type MerchantHeadingProps = { merchantKey: string };
+type MerchantHeading = {
+  /** Bouton discret pour la ligne de titre du dialogue ; `null` tant qu'il n'y a pas de marchand ou pendant le renommage. */
+  action: ReactNode;
+  /** Formulaire de renommage en place, à afficher sous l'en-tête du dialogue ; `null` hors renommage. */
+  form: ReactNode;
+};
 
 /** Renommage du marchand pour toutes ses opérations ; le libellé brut reste visible dans le champ libellé du formulaire. */
-export function MerchantHeading({ merchantKey }: MerchantHeadingProps) {
+export function useMerchantHeading(merchantKey: string | null): MerchantHeading {
   const toast = useToast();
   const merchant = useMerchant(merchantKey);
   const [draft, setDraft] = useState<string | null>(null);
@@ -30,25 +35,33 @@ export function MerchantHeading({ merchantKey }: MerchantHeadingProps) {
     }
   }, [draft]);
 
+  // Une opération différente (autre marchand, ou dialogue refermé) ne doit pas garder un renommage en cours.
+  const [lastMerchantKey, setLastMerchantKey] = useState(merchantKey);
+  if (lastMerchantKey !== merchantKey) {
+    setLastMerchantKey(merchantKey);
+    if (draft !== null) setDraft(null);
+  }
+
   function cancelRename() {
     rename.reset();
     pendingFocus.current = true;
     setDraft(null);
   }
 
+  if (merchantKey === null) return { action: null, form: null };
+
   if (draft === null) {
-    return (
-      <div className={styles.heading}>
-        <Button ref={renameButtonRef} size="sm" variant="ghost" icon={<Pencil />} onClick={() => setDraft(merchant.data?.name ?? '')}>
-          Renommer
-        </Button>
-      </div>
+    const action = (
+      <Button ref={renameButtonRef} size="sm" variant="ghost" icon={<Pencil />} onClick={() => setDraft(merchant.data?.name ?? '')}>
+        Renommer
+      </Button>
     );
+    return { action, form: null };
   }
 
   const count = merchant.data?.transactionCount;
   const scope = count === undefined ? 'toutes les opérations de ce marchand' : `toutes les opérations de ce marchand (${plural(count, 'opération')})`;
-  return (
+  const form = (
     <form
       className={styles.form}
       noValidate
@@ -77,4 +90,5 @@ export function MerchantHeading({ merchantKey }: MerchantHeadingProps) {
       </div>
     </form>
   );
+  return { action: null, form };
 }

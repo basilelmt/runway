@@ -1,11 +1,4 @@
-/* Renommage du marchand en place, sous le titre du dialogue */
-.heading {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-bottom: var(--s-4);
-}
-
+/* Renommage du marchand en place, sous l'en-tête du dialogue (le bouton Renommer est sur la ligne de titre) */
 .form {
   display: flex;
   flex-direction: column;
