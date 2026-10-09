@@ -120,15 +120,4 @@
     flex-direction: column;
     align-items: stretch;
   }
-
-  .row {
-    flex-wrap: wrap;
-    row-gap: var(--s-2);
-  }
-
-  /* L'InlinePill de choix d'enveloppe passe sur sa propre ligne, pleine largeur */
-  .row > :last-child {
-    flex-basis: 100%;
-    justify-content: flex-end;
-  }
 }

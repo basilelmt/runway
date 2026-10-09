@@ -173,4 +173,23 @@
   .header .middle {
     display: none;
   }
+
+  /* Sans progression, une action (pastille d'enveloppe, bouton) passe sur sa propre ligne
+     pour laisser le libellé respirer : lead + corps + montant tiennent sur la première ligne,
+     le montant à sa largeur plutôt que la colonne alignée de 110px. */
+  .row:has(.actions):not(:has(.middle)) {
+    flex-wrap: wrap;
+    row-gap: var(--s-2);
+    --list-trail: auto;
+  }
+
+  /* La date garde sa largeur de texte plutôt que la colonne alignée de 84px */
+  .row:has(.actions):not(:has(.middle)) > .lead > .date {
+    width: auto;
+  }
+
+  .row:has(.actions):not(:has(.middle)) > .actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
 }

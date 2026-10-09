@@ -196,7 +196,6 @@ export function UnsortedList() {
               <li key={t.id} className={[styles.item, leaving.has(t.id) ? styles.leaving : ''].join(' ')}>
                 <ListRow
                   as="div"
-                  className={styles.row}
                   lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
                   title={t.label}
                   meta={account?.name}
