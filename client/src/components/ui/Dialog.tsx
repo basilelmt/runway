@@ -10,6 +10,18 @@ const CLOSE_MS = 160;
 /** Pied du dialogue englobant : `undefined` hors dialogue, `null` tant qu'il n'est pas monté. */
 const FooterContext = createContext<HTMLElement | null | undefined>(undefined);
 
+/** Fige le dialogue là où le centrage le place : un contenu qui grandit l'allonge ensuite vers le bas. */
+function pin(el: HTMLDialogElement) {
+  delete el.dataset.pinned;
+  el.style.setProperty('--dialog-top', `${el.getBoundingClientRect().top}px`);
+  el.dataset.pinned = '';
+}
+
+function unpin(el: HTMLDialogElement) {
+  delete el.dataset.pinned;
+  el.style.removeProperty('--dialog-top');
+}
+
 type DialogProps = {
   open: boolean;
   onClose: () => void;
@@ -63,6 +75,10 @@ export function Dialog({ open, onClose, title, description, children, footer, he
     if (open && !el.open) {
       openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       el.showModal();
+      // Une frame plus tard, avant l'affichage : le pied rendu par portail a alors sa hauteur.
+      requestAnimationFrame(() => {
+        if (el.open) pin(el);
+      });
       // Le focus va d'abord au champ marqué `data-autofocus`, sinon au premier champ, jamais au bouton Fermer.
       const target = el.querySelector<HTMLElement>('[data-autofocus]') ?? el.querySelector<HTMLElement>('input, select, textarea');
       target?.focus();
@@ -73,7 +89,10 @@ export function Dialog({ open, onClose, title, description, children, footer, he
     if (!closing) return;
     const finish = () => {
       openerRef.current = null;
-      ref.current?.close();
+      if (ref.current) {
+        ref.current.close();
+        unpin(ref.current);
+      }
       setClosing(false);
       setRendered(false);
     };
@@ -84,6 +103,16 @@ export function Dialog({ open, onClose, title, description, children, footer, he
     const id = window.setTimeout(finish, CLOSE_MS);
     return () => window.clearTimeout(id);
   }, [closing]);
+
+  // La fenêtre change de taille : on recentre, puis on fige à nouveau.
+  useEffect(() => {
+    if (!rendered) return;
+    const onResize = () => {
+      if (ref.current?.open) pin(ref.current);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [rendered]);
 
   // Retiré du DOM sans passer par `close()` : le navigateur ne rend pas le focus, on s'en charge.
   useEffect(
