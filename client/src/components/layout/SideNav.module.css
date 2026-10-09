@@ -32,6 +32,8 @@
   justify-content: flex-start;
   /* Rythme d'origine : 16px entre les deux boutons (8px de marge + 8px du gap de .nav), 24px avant la liste. */
   margin-bottom: var(--s-2);
+  /* Libellé en petite taille pour laisser la place au raccourci clavier (padding du bouton >= s-2 jusqu'au bord). */
+  font-size: var(--text-sm);
 }
 
 .navAction:last-of-type {
