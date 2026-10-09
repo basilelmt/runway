@@ -29,13 +29,14 @@ describe('EnvelopeRow', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('un clic sur la ligne ouvre le détail, sans gêner les actions', async () => {
+  it('un clic sur la ligne ouvre le détail, sans gêner le menu d’actions', async () => {
     const onOpen = vi.fn();
     const onEdit = vi.fn();
-    render(<EnvelopeRow envelope={courses} onOpen={onOpen} actions={<button onClick={onEdit}>Modifier</button>} />);
+    render(<EnvelopeRow envelope={courses} onOpen={onOpen} menu={[{ label: 'Modifier', onSelect: onEdit }]} />);
     await userEvent.click(screen.getByRole('button', { name: 'Voir les dépenses de Courses' }));
     expect(onOpen).toHaveBeenCalledOnce();
-    await userEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Actions pour Courses' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Modifier' }));
     expect(onEdit).toHaveBeenCalledOnce();
     expect(onOpen).toHaveBeenCalledOnce();
   });

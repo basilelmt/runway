@@ -35,104 +35,34 @@
   color: var(--positive);
 }
 
-.toggle {
-  margin-top: var(--s-3);
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.columnTitle {
+  display: flex;
+  gap: var(--s-4);
 }
 
-.toggle:hover {
-  color: var(--ink);
+/* Le compte est en colonne sur ordinateur, sous le nom du fichier sur mobile */
+.metaAccount {
+  display: none;
 }
 
-.importLink {
-  margin-top: var(--s-4);
-}
-
-.history {
-  font-size: var(--text-sm);
-}
-
-.historyRow {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) 112px 72px 92px 72px;
-  gap: var(--s-3);
-  align-items: center;
-  padding: var(--s-3) 0;
-}
-
-.historyHead {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-mute);
-  padding-top: 0;
-  padding-bottom: var(--s-2);
-}
-
-.file {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-soft);
-}
-
-.num {
-  text-align: right;
-}
-
+/* Sur mobile, pas d'intitulés de colonnes : les lignes s'empilent, le nom du fichier passe à la ligne en entier. */
 @media (max-width: 767px) {
-  .historyHead {
+  .columns,
+  .trailAccount {
     display: none;
   }
 
-  .historyRow {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      'date account'
-      'file file'
-      'new matched';
+  .metaAccount {
+    display: inline;
+    color: var(--ink-soft);
   }
 
-  .historyRow > :nth-child(1) {
-    grid-area: date;
+  .history {
+    --list-trail: 0;
   }
 
-  .historyRow > :nth-child(2) {
-    grid-area: file;
-  }
-
-  .historyRow > :nth-child(3) {
-    grid-area: account;
-    text-align: right;
-  }
-
-  .historyRow > :nth-child(4)::before {
-    content: 'nouvelles ';
-    color: var(--ink-mute);
-  }
-
-  .historyRow > :nth-child(5)::before {
-    content: 'rapprochées ';
-    color: var(--ink-mute);
-  }
-
-  .historyRow > :nth-child(4) {
-    grid-area: new;
-    text-align: left;
-  }
-
-  .historyRow > :nth-child(5) {
-    grid-area: matched;
-    text-align: left;
-  }
-
-  .historyRow > :nth-child(6) {
-    display: none;
+  .fileName {
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 }

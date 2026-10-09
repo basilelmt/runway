@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { sortingRuleInputSchema, type Envelope, type SortingRule, type SortingRuleInput } from '@shared/schemas';
-import { Button, ChipPicker, Dialog, DialogFooter, Field, Input } from '@/components/ui';
+import { Button, ChipPicker, Dialog, DialogFooter, Field, FieldError, Input } from '@/components/ui';
 import styles from './SortingRuleDialog.module.css';
 
 type SortingRuleDialogProps = {
@@ -84,11 +84,7 @@ function RuleForm({
           />
         )}
       </Field>
-      {serverError ? (
-        <p className={styles.serverError} role="alert">
-          {serverError}
-        </p>
-      ) : null}
+      <FieldError>{serverError}</FieldError>
       <DialogFooter>
         <Button variant="ghost" onClick={onCancel}>
           Annuler

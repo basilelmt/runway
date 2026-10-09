@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { binanceKeysSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useSaveBinance } from '@/api/hooks';
-import { Button, Dialog, Field, Input, useToast } from '@/components/ui';
+import { Button, Dialog, DialogFooter, Field, FieldError, Input, useToast } from '@/components/ui';
 import styles from './Forms.module.css';
 
 type Props = { open: boolean; onClose: () => void };
@@ -40,16 +40,6 @@ export function BinanceConnectDialog({ open, onClose }: Props) {
       size="sm"
       title="Relier Binance"
       description="Runway lit tes soldes et ton historique d’achats. Il ne peut ni acheter, ni vendre, ni retirer."
-      footer={
-        <div className={styles.actions}>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button type="submit" form={formId} variant="primary" loading={save.isPending}>
-            Relier
-          </Button>
-        </div>
-      }
     >
       <form id={formId} className={styles.form} onSubmit={submit} noValidate>
         <ol className={styles.help}>
@@ -65,11 +55,15 @@ export function BinanceConnectDialog({ open, onClose }: Props) {
             <Input id={id} aria-describedby={describedBy} className="mono" type="password" autoComplete="off" spellCheck={false} value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} />
           )}
         </Field>
-        {save.error ? (
-          <p className={styles.error} role="alert">
-            {errorMessage(save.error)}
-          </p>
-        ) : null}
+        <FieldError>{save.error ? errorMessage(save.error) : null}</FieldError>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form={formId} variant="primary" loading={save.isPending}>
+            Relier
+          </Button>
+        </DialogFooter>
       </form>
     </Dialog>
   );

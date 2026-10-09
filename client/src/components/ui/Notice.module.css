@@ -1,0 +1,74 @@
+.notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  animation: open var(--dur-slow) var(--ease-out);
+}
+
+.marking {
+  background: var(--marking-soft);
+}
+
+.negative {
+  background: var(--negative-soft);
+}
+
+.warning {
+  background: var(--warning-soft);
+}
+
+.neutral {
+  background: var(--paper-sunken);
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.icon :global(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+.marking .icon {
+  color: var(--marking-ink);
+}
+
+.negative .icon {
+  color: var(--negative);
+}
+
+.warning .icon {
+  color: var(--warning);
+}
+
+.neutral .icon {
+  color: var(--ink-soft);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+
+@keyframes open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

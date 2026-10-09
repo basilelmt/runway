@@ -28,9 +28,7 @@
 }
 
 .swatchActive {
-  box-shadow:
-    0 0 0 2px var(--paper-raised),
-    0 0 0 4px var(--ink);
+  box-shadow: var(--ring-selected);
 }
 
 .custom {
@@ -65,11 +63,6 @@
   outline-offset: 2px;
 }
 
-.error {
-  color: var(--negative);
-  font-size: var(--text-sm);
-}
-
 /* Détail du budget, collé sous le champ du complément : une ligne par charge, puis le total. */
 .charges {
   list-style: none;
@@ -77,12 +70,12 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--s-half);
   font-size: var(--text-xs);
   color: var(--ink-mute);
 }
 
 .total {
-  padding-top: 2px;
+  padding-top: var(--s-half);
   color: var(--ink);
 }

@@ -110,6 +110,7 @@ describe('QuickEntry', () => {
     await userEvent.type(screen.getByLabelText('Montant'), '12,5');
     await userEvent.type(screen.getByLabelText('Libellé'), 'Carrefour');
     expect(await screen.findByText('proposée par tes règles')).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Enveloppe proposée par tes règles' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Courses' })).toHaveAttribute('aria-checked', 'true');
     await userEvent.click(screen.getByRole('button', { name: /Enregistrer la dépense de 12,50/ }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ kind: 'expense', amount: 1250, label: 'Carrefour', accountId: 1, envelopeId: 10 }), false);

@@ -30,11 +30,28 @@
 
   --focus: var(--marking);
 
+  /* Texte posé sur le jaune de piste, dans les deux modes (le jaune reste clair en sombre) */
+  --marking-on: #2b2000;
+
+  /* Voile sous les dialogues */
+  --scrim: rgb(20 32 28 / 0.45);
+
+  /* La nuit d'Investir : fond du portefeuille, toujours sombre */
+  --night: #030408;
+  --night-ink: #f2efe8;
+  --night-ink-soft: #cfcac1;
+  --night-ink-mute: #9a978f;
+  --night-positive: #5fc08f;
+  --night-negative: #ef6f58;
+  --night-warning: #e0a04a;
+  --night-sky: #4386d3;
+
   /* Typographie */
   --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
+  --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-md: 0.9375rem;
@@ -43,8 +60,19 @@
   --text-2xl: 2.25rem;
   --text-3xl: 3.25rem;
   --text-4xl: 4.25rem;
+  /* 16px : taille minimale pour qu'un champ ne déclenche pas le zoom automatique sur mobile */
+  --text-input: 1rem;
+  /* Trait d'un pixel simulé en box-shadow (séparateurs, contours fins) */
+  --hairline: 1px;
+  /* Trait de marquage : repère de dépôt, halo d'un point, souligné de focus d'un champ */
+  --stroke-mark: 2px;
+  /* Anneau de focus détaché : un liseré de papier puis le jaune */
+  --ring-focus: 0 0 0 var(--stroke-mark) var(--paper), 0 0 0 calc(var(--stroke-mark) * 2) var(--marking);
+  /* Anneau d'un choix sélectionné posé sur un dialogue (pastille de couleur) */
+  --ring-selected: 0 0 0 var(--stroke-mark) var(--paper-raised), 0 0 0 calc(var(--stroke-mark) * 2) var(--ink);
 
   /* Espacement 4px */
+  --s-half: 2px;
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -56,17 +84,25 @@
   --s-12: 48px;
   --s-16: 64px;
 
+  --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 14px;
   --radius-pill: 999px;
 
   --shadow-pop: 0 12px 32px rgb(20 32 28 / 0.18), 0 2px 6px rgb(20 32 28 / 0.08);
+  --shadow-raise: 0 1px 2px rgb(20 32 28 / 0.12);
+
+  /* Hauteurs de ligne de liste */
+  --row-h: 56px;
+  --row-h-compact: 44px;
 
   --sidenav-width: 232px;
   --bottomnav-height: 60px;
   --ask-width: 420px;
   --content-max: 1040px;
+  /* Bouton flottant de saisie rapide, sur mobile */
+  --fab-size: 52px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 160ms;
@@ -96,6 +132,8 @@
     --info-soft: #1f2d3a;
 
     --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
+    --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.4);
+    --scrim: rgb(0 0 0 / 0.6);
   }
 }
 

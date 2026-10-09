@@ -6,12 +6,6 @@
   animation: shimmer 1.4s linear infinite;
 }
 
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
 @keyframes shimmer {
   to {
     background-position: -200% 0;

@@ -61,6 +61,9 @@ export function syncSummary(result: BankSyncRunResult): string | null {
   return `${plural(created, 'opération synchronisée', 'opérations synchronisées')}, ${plural(matched, 'rapprochée')}`;
 }
 
+/** Espace insécable, pour coller un séparateur « · » au texte qui le précède. */
+export const NBSP = '\u00a0';
+
 /**
  * Empêche les coupures malvenues dans un texte libre : espaces des milliers en espace fine insécable,
  * espace avant l'unité, avant les deux-points et intérieures des guillemets en espace insécable (« 1 223,17 € »),

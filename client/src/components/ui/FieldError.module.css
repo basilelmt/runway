@@ -1,0 +1,4 @@
+.error {
+  color: var(--negative);
+  font-size: var(--text-sm);
+}

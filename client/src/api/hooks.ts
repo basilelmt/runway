@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
   BankAuthStart,
   BankConnectionView,
@@ -124,8 +124,16 @@ export const useNetWorth = (months = 12, horizon = 90) =>
 
 // Accounts
 
-export const useAccounts = (archived = false) =>
-  useQuery({ queryKey: keys.accounts(archived), queryFn: () => api.get<Account[]>(`/api/accounts${archived ? '?archived=true' : ''}`) });
+// La liste active se déduit de la liste complète déjà en cache (archivés compris) le temps de son chargement :
+// un formulaire ouvert depuis un écran qui l'a chargée s'affiche complet d'emblée.
+export function useAccounts(archived = false) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: keys.accounts(archived),
+    queryFn: () => api.get<Account[]>(`/api/accounts${archived ? '?archived=true' : ''}`),
+    placeholderData: archived ? undefined : () => qc.getQueryData<Account[]>(keys.accounts(true))?.filter((a) => !a.archived),
+  });
+}
 
 export function useCreateAccount(opts?: MutOpts<Account, AccountInput>) {
   const invalidate = useInvalidate();
@@ -139,8 +147,15 @@ export function useUpdateAccount(opts?: MutOpts<Account, { id: number } & Accoun
 
 // Envelopes
 
-export const useEnvelopes = (archived = false) =>
-  useQuery({ queryKey: keys.envelopes(archived), queryFn: () => api.get<Envelope[]>(`/api/envelopes${archived ? '?archived=true' : ''}`) });
+// Même principe que useAccounts.
+export function useEnvelopes(archived = false) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: keys.envelopes(archived),
+    queryFn: () => api.get<Envelope[]>(`/api/envelopes${archived ? '?archived=true' : ''}`),
+    placeholderData: archived ? undefined : () => qc.getQueryData<Envelope[]>(keys.envelopes(true))?.filter((e) => !e.archived),
+  });
+}
 
 export function useCreateEnvelope(opts?: MutOpts<Envelope, EnvelopeInput>) {
   const invalidate = useInvalidate();
@@ -174,8 +189,14 @@ export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
 
 // Transactions
 
-export const useTransactions = (filter: Partial<TransactionFilter> = {}, options: { enabled?: boolean } = {}) =>
-  useQuery({ queryKey: keys.transactions(filter), queryFn: () => api.get<Transaction[]>(`/api/transactions${toQuery(filter)}`), enabled: options.enabled });
+/** `keepPrevious` garde la liste précédente affichée pendant le chargement d'un autre filtre. */
+export const useTransactions = (filter: Partial<TransactionFilter> = {}, options: { enabled?: boolean; keepPrevious?: boolean } = {}) =>
+  useQuery({
+    queryKey: keys.transactions(filter),
+    queryFn: () => api.get<Transaction[]>(`/api/transactions${toQuery(filter)}`),
+    enabled: options.enabled,
+    placeholderData: options.keepPrevious ? keepPreviousData : undefined,
+  });
 
 export function useCreateTransaction(opts?: MutOpts<Transaction, TransactionInput>) {
   const invalidate = useInvalidate();

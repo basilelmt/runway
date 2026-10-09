@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import styles from './Segmented.module.css';
 
-type Option<T extends string> = { value: T; label: string };
+type Option<T extends string> = { value: T; label: string; icon?: ReactNode };
 
 type SegmentedProps<T extends string> = {
   value: T;
@@ -23,6 +24,11 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
           className={[styles.option, o.value === value ? styles.active : ''].join(' ')}
           onClick={() => onChange(o.value)}
         >
+          {o.icon ? (
+            <span className={styles.icon} aria-hidden="true">
+              {o.icon}
+            </span>
+          ) : null}
           {o.label}
         </button>
       ))}

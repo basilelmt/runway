@@ -4,147 +4,18 @@
   gap: var(--s-6);
 }
 
-.figures {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--s-4) var(--s-6);
-  margin: 0;
-}
-
-.figures dt {
-  font-size: var(--text-xs);
-  color: var(--ink-mute);
-  margin-bottom: 2px;
-}
-
-.figures dd {
-  margin: 0;
-  font-size: var(--text-md);
+/* Quantité au format d'un montant lg */
+.quantity {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
   font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .unit {
-  color: var(--ink-mute);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
   font-weight: 400;
-  font-size: var(--text-sm);
-}
-
-.positive {
-  color: var(--positive);
-}
-
-.negative {
-  color: var(--negative);
-}
-
-.neutral {
-  color: var(--ink);
-}
-
-.note {
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--radius-md);
-  background: var(--warning-soft);
-}
-
-.tradesHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  margin-bottom: var(--s-2);
-}
-
-.tradesHead h3 {
-  font-size: var(--text-md);
-  font-weight: 600;
-}
-
-.trade {
-  display: grid;
-  grid-template-columns: 76px 52px minmax(0, 1fr) auto 72px;
-  align-items: center;
-  gap: var(--s-3);
-  min-height: 44px;
-  font-size: var(--text-sm);
-}
-
-.tradeDate {
+  letter-spacing: normal;
   color: var(--ink-mute);
-}
-
-.tradeSide {
-  font-weight: 500;
-}
-
-.tradeQty {
-  color: var(--ink-soft);
-}
-
-.tradeAmount {
-  text-align: right;
-}
-
-.tradeActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 2px;
-  font-size: var(--text-xs);
-  text-align: right;
-}
-
-.error {
-  color: var(--negative);
-  font-size: var(--text-sm);
-}
-
-.danger {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
-.danger > span {
-  flex: 1;
-}
-
-.deleteLink {
-  color: var(--negative);
-}
-
-@media (max-width: 767px) {
-  .trade {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'date amount'
-      'side actions'
-      'qty qty';
-    row-gap: 2px;
-    padding: var(--s-2) 0;
-  }
-
-  .tradeDate {
-    grid-area: date;
-  }
-
-  .tradeSide {
-    grid-area: side;
-  }
-
-  .tradeQty {
-    grid-area: qty;
-  }
-
-  .tradeAmount {
-    grid-area: amount;
-  }
-
-  .tradeActions {
-    grid-area: actions;
-  }
 }

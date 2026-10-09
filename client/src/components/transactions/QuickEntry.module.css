@@ -4,52 +4,10 @@
   gap: var(--s-4);
 }
 
-/* Type : trois pastilles, la couleur suit le sens de l'argent */
+/* Type : le Segmented est centré au-dessus du montant. */
 .kinds {
   display: flex;
   justify-content: center;
-  gap: var(--s-1);
-  padding: 3px;
-  margin: 0 auto;
-  border-radius: var(--radius-pill);
-  background: var(--paper-sunken);
-}
-
-.kind {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  height: 32px;
-  padding: 0 var(--s-4);
-  border: none;
-  border-radius: var(--radius-pill);
-  background: none;
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  transition:
-    background var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out),
-    box-shadow var(--dur) var(--ease-out);
-}
-
-.kind :global(svg) {
-  width: 14px;
-  height: 14px;
-}
-
-.kind:hover {
-  color: var(--ink);
-}
-
-.kindActive {
-  background: var(--paper-raised);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgb(20 32 28 / 0.12);
-}
-
-.kindActive.income :global(svg) {
-  color: var(--positive);
 }
 
 .labelBlock {
@@ -78,49 +36,6 @@
   border-bottom-color: var(--ink);
 }
 
-.suggestions {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  animation: drop var(--dur) var(--ease-out);
-}
-
-.suggestion {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--s-3);
-  width: 100%;
-  min-height: 36px;
-  padding: 0 var(--s-2);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  text-align: left;
-  font-size: var(--text-sm);
-}
-
-.suggestion:hover,
-.suggestion:focus-visible {
-  background: var(--paper-sunken);
-}
-
-.suggestionLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.suggestionMeta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  color: var(--ink-mute);
-  font-size: var(--text-xs);
-}
-
 @keyframes drop {
   from {
     opacity: 0;
@@ -130,30 +45,15 @@
 
 /* Enveloppes en pastilles */
 .group {
-  border: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
 }
 
-.legend {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: 0;
-  margin-bottom: var(--s-2);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-mute);
-}
-
 .auto {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s-1);
   text-transform: none;
   letter-spacing: 0;
   color: var(--marking-ink);
@@ -163,42 +63,6 @@
 .auto :global(svg) {
   width: 12px;
   height: 12px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 var(--s-3);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-pill);
-  background: var(--paper-raised);
-  color: var(--ink-soft);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-  transition:
-    border-color var(--dur) var(--ease-out),
-    background var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-out);
-}
-
-.chip:hover {
-  border-color: var(--rule-strong);
-  color: var(--ink);
-}
-
-.chip:active {
-  transform: scale(0.96);
-}
-
-.chipActive,
-.chipActive:hover {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
-  font-weight: 500;
 }
 
 /* Date et compte sur une ligne */
@@ -240,52 +104,9 @@
 
 .addNote {
   align-self: flex-start;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
 }
 
-.addNote:hover {
-  color: var(--ink);
-}
-
-.error {
-  color: var(--negative);
-  font-size: var(--text-sm);
-  text-align: center;
-}
-
-.again {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
-}
-
-.again:hover {
-  color: var(--ink);
-}
-
-.again kbd {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.again kbd:first-of-type {
+.again :global(kbd:first-of-type) {
   margin-left: var(--s-1);
 }
 
@@ -299,7 +120,7 @@
     align-items: stretch;
   }
 
-  .again kbd {
+  .again :global(kbd) {
     display: none;
   }
 }

@@ -17,6 +17,13 @@ describe('IdeasScore', () => {
     expect(screen.queryByText(/tri de Claude/)).not.toBeInTheDocument();
   });
 
+  it('affiche les trois chiffres du comparatif sur 100 € investis', () => {
+    render(<IdeasScore summary={summary} />);
+    expect(screen.getByText('100 € investis sur chaque idée').closest('div')).toHaveTextContent('300,00 €');
+    expect(screen.getByText('Auraient donné').closest('div')).toHaveTextContent('315,00 €');
+    expect(screen.getByText('Sur le S&P 500').closest('div')).toHaveTextContent('303,00 €');
+  });
+
   it('compare retenues et écartées', () => {
     const { rerender } = render(<IdeasScore summary={{ ...summary, filter: { keptCount: 3, keptAvgExcess: 0.04, droppedCount: 5, droppedAvgExcess: -0.01 } }} />);
     expect(screen.getByText(/les retenues ont fait/)).toHaveTextContent(

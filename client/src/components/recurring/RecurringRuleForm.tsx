@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { formatDateMedium, today } from '@shared/dates';
 import { recurringRuleInputSchema, type Frequency, type RecurringRule, type RecurringRuleInput, type TransactionKind } from '@shared/schemas';
 import { useAccounts, useEnvelopes } from '@/api/hooks';
-import { AmountHero, Button, Checkbox, ChipPicker, DateField, DialogFooter, Field, FormSection, Input, Segmented, Select } from '@/components/ui';
+import { AmountHero, Button, Checkbox, ChipPicker, DateField, DialogFooter, Field, FieldError, FormSection, Input, Segmented, Select } from '@/components/ui';
 import { FREQUENCY_LABELS, KIND_LABELS } from '@/lib/format';
 import { describeFrequency } from './frequency';
 import styles from './RecurringRuleForm.module.css';
@@ -143,11 +143,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
           invalid={Boolean(errors.amount)}
           describedBy={errors.amount ? `${formId}-amount-error` : undefined}
         />
-        {errors.amount ? (
-          <p id={`${formId}-amount-error`} className={styles.amountError} role="alert">
-            {errors.amount}
-          </p>
-        ) : null}
+        <FieldError id={`${formId}-amount-error`}>{errors.amount}</FieldError>
       </div>
 
       <div className={styles.grid}>
@@ -249,11 +245,7 @@ export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, 
         </p>
       </FormSection>
 
-      {serverError ? (
-        <p className={styles.serverError} role="alert">
-          {serverError}
-        </p>
-      ) : null}
+      <FieldError>{serverError}</FieldError>
 
       <DialogFooter>
         <Button variant="ghost" onClick={onCancel}>

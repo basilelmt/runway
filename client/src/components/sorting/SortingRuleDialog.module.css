@@ -3,8 +3,3 @@
   flex-direction: column;
   gap: var(--s-5);
 }
-
-.serverError {
-  color: var(--negative);
-  font-size: var(--text-sm);
-}

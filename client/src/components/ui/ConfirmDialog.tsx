@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
+import { FieldError } from './FieldError';
 import styles from './ConfirmDialog.module.css';
 
 type ConfirmDialogProps = {
@@ -28,7 +29,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, description, ch
       size="sm"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} data-autofocus>
             Annuler
           </Button>
           <Button variant={tone} loading={loading} onClick={onConfirm}>
@@ -38,11 +39,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, description, ch
       }
     >
       {children ? <div className={styles.subject}>{children}</div> : null}
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
+      <FieldError>{error}</FieldError>
     </Dialog>
   );
 }

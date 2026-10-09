@@ -1,0 +1,65 @@
+.todo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 52px;
+  padding: var(--s-3) var(--s-4) var(--s-3) var(--s-5);
+  border-radius: var(--radius-md);
+  background: var(--paper-sunken);
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  transition: background var(--dur) var(--ease-out);
+}
+
+/* La barre de gauche : jaune pour une tâche, rouge pour une alerte */
+.todo::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--marking);
+}
+
+.negative::before {
+  background: var(--negative);
+}
+
+.todo:hover {
+  background: color-mix(in oklab, var(--paper-sunken) 70%, var(--rule));
+}
+
+.icon {
+  display: flex;
+  color: var(--ink-soft);
+}
+
+.icon :global(svg) {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+}
+
+.negative .icon {
+  color: var(--negative);
+}
+
+.text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-mute);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.todo:hover .chevron {
+  transform: translateX(3px);
+  color: var(--ink);
+}

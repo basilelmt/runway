@@ -40,3 +40,8 @@
 .action {
   margin-top: var(--s-3);
 }
+
+.negative .icon {
+  background: var(--negative-soft);
+  color: var(--negative);
+}

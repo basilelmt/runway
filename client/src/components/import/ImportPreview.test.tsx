@@ -34,18 +34,20 @@ function Harness({ onChange = vi.fn() }: { onChange?: (rows: ImportPreviewRow[])
 }
 
 describe('ImportPreview', () => {
-  it('affiche les trois sections avec les bons compteurs', () => {
+  it('affiche les trois sections avec les bons compteurs', async () => {
     render(<Harness />);
     expect(screen.getByText('Nouvelles').nextSibling).toHaveTextContent('2');
     expect(screen.getByText('Rapprochées').nextSibling).toHaveTextContent('1');
     expect(screen.getByText('Doublons ignorés').nextSibling).toHaveTextContent('1');
     expect(screen.getByRole('button', { name: 'Importer 3 opérations' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Rapprochées (1)' }));
     expect(screen.getByText('↳ remplace la prévue « Loyer »')).toBeInTheDocument();
   });
 
   it('"Détacher" repasse une ligne rapprochée en nouvelle', async () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Rapprochées (1)' }));
     await userEvent.click(screen.getByRole('button', { name: 'Détacher' }));
     const last = onChange.mock.calls.at(-1)![0] as ImportPreviewRow[];
     expect(last.find((r) => r.index === 2)).toMatchObject({ status: 'new', plannedId: null, plannedLabel: null });

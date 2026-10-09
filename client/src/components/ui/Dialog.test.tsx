@@ -75,6 +75,38 @@ describe('Dialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('rend le focus au bouton qui l’a ouvert quand il disparaît encore ouvert', () => {
+    function Harness({ shown }: { shown: boolean }) {
+      return (
+        <>
+          <button type="button">Modifier</button>
+          {shown ? (
+            <Dialog open onClose={vi.fn()} title="Modifier l’enveloppe">
+              <input aria-label="Nom" />
+            </Dialog>
+          ) : null}
+        </>
+      );
+    }
+    const { rerender } = render(<Harness shown={false} />);
+    const trigger = screen.getByRole('button', { name: 'Modifier' });
+    trigger.focus();
+    rerender(<Harness shown />);
+    expect(screen.getByRole('textbox', { name: 'Nom', hidden: true })).toHaveFocus();
+    rerender(<Harness shown={false} />);
+    expect(trigger).toHaveFocus();
+  });
+
+  it('donne le focus à l’élément marqué `data-autofocus` même après un champ', () => {
+    render(
+      <Dialog open onClose={vi.fn()} title="Répartir">
+        <input aria-label="Recherche" />
+        <input aria-label="Montant" data-autofocus />
+      </Dialog>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Montant', hidden: true })).toHaveFocus();
+  });
+
   it('place l’action d’en-tête sur la ligne du titre, avant le bouton de fermeture', () => {
     render(
       <Dialog open onClose={vi.fn()} title="Carrefour Express" headerAction={<button type="button">Renommer</button>}>
@@ -113,5 +145,14 @@ describe('ConfirmDialog', () => {
     expect(onConfirm).toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Annuler', hidden: true }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('met le focus sur « Annuler » à l’ouverture, pas sur l’action destructrice ni sur Fermer', () => {
+    render(
+      <ConfirmDialog open onClose={vi.fn()} onConfirm={vi.fn()} title="Archiver ?" confirmLabel="Archiver">
+        Sport
+      </ConfirmDialog>,
+    );
+    expect(screen.getByRole('button', { name: 'Annuler', hidden: true })).toHaveFocus();
   });
 });

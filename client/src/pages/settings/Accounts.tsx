@@ -3,7 +3,28 @@ import { useId, useState } from 'react';
 import { accountInputSchema, type Account, type AccountInput } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useCreateAccount, useOverview, useUpdateAccount } from '@/api/hooks';
-import { Amount, Badge, Button, Checkbox, ConfirmDialog, Dialog, DialogFooter, EmptyState, Field, Input, MoneyInput, SkeletonRows, useToast } from '@/components/ui';
+import {
+  Amount,
+  Badge,
+  Button,
+  Checkbox,
+  ConfirmDialog,
+  Dialog,
+  DialogFooter,
+  Disclosure,
+  EmptyState,
+  ErrorState,
+  Field,
+  FieldError,
+  Input,
+  ListRow,
+  ListRowSkeleton,
+  MoneyInput,
+  RowMenu,
+  SectionHeader,
+  Total,
+  useToast,
+} from '@/components/ui';
 import { formatDateLong } from '@/lib/format';
 import styles from './Accounts.module.css';
 
@@ -88,11 +109,7 @@ function AccountDialog({ open, account, onClose }: AccountDialogProps) {
         <Field label="Numéro de compte bancaire" hint="Facultatif. Rempli automatiquement au premier import." error={errors.bankAccountNumber}>
           {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={form.bankAccountNumber} onChange={(e) => set('bankAccountNumber', e.target.value)} className="mono" spellCheck={false} />}
         </Field>
-        {serverError ? (
-          <p className={styles.error} role="alert">
-            {errorMessage(serverError)}
-          </p>
-        ) : null}
+        <FieldError>{serverError ? errorMessage(serverError) : null}</FieldError>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Annuler
@@ -140,90 +157,91 @@ export function AccountsSettings() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
   const [archiving, setArchiving] = useState<Account | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
 
   const archived = (all.data ?? []).filter((a) => a.archived);
   const active = overview.data?.accounts ?? [];
 
   return (
-    <div className={styles.page}>
-      <div className={styles.toolbar}>
-        <p className={styles.total}>
-          {overview.data ? (
-            <>
-              Total <Amount cents={overview.data.netWorth} tone="neutral" />
-            </>
-          ) : null}
-        </p>
-        <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
-          Nouveau compte
-        </Button>
-      </div>
+    <div>
+      <SectionHeader
+        title="Comptes"
+        aside={
+          <Button size="sm" icon={<Plus />} onClick={() => setCreating(true)}>
+            Nouveau compte
+          </Button>
+        }
+      />
 
       {overview.isPending ? (
-        <SkeletonRows rows={3} />
+        <ListRowSkeleton rows={3} />
       ) : overview.error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(overview.error)}
-        </p>
+        <ErrorState title="Impossible de charger les comptes" description={errorMessage(overview.error)} onRetry={() => overview.refetch()} />
       ) : active.length === 0 ? (
         <EmptyState
           icon={<Landmark />}
           title="Aucun compte"
           description="Commence par créer ton compte courant avec son solde actuel."
           action={
-            <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
+            <Button variant="secondary" icon={<Plus />} onClick={() => setCreating(true)}>
               Créer un compte
             </Button>
           }
         />
       ) : (
-        <ul className={['ledger', styles.list].join(' ')}>
-          {active.map((a) => (
-            <li key={a.id} className={['hover-row', styles.row].join(' ')}>
-              <div className={styles.main}>
-                <div className={styles.nameLine}>
-                  <span className={styles.name}>{a.name}</span>
-                  {!a.onBudget ? <Badge>Épargne</Badge> : null}
-                </div>
-                <div className={styles.meta}>
-                  {a.bankAccountNumber ? <span className="mono">{a.bankAccountNumber}</span> : null}
-                  {a.lastImport ? <span>Mis à jour le {formatDateLong(a.lastImport.importedAt.slice(0, 10))}</span> : <span>Jamais synchronisé</span>}
-                </div>
-              </div>
-              <Amount cents={a.balance} size="lg" />
-              <div className={styles.rowActions}>
-                <Button variant="ghost" size="sm" icon={<Pencil />} onClick={() => setEditing(a)} aria-label={`Modifier ${a.name}`} />
-                <Button variant="ghost" size="sm" icon={<Archive />} onClick={() => setArchiving(a)} aria-label={`Archiver ${a.name}`} />
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="ledger">
+            {active.map((a) => (
+              <ListRow
+                key={a.id}
+                onClick={() => setEditing(a)}
+                clickLabel={`Modifier ${a.name}`}
+                title={a.name}
+                meta={
+                  <>
+                    {!a.onBudget ? <Badge>Épargne</Badge> : null}
+                    {a.bankAccountNumber ? <span className="mono">{a.bankAccountNumber}</span> : null}
+                    {a.lastImport ? <span>Mis à jour le {formatDateLong(a.lastImport.importedAt.slice(0, 10))}</span> : <span>Jamais synchronisé</span>}
+                  </>
+                }
+                trail={<Amount cents={a.balance} size="lg" />}
+                actions={
+                  <RowMenu
+                    label={`Actions pour ${a.name}`}
+                    items={[
+                      { label: 'Modifier', icon: <Pencil />, onSelect: () => setEditing(a) },
+                      { label: 'Archiver', icon: <Archive />, onSelect: () => setArchiving(a), danger: true },
+                    ]}
+                  />
+                }
+              />
+            ))}
+          </ul>
+          {overview.data ? (
+            <div className={styles.total}>
+              <Total cents={overview.data.netWorth} />
+            </div>
+          ) : null}
+        </>
       )}
 
       {archived.length > 0 ? (
-        <section className={styles.archived}>
-          <button type="button" className={styles.toggle} onClick={() => setShowArchived((s) => !s)} aria-expanded={showArchived}>
-            {showArchived ? 'Masquer' : 'Afficher'} les comptes archivés ({archived.length})
-          </button>
-          {showArchived ? (
-            <ul className={['ledger', styles.list].join(' ')}>
-              {archived.map((a) => (
-                <li key={a.id} className={[styles.row, styles.rowArchived].join(' ')}>
-                  <div className={styles.main}>
-                    <div className={styles.nameLine}>
-                      <span className={styles.name}>{a.name}</span>
-                      <Badge>Archivé</Badge>
-                    </div>
-                  </div>
+        <Disclosure label="Afficher les comptes archivés" openLabel="Masquer les comptes archivés" count={archived.length}>
+          <ul className="ledger">
+            {archived.map((a) => (
+              <ListRow
+                key={a.id}
+                compact
+                title={a.name}
+                meta={<Badge>Archivé</Badge>}
+                actions={
                   <Button variant="ghost" size="sm" icon={<ArchiveRestore />} onClick={() => setArchiving(a)}>
                     Réactiver
                   </Button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
+                }
+              />
+            ))}
+          </ul>
+        </Disclosure>
       ) : null}
 
       {creating ? <AccountDialog open onClose={() => setCreating(false)} /> : null}

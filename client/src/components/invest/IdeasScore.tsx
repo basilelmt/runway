@@ -1,5 +1,6 @@
 import type { IdeasSummary } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
+import { SectionHeader, Stat, StatGroup } from '@/components/ui';
 import { plural } from '@/lib/format';
 import { formatPct, gainTone } from '@/lib/invest';
 import styles from './Ideas.module.css';
@@ -10,9 +11,7 @@ export function IdeasScore({ summary }: { summary: IdeasSummary }) {
   const { invested, ideas, bench } = summary.hundredEach;
   return (
     <section className={styles.score} aria-labelledby="score-title">
-      <h3 id="score-title" className={styles.scoreTitle}>
-        Bilan
-      </h3>
+      <SectionHeader as="h3" id="score-title" title="Bilan" />
       <p className={styles.scoreLine}>
         <strong className="num">
           {summary.beatCount} {summary.closedCount > 1 ? `idées sur ${summary.closedCount}` : 'idée sur 1'}
@@ -20,10 +19,13 @@ export function IdeasScore({ summary }: { summary: IdeasSummary }) {
         {summary.beatCount > 1 ? 'ont battu' : 'a battu'} le S&P 500, avec un écart moyen de{' '}
         <span className={['num', styles[gainTone(summary.avgExcess)]].join(' ')}>{formatPct(summary.avgExcess, { signed: true })}</span>.
       </p>
-      <p className={styles.scoreLine}>
-        100 € sur chaque idée : <span className="num">{formatEuros(invested)}</span> investis seraient devenus{' '}
-        <strong className={['num', styles[gainTone(ideas - bench)]].join(' ')}>{formatEuros(ideas)}</strong>, contre <span className="num">{formatEuros(bench)}</span> sur le S&P 500.
-      </p>
+      <StatGroup>
+        <Stat label="100 € investis sur chaque idée">{formatEuros(invested)}</Stat>
+        <Stat label="Auraient donné" emphasis>
+          <span className={styles[gainTone(ideas - bench)]}>{formatEuros(ideas)}</span>
+        </Stat>
+        <Stat label="Sur le S&P 500">{formatEuros(bench)}</Stat>
+      </StatGroup>
       {summary.filter ? (
         <p className={styles.scoreLine}>
           Face au S&P 500, les retenues ont fait{' '}

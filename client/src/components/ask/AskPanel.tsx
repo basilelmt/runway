@@ -1,6 +1,6 @@
 import { ArrowUp, RotateCcw, Sparkles, Square, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Button } from '@/components/ui';
+import { Button, ListRow, Textarea } from '@/components/ui';
 import { useAsk } from './ask-context';
 import { AskMessage } from './AskMessage';
 import styles from './AskPanel.module.css';
@@ -18,7 +18,9 @@ export function AskPanel() {
   const returnFocus = useRef<HTMLElement | null>(null);
 
   // À l'ouverture, le focus va dans le champ ; à la fermeture, il revient là où il était.
-  useEffect(() => {
+  // `useLayoutEffect` : le focus bouge dans le même passage que le commit, sans attendre le tour des effets
+  // passifs (une autre source ouvre ce panneau via un raccourci global, un effet différé serait un timing fragile).
+  useLayoutEffect(() => {
     if (!open) return;
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     inputRef.current?.focus();
@@ -26,7 +28,7 @@ export function AskPanel() {
   }, [open]);
 
   // Une fois la réponse arrivée, le champ (désactivé pendant l'attente) reprend le focus pour enchaîner.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open && !pending) inputRef.current?.focus();
   }, [open, pending]);
 
@@ -87,13 +89,9 @@ export function AskPanel() {
         {turns.length === 0 ? (
           <div className={styles.empty}>
             <p className={styles.emptyText}>Pose une question sur ton argent. Claude lit tes données sans rien modifier, et te propose des actions que tu valides d’un clic.</p>
-            <ul className={styles.suggestions} aria-label="Suggestions">
+            <ul className="ledger" aria-label="Suggestions">
               {ASK_SUGGESTIONS.map((s) => (
-                <li key={s}>
-                  <button type="button" className={styles.suggestion} onClick={() => submit(s)}>
-                    {s}
-                  </button>
-                </li>
+                <ListRow key={s} compact onClick={() => submit(s)} clickLabel={s} title={s} />
               ))}
             </ul>
           </div>
@@ -113,9 +111,9 @@ export function AskPanel() {
           submit(draft);
         }}
       >
-        <textarea
+        <Textarea
           ref={inputRef}
-          className={styles.input}
+          className={styles.field}
           aria-label="Ta question"
           placeholder="Combien en restos depuis mars ?"
           rows={1}

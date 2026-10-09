@@ -5,7 +5,7 @@ import type { HoldingView, PortfolioRange, SeriesPoint } from '@shared/api-types
 import { formatDateLong, formatDateShort } from '@shared/dates';
 import { axisEuros, ChartTooltip } from '@/components/charts/ChartTooltip';
 import chart from '@/components/charts/chart.module.css';
-import { FilterPill, Segmented } from '@/components/ui';
+import { FilterPill, SectionHeader, Segmented } from '@/components/ui';
 import styles from './Portfolio.module.css';
 
 const RANGES: { value: PortfolioRange; label: string }[] = [
@@ -35,22 +35,25 @@ export function PortfolioChart({ series, holdings, range, onRange, loading = fal
 
   return (
     <section aria-labelledby="chart-title">
-      <div className="section-title">
-        <h2 id="chart-title">Évolution</h2>
-        <div className={styles.chartControls}>
-          {open.length > 1 ? (
-            <FilterPill value={holding ? chosen : ALL} onChange={setChosen} resetValue={ALL} size="sm" aria-label="Position à tracer">
-              <option value={ALL}>Tout le portefeuille</option>
-              {open.map((h) => (
-                <option key={h.id} value={String(h.id)}>
-                  {h.name}
-                </option>
-              ))}
-            </FilterPill>
-          ) : null}
-          <Segmented label="Période du graphique" size="sm" value={range} onChange={onRange} options={RANGES} />
-        </div>
-      </div>
+      <SectionHeader
+        id="chart-title"
+        title="Évolution"
+        aside={
+          <div className={styles.chartControls}>
+            {open.length > 1 ? (
+              <FilterPill value={holding ? chosen : ALL} onChange={setChosen} resetValue={ALL} size="sm" aria-label="Position à tracer">
+                <option value={ALL}>Tout le portefeuille</option>
+                {open.map((h) => (
+                  <option key={h.id} value={String(h.id)}>
+                    {h.name}
+                  </option>
+                ))}
+              </FilterPill>
+            ) : null}
+            <Segmented label="Période du graphique" size="sm" value={range} onChange={onRange} options={RANGES} />
+          </div>
+        }
+      />
       <div className={[chart.wrap, styles.chart, loading ? styles.loading : ''].join(' ')}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={shown} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

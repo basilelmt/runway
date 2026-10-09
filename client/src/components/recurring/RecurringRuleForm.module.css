@@ -38,19 +38,9 @@
   gap: var(--s-5);
 }
 
-.amountError {
-  color: var(--negative);
-  font-size: var(--text-sm);
-}
-
 .summary {
   font-size: var(--text-sm);
   color: var(--ink-soft);
-}
-
-.serverError {
-  color: var(--negative);
-  font-size: var(--text-sm);
 }
 
 .funding {

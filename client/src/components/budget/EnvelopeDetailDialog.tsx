@@ -5,7 +5,8 @@ import { addMonths, endOfMonth, startOfMonth, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
-import { Amount, ButtonLink, Dialog, Dot, Segmented, SkeletonRows } from '@/components/ui';
+import { operationsHref } from '@/components/transactions/TransactionFilters';
+import { Amount, Badge, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Skeleton, Stat, StatGroup } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import styles from './EnvelopeDetailDialog.module.css';
@@ -55,66 +56,97 @@ export function EnvelopeDetailDialog({ envelope, onClose }: EnvelopeDetailDialog
 function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
   const [period, setPeriod] = useState<Period>('month');
   const { from, to, months } = range(period);
-  const transactions = useTransactions({ envelope: envelope.id, from, to, kind: 'expense', limit: 1000 });
+  // En changeant de période, la liste précédente reste affichée jusqu'à l'arrivée de la nouvelle.
+  const transactions = useTransactions({ envelope: envelope.id, from, to, kind: 'expense', limit: 1000 }, { keepPrevious: true });
 
   const list = transactions.data ?? [];
   const confirmed = list.filter((t) => t.status === 'confirmed');
   const total = confirmed.reduce((s, t) => s + t.amount, 0);
   const budget = envelope.monthlyBudget > 0 ? envelope.monthlyBudget * months : null;
   const verb = envelope.isSavings ? 'Versé' : 'Dépensé';
-  const params = new URLSearchParams({ envelope: String(envelope.id), period: 'custom', from, to });
 
   return (
     <div className={styles.body}>
       <Segmented label="Période" value={period} onChange={setPeriod} options={PERIODS} />
 
-      <dl className={styles.stats}>
-        <div>
-          <dt>{verb}</dt>
-          <dd>
-            <Amount cents={total} size="lg" tone="neutral" className={budget !== null && total > budget ? styles.over : ''} />
-            {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
-          </dd>
-        </div>
-        <div className={styles.right}>
-          <dt>Disponible aujourd’hui</dt>
-          <dd>
-            <Amount cents={envelope.balance} size="lg" />
-          </dd>
-        </div>
-      </dl>
+      <StatGroup>
+        <Stat label={verb}>
+          {/* Largeur réservée sur le budget de la période : la stat voisine ne bouge pas quand le montant arrive. */}
+          <span className={styles.spent}>
+            <span className={styles.reserve} aria-hidden="true">
+              <Amount cents={budget ?? 0} size="lg" tone="neutral" />
+              {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
+            </span>
+            {transactions.isPending ? (
+              <Skeleton width="70%" height={20} className={styles.spentSkeleton} />
+            ) : (
+              <span>
+                <Amount cents={total} size="lg" tone="neutral" className={budget !== null && total > budget ? styles.over : ''} />
+                {budget !== null ? <span className={styles.budget}> sur {formatEuros(budget)}</span> : null}
+              </span>
+            )}
+          </span>
+        </Stat>
+        <Stat label="Disponible aujourd’hui">
+          <Amount cents={envelope.balance} size="lg" />
+        </Stat>
+      </StatGroup>
 
-      {transactions.isPending ? (
-        <SkeletonRows rows={4} />
-      ) : transactions.error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(transactions.error)}
-        </p>
-      ) : list.length === 0 ? (
-        <p className={styles.empty}>
-          <Receipt aria-hidden /> Aucune dépense sur cette période.
-        </p>
-      ) : (
-        <>
-          <p className={styles.count}>{plural(list.length, 'dépense')}</p>
-          <ul className={['ledger', 'stagger', styles.list].join(' ')}>
-            {list.map((t) => (
-              <li key={t.id} className={[styles.row, t.status === 'planned' ? styles.planned : ''].join(' ')}>
-                <span className={['num', styles.date].join(' ')}>{formatDateCompact(t.date)}</span>
-                <span className={styles.label} title={t.label}>
-                  {displayLabel(t)}
-                  {t.status === 'planned' ? <span className={styles.plannedTag}> · prévue</span> : null}
-                </span>
-                <Amount cents={-t.amount} tone="neutral" className={styles.amount} />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {/* La zone garde au moins la hauteur de son squelette : le dialogue ne saute pas à l'arrivée des données. */}
+      <div className={styles.results} aria-busy={transactions.isFetching}>
+        <div className={styles.reserve} aria-hidden="true">
+          <ResultsSkeleton />
+        </div>
+        {transactions.isPending ? (
+          <ResultsSkeleton />
+        ) : transactions.error ? (
+          <ErrorState title="Impossible de charger les dépenses" description={errorMessage(transactions.error)} onRetry={() => transactions.refetch()} />
+        ) : list.length === 0 ? (
+          <EmptyState icon={<Receipt />} title="Aucune dépense sur cette période." />
+        ) : (
+          <div className={transactions.isPlaceholderData ? styles.stale : undefined}>
+            <GroupLabel as="p">{plural(list.length, 'dépense')}</GroupLabel>
+            <ul className={['ledger', 'stagger', styles.list].join(' ')}>
+              {list.map((t) => (
+                <ListRow
+                  key={t.id}
+                  compact
+                  muted={t.status === 'planned'}
+                  lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+                  title={
+                    <>
+                      <span title={t.label}>{displayLabel(t)}</span>
+                      {t.status === 'planned' ? (
+                        <>
+                          {' '}
+                          <Badge tone="warning">Prévue</Badge>
+                        </>
+                      ) : null}
+                    </>
+                  }
+                  trail={<Amount cents={-t.amount} tone="neutral" />}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
-      <ButtonLink to={`/operations?${params}`} variant="ghost" icon={<ArrowRight />} className={styles.more}>
+      <ButtonLink to={operationsHref({ envelope: envelope.id, from, to })} variant="ghost" size="sm" icon={<ArrowRight />} className={styles.more}>
         Voir dans Opérations
       </ButtonLink>
+    </div>
+  );
+}
+
+/** Chargement de la liste : même forme que le résultat, intitulé compris. */
+function ResultsSkeleton() {
+  return (
+    <div>
+      <GroupLabel as="p">
+        <Skeleton width={72} height={10} className={styles.labelSkeleton} />
+      </GroupLabel>
+      <ListRowSkeleton rows={4} compact />
     </div>
   );
 }

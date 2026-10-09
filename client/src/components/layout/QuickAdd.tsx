@@ -1,11 +1,11 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useCreateTransaction } from '@/api/hooks';
+import { useAccounts, useCreateTransaction, useEnvelopes } from '@/api/hooks';
 import { errorMessage } from '@/api/client';
 import { QuickEntry } from '@/components/transactions/QuickEntry';
 import { useAsk } from '@/components/ask/ask-context';
 import { Dialog, useToast } from '@/components/ui';
-import { QuickAddContext } from './quick-add-context';
+import { PANEL_TRIGGER, panelTrigger, QuickAddContext } from './quick-add-context';
 import styles from './QuickAdd.module.css';
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -22,17 +22,29 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [resetKey, setResetKey] = useState(0);
   const toast = useToast();
   const create = useCreateTransaction();
+  // Chargés d'avance : la saisie s'ouvre avec ses comptes et ses enveloppes, sans que le formulaire grandisse ensuite.
+  useAccounts();
+  useEnvelopes();
   const { toggle: toggleAsk } = useAsk();
 
   useEffect(() => {
+    // Ouvert au clavier alors qu'un bouton d'ouverture (barre latérale, bouton flottant, Demander mobile) garde
+    // le focus d'un clic précédent : on le relâche, sinon il le reprend à la fermeture et affiche son anneau
+    // après Échap. Ailleurs, le focus revient normalement là où l'utilisateur était.
+    function releaseFocus() {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active.hasAttribute(PANEL_TRIGGER)) active.blur();
+    }
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
       if (e.key === 'n') {
         e.preventDefault();
+        releaseFocus();
         setOpen(true);
       }
       if (e.key === 'k') {
         e.preventDefault();
+        releaseFocus();
         toggleAsk();
       }
       if (e.key === '/') {
@@ -50,7 +62,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   return (
     <QuickAddContext.Provider value={() => setOpen(true)}>
       {children}
-      <button type="button" className={styles.fab} onClick={() => setOpen(true)} aria-label="Nouvelle opération">
+      <button type="button" className={styles.fab} onClick={() => setOpen(true)} aria-label="Nouvelle opération" {...panelTrigger}>
         <Plus aria-hidden />
       </button>
       <Dialog

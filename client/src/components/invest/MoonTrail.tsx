@@ -44,7 +44,7 @@ function Rocket() {
 }
 
 /**
- * Au survol du parent, une fusée en pixels suit le curseur avec du retard, tirant « TO THE MOON » derrière elle
+ * Au survol du bloc qui la contient, une fusée en pixels suit le curseur avec du retard, tirant « TO THE MOON » derrière elle
  * comme une corde : chaque lettre suit la précédente à distance fixe. Souris uniquement.
  */
 export function MoonTrail() {
@@ -52,7 +52,8 @@ export function MoonTrail() {
 
   useEffect(() => {
     const el = root.current;
-    const host = el?.parentElement;
+    // Posée dans la couche décorative du chiffre clé, sans pointeur : on écoute le bloc qui la contient.
+    const host = el?.closest('section') ?? el?.parentElement;
     if (!el || !host) return;
     const parts = [...el.children] as HTMLElement[];
     const rocket = parts[0]!;

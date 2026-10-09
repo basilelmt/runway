@@ -6,7 +6,7 @@ import { envelopeInputSchema, type Envelope } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useCreateEnvelope, useRecurringRules, useUpdateEnvelope, type RecurringRuleView } from '@/api/hooks';
 import { describeRhythm } from '@/components/recurring/frequency';
-import { Button, Checkbox, Dialog, DialogFooter, Field, Input, MoneyInput, useToast } from '@/components/ui';
+import { Button, Checkbox, Dialog, DialogFooter, Field, FieldError, Input, MoneyInput, useToast } from '@/components/ui';
 import styles from './EnvelopeFormDialog.module.css';
 
 export const ENVELOPE_COLORS = ['#4f8a5b', '#c2703d', '#3f6fae', '#9a4f9c', '#b8961a', '#2a8f8a', '#b74a5e', '#6b7280'];
@@ -114,11 +114,7 @@ export function EnvelopeFormDialog({ open, envelope, onClose }: EnvelopeFormDial
           checked={form.isSavings}
           onChange={(e) => set('isSavings', e.target.checked)}
         />
-        {serverError ? (
-          <p className={styles.error} role="alert">
-            {errorMessage(serverError)}
-          </p>
-        ) : null}
+        <FieldError>{serverError ? errorMessage(serverError) : null}</FieldError>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Annuler

@@ -1,4 +1,4 @@
-import { Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { Pause, Pencil, Play, Plus, Repeat, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { formatDateShort } from '@shared/dates';
 import { errorMessage } from '@/api/client';
@@ -14,7 +14,7 @@ import {
 } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
-import { Amount, Badge, Button, ConfirmDialog, Dialog, Dot, Skeleton, useToast } from '@/components/ui';
+import { Amount, Badge, Button, ConfirmDialog, Dialog, EmptyState, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
 import styles from './FixedCharges.module.css';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; rule: RecurringRuleView } | { mode: 'delete'; rule: RecurringRuleView } | null;
@@ -43,82 +43,101 @@ export function FixedCharges() {
   const incomes = list.filter((r) => r.kind === 'income');
   const outgoings = list.filter((r) => r.kind !== 'income');
 
-  function target(rule: RecurringRuleView) {
+  /** Fréquence et destination : comptes du virement, enveloppe de la charge ou compte du revenu. */
+  function meta(rule: RecurringRuleView) {
+    const frequency = describeFrequency(rule);
     const account = rule.accountId ? accountName.get(rule.accountId) : '';
-    if (rule.kind === 'transfer') return `${account} → ${rule.toAccountId ? accountName.get(rule.toAccountId) : ''}`;
+    if (rule.kind === 'transfer') return `${frequency} · ${account} → ${rule.toAccountId ? accountName.get(rule.toAccountId) : ''}`;
     if (rule.kind === 'expense') {
       const env = rule.envelopeId ? envelopeById.get(rule.envelopeId) : null;
       return env ? (
         <>
-          <Dot color={env.color} size={8} /> {env.name}
+          <span>{frequency}</span>
+          <EnvelopeTag name={env.name} color={env.color} />
         </>
       ) : (
-        'à ranger'
+        `${frequency} · à ranger`
       );
     }
-    return account;
+    return `${frequency} · ${account}`;
   }
 
   const row = (rule: RecurringRuleView) => (
-    <li key={rule.id} className={['hover-row', styles.row, rule.active ? '' : styles.paused].join(' ')}>
-      <div className={styles.main}>
-        <span className={styles.name}>
-          {rule.name}
+    <ListRow
+      key={rule.id}
+      muted={!rule.active}
+      onClick={() => setDialog({ mode: 'edit', rule })}
+      clickLabel={`Modifier ${rule.name}`}
+      title={rule.name}
+      meta={
+        <>
           {!rule.active ? <Badge tone="warning">En pause</Badge> : null}
-        </span>
-        <span className={styles.details}>
-          {describeFrequency(rule)} · {target(rule)}
-        </span>
-      </div>
-      <span className={styles.next}>{rule.nextDate ? `le ${formatDateShort(rule.nextDate)}` : 'terminée'}</span>
-      <Amount cents={rule.kind === 'income' ? rule.amount : -rule.amount} tone={rule.kind === 'income' ? 'always' : 'neutral'} className={styles.amount} />
-      <div className={styles.actions}>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={rule.active ? <Pause /> : <Play />}
-          onClick={() => setActive.mutate({ id: rule.id, active: !rule.active })}
-          aria-label={rule.active ? `Mettre ${rule.name} en pause` : `Reprendre ${rule.name}`}
-          title={rule.active ? 'Mettre en pause' : 'Reprendre'}
+          {meta(rule)}
+        </>
+      }
+      trail={<Amount cents={rule.kind === 'income' ? rule.amount : -rule.amount} tone={rule.kind === 'income' ? 'always' : 'neutral'} />}
+      trailSub={rule.nextDate ? `le ${formatDateShort(rule.nextDate)}` : 'terminée'}
+      actions={
+        <RowMenu
+          label={`Actions pour ${rule.name}`}
+          items={[
+            rule.active
+              ? { label: 'Mettre en pause', icon: <Pause />, onSelect: () => setActive.mutate({ id: rule.id, active: false }) }
+              : { label: 'Reprendre', icon: <Play />, onSelect: () => setActive.mutate({ id: rule.id, active: true }) },
+            { label: 'Modifier', icon: <Pencil />, onSelect: () => setDialog({ mode: 'edit', rule }) },
+            { label: 'Supprimer', icon: <Trash2 />, onSelect: () => setDialog({ mode: 'delete', rule }), danger: true },
+          ]}
         />
-        <Button variant="ghost" size="sm" icon={<Pencil />} onClick={() => setDialog({ mode: 'edit', rule })} aria-label={`Modifier ${rule.name}`} title="Modifier" />
-        <Button variant="ghost" size="sm" icon={<Trash2 />} onClick={() => setDialog({ mode: 'delete', rule })} aria-label={`Supprimer ${rule.name}`} title="Supprimer" />
-      </div>
-    </li>
+      }
+    />
   );
 
   return (
-    <section aria-labelledby="fixed-title" className={styles.section}>
-      <div className="section-title">
-        <h2 id="fixed-title">Charges fixes et revenus</h2>
-        <Button size="sm" variant="ghost" icon={<Plus />} onClick={() => setDialog({ mode: 'create' })}>
-          Ajouter
-        </Button>
-      </div>
-      <p className={styles.intro}>Ce qui revient tout seul. Runway les attend dans la prévision et les rapproche du relevé quand ils passent.</p>
+    <section aria-labelledby="fixed-title">
+      <SectionHeader
+        id="fixed-title"
+        title="Charges fixes et revenus"
+        description="Ce qui revient tout seul. Runway les attend dans la prévision et les rapproche du relevé quand ils passent."
+        aside={
+          <Button size="sm" icon={<Plus />} onClick={() => setDialog({ mode: 'create' })}>
+            Ajouter
+          </Button>
+        }
+      />
 
       {rules.isPending ? (
-        <Skeleton height={160} />
+        <ListRowSkeleton rows={5} actions />
       ) : rules.isError ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(rules.error)}
-        </p>
-      ) : list.length === 0 ? (
-        <p className={styles.intro}>Ajoute ton salaire, ton loyer et tes abonnements : leurs montants comptent dans le budget de leur enveloppe.</p>
+        <ErrorState title="Impossible de charger les charges fixes" description={errorMessage(rules.error)} onRetry={() => rules.refetch()} />
       ) : (
-        <div className={styles.groups}>
-          {incomes.length > 0 ? (
+        <div className={styles.body}>
+          {list.length === 0 ? (
+            <EmptyState
+              icon={<Repeat />}
+              title="Aucune charge fixe ni revenu"
+              description="Ajoute ton salaire, ton loyer et tes abonnements : leurs montants comptent dans le budget de leur enveloppe."
+              action={
+                <Button variant="secondary" icon={<Plus />} onClick={() => setDialog({ mode: 'create' })}>
+                  Ajouter
+                </Button>
+              }
+            />
+          ) : (
             <div>
-              <h3 className={styles.groupTitle}>Revenus</h3>
-              <ul className="ledger">{incomes.map(row)}</ul>
+              {incomes.length > 0 ? (
+                <>
+                  <GroupLabel>Revenus</GroupLabel>
+                  <ul className="ledger">{incomes.map(row)}</ul>
+                </>
+              ) : null}
+              {outgoings.length > 0 ? (
+                <>
+                  <GroupLabel>Charges et virements</GroupLabel>
+                  <ul className="ledger">{outgoings.map(row)}</ul>
+                </>
+              ) : null}
             </div>
-          ) : null}
-          {outgoings.length > 0 ? (
-            <div>
-              <h3 className={styles.groupTitle}>Charges et virements</h3>
-              <ul className="ledger">{outgoings.map(row)}</ul>
-            </div>
-          ) : null}
+          )}
         </div>
       )}
 

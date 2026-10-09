@@ -74,7 +74,7 @@ button {
   background: var(--marking-soft);
 }
 
-/* Métadonnées techniques (dates compactes, IBAN, motifs) */
+/* Identifiants techniques : IBAN, tickers, motifs, noms de fichier, axes de graphiques */
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -139,26 +139,6 @@ button {
     opacity: 0;
     transform: translateY(4px);
   }
-}
-
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s-4);
-  flex-wrap: wrap;
-}
-
-.page-header h1 {
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
-
-.page-header .subtitle {
-  color: var(--ink-mute);
-  margin-top: var(--s-2);
-  max-width: 62ch;
 }
 
 .eyebrow {
@@ -274,33 +254,3 @@ ol.ledger {
   background: color-mix(in oklab, var(--paper-sunken) 60%, transparent);
 }
 
-.section-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s-3);
-  margin-bottom: var(--s-3);
-}
-
-.section-title h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-
-.section-title .section-link {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-  text-decoration: none;
-  transition: color var(--dur) var(--ease-out);
-}
-
-.section-title .section-link:hover {
-  color: var(--ink);
-}
-
-@media (max-width: 767px) {
-  .page-header h1 {
-    font-size: var(--text-xl);
-  }
-}

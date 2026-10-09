@@ -11,7 +11,7 @@ import { filtersFromParams, filtersToParams, toApiFilter, TransactionFilters, ty
 import { TransactionRow } from '@/components/transactions/TransactionRow';
 import { UnsortedList } from '@/components/transactions/UnsortedList';
 import { signedAmount } from '@/components/transactions/signed';
-import { Amount, Button, ButtonLink, EmptyState, SkeletonRows, Tabs, useToast } from '@/components/ui';
+import { Button, ButtonLink, EmptyState, ErrorState, GroupLabel, ListRowSkeleton, Tabs, Total, useToast } from '@/components/ui';
 import { plural, relativeDay } from '@/lib/format';
 import styles from './Operations.module.css';
 
@@ -97,22 +97,16 @@ function AllTransactions() {
 
       {visible.length > 0 ? (
         <p className={styles.summary}>
-          <span>{plural(visible.length, 'opération')}</span>
-          <span>
-            Entrées <Amount cents={totals.income} tone="neutral" />
-          </span>
-          <span>
-            Sorties <Amount cents={totals.expense} tone="neutral" />
-          </span>
+          {plural(visible.length, 'opération')}
+          <Total label="Entrées" cents={totals.income} />
+          <Total label="Sorties" cents={totals.expense} />
         </p>
       ) : null}
 
       {transactions.isPending ? (
-        <SkeletonRows rows={8} />
+        <ListRowSkeleton rows={8} />
       ) : transactions.error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(transactions.error)}
-        </p>
+        <ErrorState title="Impossible de charger les opérations" description={errorMessage(transactions.error)} onRetry={() => transactions.refetch()} />
       ) : groups.length === 0 ? (
         <EmptyState
           icon={<ArrowLeftRight />}
@@ -128,8 +122,8 @@ function AllTransactions() {
         <div className={[styles.groups, 'stagger'].join(' ')}>
           {groups.map(([date, list]) => (
             <section key={date} className={styles.group}>
-              <h2 className={styles.day}>{relativeDay(date)}</h2>
-              <ul className={['ledger', styles.list].join(' ')}>
+              <GroupLabel as="h2">{relativeDay(date)}</GroupLabel>
+              <ul className="ledger stagger">
                 {list.map((t) => (
                   <TransactionRow
                     key={t.id}

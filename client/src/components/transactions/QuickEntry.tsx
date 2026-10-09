@@ -4,7 +4,7 @@ import { addDays, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { transactionInputSchema, type Transaction, type TransactionInput } from '@shared/schemas';
 import { testSortingRule, useAccounts, useEnvelopes, useTransactions } from '@/api/hooks';
-import { AmountHero, Button, ChipPicker, DateField, DialogFooter, Dot, Select, Textarea } from '@/components/ui';
+import { Amount, AmountHero, Button, ChipPicker, DateField, DialogFooter, Dot, FieldError, GroupLabel, Kbd, ListRow, Segmented, Select, Textarea } from '@/components/ui';
 import styles from './QuickEntry.module.css';
 
 type Kind = 'expense' | 'income' | 'transfer';
@@ -186,23 +186,16 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
       noValidate
     >
       {editing ? null : (
-        <div className={styles.kinds} role="radiogroup" aria-label="Type d’opération">
-          {KINDS.map((k) => (
-            <button
-              key={k.value}
-              type="button"
-              role="radio"
-              aria-checked={kind === k.value}
-              className={[styles.kind, kind === k.value ? styles.kindActive : '', k.value === 'income' ? styles.income : ''].join(' ')}
-              onClick={() => {
-                setKind(k.value);
-                setErrors({});
-              }}
-            >
-              <k.icon aria-hidden />
-              {k.label}
-            </button>
-          ))}
+        <div className={styles.kinds}>
+          <Segmented
+            label="Type d’opération"
+            value={kind}
+            onChange={(v) => {
+              setKind(v);
+              setErrors({});
+            }}
+            options={KINDS.map((k) => ({ value: k.value, label: k.label, icon: <k.icon aria-hidden /> }))}
+          />
         </div>
       )}
 
@@ -220,11 +213,7 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
         describedBy={errors.amount ? `${formId}-amount-error` : undefined}
         autoFocus
       />
-      {errors.amount ? (
-        <p id={`${formId}-amount-error`} className={styles.error} role="alert">
-          {errors.amount}
-        </p>
-      ) : null}
+      <FieldError id={`${formId}-amount-error`}>{errors.amount}</FieldError>
 
       <div className={styles.labelBlock}>
         <label htmlFor={`${formId}-label`} className="visually-hidden">
@@ -243,23 +232,27 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
           spellCheck={false}
           aria-invalid={errors.label ? true : undefined}
         />
-        {errors.label ? <p className={styles.error}>{errors.label}</p> : null}
+        <FieldError>{errors.label}</FieldError>
         {suggestions.length > 0 ? (
-          <ul className={styles.suggestions} aria-label="Opérations passées">
+          <ul className="ledger" aria-label="Opérations passées">
             {suggestions.map((t) => {
               const env = t.envelopeId != null ? envelopes.data?.find((e) => e.id === t.envelopeId) : undefined;
               return (
-                <li key={t.id}>
-                  <button type="button" className={styles.suggestion} onClick={() => pickSuggestion(t)}>
-                    <span className={styles.suggestionLabel}>{t.label}</span>
-                    {env ? (
-                      <span className={styles.suggestionMeta}>
+                <ListRow
+                  key={t.id}
+                  compact
+                  onClick={() => pickSuggestion(t)}
+                  clickLabel={`Reprendre « ${t.label} »`}
+                  title={t.label}
+                  meta={
+                    env ? (
+                      <>
                         <Dot color={env.color} size={8} /> {env.name}
-                      </span>
-                    ) : null}
-                    <span className={['num', styles.suggestionMeta].join(' ')}>{formatEuros(t.amount)}</span>
-                  </button>
-                </li>
+                      </>
+                    ) : undefined
+                  }
+                  trail={<Amount cents={t.amount} tone="neutral" />}
+                />
               );
             })}
           </ul>
@@ -267,32 +260,36 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
       </div>
 
       {kind === 'expense' ? (
-        <fieldset className={styles.group}>
-          <legend id={`${formId}-envelope`} className={styles.legend}>
-            Enveloppe
+        <div className={styles.group}>
+          {/* Le groupe est nommé par son intitulé entier : « proposée par tes règles » est annoncé avec. */}
+          <GroupLabel as="p" id={`${formId}-envelope`}>
+            Enveloppe{' '}
             {envelopeSource === 'rule' || envelopeSource === 'history' ? (
               <span className={styles.auto}>
                 <Sparkles aria-hidden /> {envelopeSource === 'rule' ? 'proposée par tes règles' : 'comme la dernière fois'}
               </span>
             ) : null}
-          </legend>
+          </GroupLabel>
           <ChipPicker
             aria-labelledby={`${formId}-envelope`}
             value={envelopeId}
             onChange={chooseEnvelope}
             options={[{ value: null, label: 'À ranger plus tard' }, ...(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))]}
           />
-        </fieldset>
+        </div>
       ) : null}
 
       <div className={styles.meta}>
         <div className={styles.dates} role="group" aria-label="Date">
-          <button type="button" className={[styles.chip, date === today() ? styles.chipActive : ''].join(' ')} onClick={() => setDate(today())} aria-pressed={date === today()}>
-            Aujourd’hui
-          </button>
-          <button type="button" className={[styles.chip, date === yesterday ? styles.chipActive : ''].join(' ')} onClick={() => setDate(yesterday)} aria-pressed={date === yesterday}>
-            Hier
-          </button>
+          <ChipPicker
+            aria-label="Date rapide"
+            value={date}
+            onChange={(v) => setDate(v)}
+            options={[
+              { value: today(), label: 'Aujourd’hui' },
+              { value: yesterday, label: 'Hier' },
+            ]}
+          />
           <DateField
             variant="chip"
             aria-label="Autre date"
@@ -321,14 +318,15 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
             </label>
           ) : null}
         </div>
-        {errors.accountId || errors.toAccountId ? <p className={styles.error}>{errors.toAccountId ?? errors.accountId}</p> : null}
+        <FieldError>{errors.toAccountId ?? errors.accountId}</FieldError>
       </div>
 
       {showNote ? (
         <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Une note pour plus tard" aria-label="Note" autoFocus={focusNote} />
       ) : (
-        <button
+        <Button
           type="button"
+          variant="text"
           className={styles.addNote}
           onClick={() => {
             setShowNote(true);
@@ -336,24 +334,20 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
           }}
         >
           + Ajouter une note
-        </button>
+        </Button>
       )}
 
-      {serverError ? (
-        <p className={styles.error} role="alert">
-          {serverError}
-        </p>
-      ) : null}
+      <FieldError>{serverError}</FieldError>
 
       <DialogFooter
         start={
           editing ? (
             footerStart
           ) : (
-            <button type="button" className={styles.again} onClick={() => submit(true)} disabled={submitting}>
-              Enregistrer et en saisir une autre <kbd>⇧</kbd>
-              <kbd>↵</kbd>
-            </button>
+            <Button type="button" variant="text" className={styles.again} onClick={() => submit(true)} disabled={submitting}>
+              Enregistrer et en saisir une autre <Kbd>⇧</Kbd>
+              <Kbd>↵</Kbd>
+            </Button>
           )
         }
       >

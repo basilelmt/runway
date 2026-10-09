@@ -1,15 +1,18 @@
+/* Ancré en haut plutôt que centré : quand le contenu change de hauteur (données qui arrivent),
+   le dialogue s'allonge vers le bas sans déplacer son en-tête. */
 .dialog {
+  --dialog-top: clamp(var(--s-4), 10dvh, 96px);
   border: none;
   padding: 0;
   background: transparent;
   max-width: calc(100vw - 2 * var(--s-4));
-  max-height: calc(100dvh - 2 * var(--s-4));
+  max-height: calc(100dvh - var(--dialog-top) - var(--s-4));
   width: 100%;
-  margin: auto;
+  margin: var(--dialog-top) auto auto;
 }
 
 .dialog::backdrop {
-  background: rgb(20 32 28 / 0.45);
+  background: var(--scrim);
   backdrop-filter: blur(2px);
   animation: fade-in 200ms var(--ease-out);
 }
@@ -37,7 +40,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  max-height: calc(100dvh - 2 * var(--s-4));
+  max-height: calc(100dvh - var(--dialog-top) - var(--s-4));
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius-lg);
@@ -59,7 +62,7 @@
 }
 
 .edgeBelow {
-  box-shadow: 0 1px 0 var(--rule);
+  box-shadow: 0 var(--hairline) 0 var(--rule);
 }
 
 .heading {
@@ -77,9 +80,9 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--font-display);
-  font-size: 1.3125rem;
+  font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
@@ -141,7 +144,7 @@
 }
 
 .edgeAbove {
-  box-shadow: 0 -1px 0 var(--rule);
+  box-shadow: 0 calc(var(--hairline) * -1) 0 var(--rule);
 }
 
 .info {

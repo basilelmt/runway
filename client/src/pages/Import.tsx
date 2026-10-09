@@ -1,6 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
 import type { ImportPreviewRow } from '@shared/api-types';
 import { errorMessage } from '@/api/client';
 import { useAccounts, useCommitImport, useEnvelopes, usePreviewImport, type ImportPreviewWithFile } from '@/api/hooks';
@@ -60,15 +58,11 @@ export function ImportPage() {
 
   return (
     <div className="page">
-      <div className={styles.head}>
-        <Link to="/operations" className={styles.back}>
-          <ArrowLeft aria-hidden /> Opérations
-        </Link>
-        <PageHeader
-          title="Importer un relevé"
-          subtitle="Relevés CSV ou PDF de La Banque Postale. Utile pour l’historique ancien : au quotidien, la synchronisation bancaire s’en charge. Les doublons sont ignorés et les opérations prévues sont rapprochées."
-        />
-      </div>
+      <PageHeader
+        back={{ to: '/operations', label: 'Opérations' }}
+        title="Importer un relevé"
+        subtitle="Relevés CSV ou PDF de La Banque Postale. Utile pour l’historique ancien : au quotidien, la synchronisation bancaire s’en charge. Les doublons sont ignorés et les opérations prévues sont rapprochées."
+      />
 
       {draft === null ? (
         <DropZone busy={preview.isPending} onFile={(file) => preview.mutate({ file })} />

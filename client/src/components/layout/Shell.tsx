@@ -1,11 +1,13 @@
 import { Settings, Sparkles } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useMatch } from 'react-router';
 import { useMerchantNamingSync } from '@/api/hooks';
 import { useAsk } from '@/components/ask/ask-context';
 import { AskProvider } from '@/components/ask/AskProvider';
 import { useAutoBankSync } from '@/components/import/useAutoBankSync';
+import { BrandMark, Button, ButtonLink } from '@/components/ui';
 import { BottomNav } from './BottomNav';
 import { QuickAddProvider } from './QuickAdd';
+import { panelTrigger } from './quick-add-context';
 import { SideNav } from './SideNav';
 import styles from './Shell.module.css';
 
@@ -24,21 +26,33 @@ export function Shell() {
 
 function Layout() {
   const ask = useAsk();
+  const settingsActive = Boolean(useMatch('/reglages/*'));
   return (
     <div className={styles.shell} data-ask-open={ask.open || undefined}>
       <SideNav />
       <header className={styles.topBar}>
         <NavLink to="/" className={styles.brand} aria-label="Runway, accueil">
-          <span className={styles.brandMark} aria-hidden />
+          <BrandMark size={20} />
           Runway
         </NavLink>
         <div className={styles.topActions}>
-          <button type="button" className={[styles.settings, ask.open ? styles.settingsActive : ''].join(' ')} aria-label="Demander" aria-expanded={ask.open} onClick={ask.toggle}>
-            <Sparkles aria-hidden strokeWidth={1.75} />
-          </button>
-          <NavLink to="/reglages" className={({ isActive }) => [styles.settings, isActive ? styles.settingsActive : ''].join(' ')} aria-label="Réglages">
-            <Settings aria-hidden strokeWidth={1.75} />
-          </NavLink>
+          <Button
+            variant="ghost"
+            icon={<Sparkles aria-hidden strokeWidth={1.75} />}
+            className={ask.open ? styles.topActionOpen : undefined}
+            aria-label="Demander"
+            aria-expanded={ask.open}
+            onClick={ask.toggle}
+            {...panelTrigger}
+          />
+          <ButtonLink
+            to="/reglages"
+            variant="ghost"
+            icon={<Settings aria-hidden strokeWidth={1.75} />}
+            aria-label="Réglages"
+            aria-current={settingsActive ? 'page' : undefined}
+            className={settingsActive ? styles.topActionOpen : undefined}
+          />
         </div>
       </header>
       <main className={styles.main} id="main">

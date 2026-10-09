@@ -93,7 +93,7 @@
 
 .marking {
   background: var(--marking);
-  color: #2b2000;
+  color: var(--marking-on);
 }
 
 .marking:hover:not(:disabled) {
@@ -111,17 +111,21 @@
   height: 16px;
 }
 
-.spinner {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  animation: spin 0.8s linear infinite;
+/* Lien discret : afficher ou masquer, action secondaire dans du texte */
+.text {
+  height: auto;
+  padding: 0;
+  gap: var(--s-1);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.text:hover:not(:disabled) {
+  color: var(--ink);
 }
+
+.text:active:not(:disabled) {
+  transform: none;
+}
+

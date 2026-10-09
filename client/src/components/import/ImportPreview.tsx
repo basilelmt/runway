@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import type { ImportPreviewRow } from '@shared/api-types';
 import type { Account, Envelope } from '@shared/schemas';
-import { Amount, Badge, Button, InlinePill } from '@/components/ui';
+import { Amount, Badge, Button, Disclosure, EmptyState, InlinePill, ListRow, listRowDate, Stat, StatGroup, statNumber } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import styles from './ImportPreview.module.css';
 
@@ -14,18 +14,6 @@ type ImportPreviewProps = {
   onCancel: () => void;
   committing?: boolean;
 };
-
-function Section({ title, count, children, defaultOpen = true }: { title: string; count: number; children: ReactNode; defaultOpen?: boolean }) {
-  return (
-    <details className={styles.section} open={defaultOpen && count > 0}>
-      <summary className={styles.summary}>
-        <span className={styles.summaryTitle}>{title}</span>
-        <Badge tone={count > 0 ? 'neutral' : 'info'}>{count}</Badge>
-      </summary>
-      {count > 0 ? <div className="ledger">{children}</div> : <p className={styles.none}>Aucune ligne</p>}
-    </details>
-  );
-}
 
 /** Aperçu d'un relevé avant écriture : nouvelles, rapprochées, doublons. */
 export function ImportPreview({ rows, envelopes, accounts = [], onChange, onCommit, onCancel, committing = false }: ImportPreviewProps) {
@@ -45,91 +33,115 @@ export function ImportPreview({ rows, envelopes, accounts = [], onChange, onComm
     update(row.index, { status: 'new', plannedId: null, plannedLabel: null });
   }
 
-  const envelopeSelect = (row: ImportPreviewRow) =>
-    row.status === 'transfer' && row.transferToAccountId !== null ? (
-      <Badge tone="info">Virement vers {accountName(row.transferToAccountId)}</Badge>
-    ) : row.signedAmount < 0 ? (
-      <InlinePill
-        aria-label={`Enveloppe pour ${row.label}`}
-        value={row.envelopeId}
-        placeholder="À ranger"
-        options={envelopes.map((env) => ({ value: env.id, label: env.name, color: env.color }))}
-        onChange={(v) => update(row.index, { envelopeId: v })}
-      />
-    ) : (
-      <span className={styles.income}>Revenu</span>
-    );
-
   if (toImport === 0) {
     return (
       <div className={styles.wrap}>
-        <div className={styles.nothing}>
-          <p className={styles.nothingTitle}>Rien de nouveau dans ce relevé</p>
-          <p className="muted">{plural(duplicates.length, 'opération déjà importée', 'opérations déjà importées')}.</p>
-        </div>
-        <div className={styles.actions}>
-          <Button onClick={onCancel}>Choisir un autre fichier</Button>
-        </div>
+        <EmptyState
+          title="Rien de nouveau dans ce relevé"
+          description={`${plural(duplicates.length, 'opération déjà importée', 'opérations déjà importées')}.`}
+          action={
+            <Button onClick={onCancel}>Choisir un autre fichier</Button>
+          }
+        />
       </div>
     );
   }
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.counts}>
-        <span>
-          <strong>{fresh.length}</strong> nouvelles
-        </span>
-        <span>
-          <strong>{matched.length}</strong> rapprochées
-        </span>
-        <span className="muted">
-          <strong>{duplicates.length}</strong> doublons ignorés
-        </span>
-      </div>
+      <StatGroup>
+        <Stat label="Nouvelles">
+          <span className={statNumber}>{fresh.length}</span>
+        </Stat>
+        <Stat label="Rapprochées">
+          <span className={statNumber}>{matched.length}</span>
+        </Stat>
+        <Stat label="Doublons ignorés">
+          <span className={statNumber}>{duplicates.length}</span>
+        </Stat>
+      </StatGroup>
 
-      <Section title="Nouvelles" count={fresh.length}>
-        {fresh.map((row) => (
-          <div key={row.index} className={styles.row}>
-            <span className={[styles.date, 'num'].join(' ')}>{formatDateCompact(row.date)}</span>
-            <span className={styles.label}>
-              {row.label}
-              {detached.has(row.index) ? <Badge tone="info">détachée</Badge> : null}
-            </span>
-            <span className={styles.envelope}>{envelopeSelect(row)}</span>
-            <Amount cents={row.signedAmount} tone="always" className={styles.amount} />
-          </div>
-        ))}
-      </Section>
+      <Disclosure label="Nouvelles" count={fresh.length} defaultOpen>
+        {fresh.length === 0 ? (
+          <p className="muted">Aucune ligne</p>
+        ) : (
+          <ul className="ledger">
+            {fresh.map((row) => {
+              const transferTo = row.status === 'transfer' && row.transferToAccountId !== null ? accountName(row.transferToAccountId) : null;
+              return (
+                <ListRow
+                  key={row.index}
+                  compact
+                  lead={<span className={listRowDate}>{formatDateCompact(row.date)}</span>}
+                  title={row.label}
+                  meta={
+                    <>
+                      {detached.has(row.index) ? <Badge tone="info">détachée</Badge> : null}
+                      {transferTo !== null ? <Badge tone="info">Virement vers {transferTo}</Badge> : row.signedAmount >= 0 ? <Badge tone="positive">Revenu</Badge> : null}
+                    </>
+                  }
+                  trail={<Amount cents={row.signedAmount} tone="always" />}
+                  actions={
+                    transferTo === null && row.signedAmount < 0 ? (
+                      <InlinePill
+                        aria-label={`Enveloppe pour ${row.label}`}
+                        value={row.envelopeId}
+                        placeholder="À ranger"
+                        options={envelopes.map((env) => ({ value: env.id, label: env.name, color: env.color }))}
+                        onChange={(v) => update(row.index, { envelopeId: v })}
+                      />
+                    ) : undefined
+                  }
+                />
+              );
+            })}
+          </ul>
+        )}
+      </Disclosure>
 
-      <Section title="Rapprochées" count={matched.length}>
-        {matched.map((row) => (
-          <div key={row.index} className={[styles.row, styles.matchedRow].join(' ')}>
-            <span className={[styles.date, 'num'].join(' ')}>{formatDateCompact(row.date)}</span>
-            <span className={styles.label}>
-              {row.label}
-              <span className={styles.replaces}>↳ remplace la prévue « {row.plannedLabel} »</span>
-            </span>
-            <span className={styles.envelope}>
-              <Button size="sm" variant="ghost" onClick={() => detach(row)}>
-                Détacher
-              </Button>
-            </span>
-            <Amount cents={row.signedAmount} tone="always" className={styles.amount} />
-          </div>
-        ))}
-      </Section>
+      <Disclosure label="Rapprochées" count={matched.length}>
+        {matched.length === 0 ? (
+          <p className="muted">Aucune ligne</p>
+        ) : (
+          <ul className="ledger">
+            {matched.map((row) => (
+              <ListRow
+                key={row.index}
+                compact
+                lead={<span className={listRowDate}>{formatDateCompact(row.date)}</span>}
+                title={row.label}
+                meta={<span className={styles.replaces}>↳ remplace la prévue « {row.plannedLabel} »</span>}
+                trail={<Amount cents={row.signedAmount} tone="always" />}
+                actions={
+                  <Button size="sm" variant="ghost" onClick={() => detach(row)}>
+                    Détacher
+                  </Button>
+                }
+              />
+            ))}
+          </ul>
+        )}
+      </Disclosure>
 
-      <Section title="Doublons ignorés" count={duplicates.length} defaultOpen={false}>
-        {duplicates.map((row) => (
-          <div key={row.index} className={[styles.row, styles.duplicate].join(' ')} aria-disabled>
-            <span className={[styles.date, 'num'].join(' ')}>{formatDateCompact(row.date)}</span>
-            <span className={styles.label}>{row.label}</span>
-            <span className={styles.envelope}>{row.status === 'internal' ? <Badge tone="info">virement déjà saisi</Badge> : null}</span>
-            <Amount cents={row.signedAmount} tone="neutral" className={styles.amount} />
-          </div>
-        ))}
-      </Section>
+      <Disclosure label="Doublons ignorés" count={duplicates.length}>
+        {duplicates.length === 0 ? (
+          <p className="muted">Aucune ligne</p>
+        ) : (
+          <ul className="ledger">
+            {duplicates.map((row) => (
+              <ListRow
+                key={row.index}
+                compact
+                muted
+                lead={<span className={listRowDate}>{formatDateCompact(row.date)}</span>}
+                title={row.label}
+                meta={row.status === 'internal' ? <Badge tone="info">virement déjà saisi</Badge> : null}
+                trail={<Amount cents={row.signedAmount} tone="neutral" />}
+              />
+            ))}
+          </ul>
+        )}
+      </Disclosure>
 
       <div className={styles.actions}>
         <Button variant="ghost" onClick={onCancel} disabled={committing}>

@@ -12,7 +12,7 @@ import { PortfolioChart } from '@/components/invest/PortfolioChart';
 import { PortfolioSummary, PortfolioSummarySkeleton } from '@/components/invest/PortfolioSummary';
 import { useAutoBinanceSync } from '@/components/invest/useAutoBinanceSync';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button, EmptyState } from '@/components/ui';
+import { Button, ErrorState, SectionHeader } from '@/components/ui';
 
 export function InvestPage() {
   const [range, setRange] = useState<PortfolioRange>('6m');
@@ -26,7 +26,6 @@ export function InvestPage() {
   const open = data?.holdings.find((h) => h.id === openId) ?? null;
   const addButton = (
     <Button
-      variant="primary"
       icon={<Plus />}
       onClick={() => {
         setAddKey((k) => k + 1);
@@ -42,7 +41,7 @@ export function InvestPage() {
       <PageHeader title="Investir" subtitle="Ton portefeuille, et des idées tirées de l’actualité." actions={data && data.holdings.length > 0 ? addButton : null} />
 
       {portfolio.isError ? (
-        <EmptyState title="Impossible de charger le portefeuille" description={errorMessage(portfolio.error)} action={<Button onClick={() => portfolio.refetch()}>Réessayer</Button>} />
+        <ErrorState title="Impossible de charger le portefeuille" description={errorMessage(portfolio.error)} onRetry={() => portfolio.refetch()} />
       ) : !data ? (
         <PortfolioSummarySkeleton />
       ) : (
@@ -54,9 +53,7 @@ export function InvestPage() {
             </>
           ) : null}
           <section aria-labelledby="holdings-title">
-            <div className="section-title">
-              <h2 id="holdings-title">Positions</h2>
-            </div>
+            <SectionHeader id="holdings-title" title="Positions" />
             <HoldingList holdings={data.holdings} onOpen={setOpenId} emptyAction={addButton} />
             <BinancePanel state={data.binance} />
           </section>

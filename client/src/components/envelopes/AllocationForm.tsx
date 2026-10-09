@@ -2,7 +2,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { today } from '@shared/dates';
 import { transactionInputSchema, type Transaction, type TransactionInput } from '@shared/schemas';
 import { useEnvelopes } from '@/api/hooks';
-import { AmountHero, Button, ChipPicker, DateField, DialogFooter, Field, Input, Textarea } from '@/components/ui';
+import { AmountHero, Button, ChipPicker, DateField, DialogFooter, Field, FieldError, Input, Textarea } from '@/components/ui';
 import styles from './AllocationForm.module.css';
 
 type AllocationFormProps = {
@@ -69,9 +69,9 @@ export function AllocationForm({ initial, submitLabel, submitting, serverError, 
           autoFocus
         />
         {errors.amount ? (
-          <p id={`${formId}-amount-error`} className={styles.amountError} role="alert">
-            {errors.amount}
-          </p>
+          <div className={styles.amountError}>
+            <FieldError id={`${formId}-amount-error`}>{errors.amount}</FieldError>
+          </div>
         ) : null}
       </div>
 
@@ -129,11 +129,7 @@ export function AllocationForm({ initial, submitLabel, submitting, serverError, 
 
       <Field label="Note">{(id, describedBy) => <Textarea id={id} aria-describedby={describedBy} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Facultatif" />}</Field>
 
-      {serverError ? (
-        <p className={styles.serverError} role="alert">
-          {serverError}
-        </p>
-      ) : null}
+      <FieldError>{serverError}</FieldError>
 
       <DialogFooter start={footerStart}>
         <Button variant="ghost" onClick={onCancel}>

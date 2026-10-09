@@ -13,11 +13,4 @@
 .amountError {
   margin-top: var(--s-2);
   text-align: center;
-  color: var(--negative);
-  font-size: var(--text-sm);
-}
-
-.serverError {
-  color: var(--negative);
-  font-size: var(--text-sm);
 }

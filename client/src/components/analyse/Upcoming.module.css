@@ -4,6 +4,7 @@
   gap: var(--s-10);
 }
 
+/* Intro à gauche, curseur d'horizon à droite */
 .toolbar {
   display: flex;
   align-items: flex-end;
@@ -13,85 +14,46 @@
 }
 
 .intro {
-  color: var(--ink-mute);
+  max-width: 62ch;
   font-size: var(--text-sm);
-  max-width: 52ch;
-}
-
-.chart {
-  padding-top: var(--s-2);
+  color: var(--ink-mute);
 }
 
 .horizon {
   display: flex;
   flex-direction: column;
   gap: var(--s-1);
+  min-width: 220px;
   font-size: var(--text-sm);
   color: var(--ink-soft);
-  min-width: 220px;
 }
 
-.horizon input[type='range'] {
-  accent-color: var(--ink);
-  width: 100%;
-}
-
-.alertIcon {
-  color: var(--negative);
-  vertical-align: -2px;
-  margin-right: var(--s-1);
-}
-
-.table {
+.columnTitle {
   display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--rule);
-}
-
-.tr {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 0.8fr 1.4fr;
-  gap: var(--s-3);
-  align-items: center;
-  padding: var(--s-3) var(--s-2);
-  border-bottom: 1px solid var(--rule);
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  background: none;
-  text-align: left;
-  font-size: var(--text-sm);
-  width: 100%;
-  color: inherit;
-}
-
-button.tr:hover {
-  background: var(--paper-sunken);
-}
-
-.selected {
-  background: var(--paper-sunken);
-  box-shadow: inset 3px 0 0 var(--marking);
-}
-
-.th {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-mute);
-  padding-top: var(--s-2);
-  padding-bottom: var(--s-2);
+  gap: var(--s-4);
 }
 
 .what {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--s-2);
-  font-weight: 500;
+  min-width: 0;
 }
 
-.right {
-  text-align: right;
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.what :global(svg) {
+  flex-shrink: 0;
+  color: var(--ink-mute);
+}
+
+/* Série tracée : fond posé et repère jaune à gauche */
+.selected:global(.hover-row)::before {
+  border-left: 3px solid var(--marking);
+  background: var(--paper-sunken);
 }
 
 .chartSection {
@@ -101,20 +63,12 @@ button.tr:hover {
 }
 
 .events {
-  margin-top: var(--s-3);
+  margin-top: var(--s-6);
 }
 
-.event {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-2) 0;
+.count {
   font-size: var(--text-sm);
-}
-
-.event > :last-child {
-  min-width: 110px;
-  text-align: right;
+  color: var(--ink-mute);
 }
 
 @media (max-width: 767px) {
@@ -123,20 +77,18 @@ button.tr:hover {
     width: 100%;
   }
 
-  .tr {
-    grid-template-columns: 1fr 1fr;
-    row-gap: var(--s-1);
+  /* Montant à sa largeur : le libellé garde la place */
+  .list {
+    --list-trail: auto;
   }
 
-  .th {
-    display: none;
-  }
-
-  .right {
-    text-align: left;
-  }
-
-  .event {
-    flex-wrap: wrap;
+  /* Libellé sur deux lignes au plus : un virement garde son compte d'arrivée */
+  .eventTitle {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
   }
 }

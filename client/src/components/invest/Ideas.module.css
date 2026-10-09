@@ -4,44 +4,29 @@
   gap: var(--s-4);
 }
 
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
-
-.headText {
-  flex: 1 1 260px;
-}
-
-.headText h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-
-.subtitle {
-  color: var(--ink-mute);
-  font-size: var(--text-sm);
-  margin-top: 2px;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--s-4);
 }
 
-/* Carte d'idée : pas de relief, un filet et l'espace */
+/* Carte d'idée : résumé seulement, le raisonnement est dans le dialogue */
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-  padding: var(--s-5);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
+}
+
+.cardButton {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
 }
 
 .cardHead {
@@ -56,89 +41,6 @@
   font-weight: 600;
   letter-spacing: -0.015em;
   line-height: 1.25;
-}
-
-.horizon {
-  font-size: var(--text-xs);
-  color: var(--ink-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.event {
-  color: var(--ink-soft);
-  font-size: var(--text-sm);
-}
-
-.sources {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0 var(--s-2);
-}
-
-.source {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--ink-mute);
-  font-size: var(--text-xs);
-  text-underline-offset: 3px;
-  white-space: nowrap;
-}
-
-.source:hover {
-  color: var(--ink);
-}
-
-.source :global(svg) {
-  width: 12px;
-  height: 12px;
-}
-
-/* Chaîne de déduction : les étapes reliées par un trait */
-.chain {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  font-size: var(--text-sm);
-}
-
-.chain li {
-  position: relative;
-  padding: 0 0 var(--s-2) var(--s-5);
-}
-
-.chain li::before {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ink);
-}
-
-.chain li:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 6px;
-  top: 15px;
-  bottom: 0;
-  width: 1px;
-  background: var(--rule-strong);
-}
-
-.chain li:last-child {
-  padding-bottom: 0;
-  font-weight: 600;
-}
-
-.chain li:last-child::before {
-  background: var(--marking);
-  box-shadow: 0 0 0 2px var(--marking-soft);
 }
 
 .asset {
@@ -165,23 +67,6 @@
   color: var(--ink-mute);
 }
 
-/* Ce que le cours avait déjà fait, rangé sous l'actif */
-.market {
-  margin-top: calc(-1 * var(--s-2));
-  font-size: var(--text-xs);
-  color: var(--ink-mute);
-}
-
-.pricedIn {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
-.pricedInLabel {
-  color: var(--ink-soft);
-  font-weight: 500;
-}
-
 .perf {
   display: flex;
   align-items: flex-end;
@@ -201,14 +86,14 @@
 .perfValue {
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1;
 }
 
 .perfBench {
-  font-size: var(--text-md);
-  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  color: var(--ink-mute);
 }
 
 .perfLabel {
@@ -216,22 +101,8 @@
   color: var(--ink-mute);
 }
 
-.verdict {
+.perfVerdict {
   margin-left: auto;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  font-weight: 500;
-}
-
-.verdictWin {
-  background: var(--positive-soft);
-  color: var(--positive);
-}
-
-.verdictLose {
-  background: var(--paper-sunken);
-  color: var(--ink-soft);
 }
 
 .positive {
@@ -244,40 +115,6 @@
 
 .neutral {
   color: var(--ink);
-}
-
-/* Fournée */
-.running {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--radius-md);
-  background: var(--paper-sunken);
-  color: var(--ink-soft);
-  font-size: var(--text-sm);
-}
-
-.pulse {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--marking);
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.35;
-    transform: scale(0.8);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pulse {
-    animation: none;
-  }
 }
 
 .report {
@@ -303,21 +140,6 @@
   font-size: var(--text-xs);
 }
 
-.failed {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
-  border-radius: var(--radius-md);
-  background: var(--negative-soft);
-  color: var(--negative);
-  font-size: var(--text-sm);
-}
-
-.failed span {
-  flex: 1;
-}
-
 /* Bilan */
 .score {
   display: flex;
@@ -327,40 +149,6 @@
   border-top: 1px solid var(--rule);
 }
 
-.scoreTitle {
-  font-size: var(--text-md);
-  font-weight: 600;
-}
-
 .scoreLine {
   color: var(--ink-soft);
-}
-
-.closed {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
-}
-
-.closedToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  width: fit-content;
-  padding: var(--s-1) 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.closedToggle :global(svg) {
-  width: 16px;
-  height: 16px;
-  transition: transform var(--dur) var(--ease-out);
-}
-
-.chevronOpen {
-  transform: rotate(180deg);
 }

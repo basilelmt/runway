@@ -1,6 +1,6 @@
 import { FileUp } from 'lucide-react';
 import { useId, useRef, useState, type DragEvent } from 'react';
-import { Button } from '@/components/ui';
+import { Button, EmptyState, Spinner } from '@/components/ui';
 import styles from './DropZone.module.css';
 
 type DropZoneProps = {
@@ -23,7 +23,7 @@ export function DropZone({ onFile, busy = false }: DropZoneProps) {
 
   return (
     <div
-      className={[styles.zone, over ? styles.over : '', busy ? styles.busy : ''].join(' ')}
+      className={[styles.zone, over ? styles.over : ''].join(' ')}
       onDragOver={(e) => {
         e.preventDefault();
         if (!busy) setOver(true);
@@ -31,11 +31,16 @@ export function DropZone({ onFile, busy = false }: DropZoneProps) {
       onDragLeave={() => setOver(false)}
       onDrop={busy ? undefined : handleDrop}
     >
-      <div className={styles.icon} aria-hidden>
-        {busy ? <span className={styles.spinner} /> : <FileUp />}
-      </div>
-      <p className={styles.title}>{busy ? 'Lecture du relevé' : 'Dépose ici un relevé La Banque Postale'}</p>
-      <p className={styles.hint}>Export CSV des opérations, ou relevé mensuel PDF (tous les comptes du relevé sont lus).</p>
+      <EmptyState
+        icon={busy ? <Spinner size={20} /> : <FileUp />}
+        title={busy ? 'Lecture du relevé' : 'Dépose ici un relevé La Banque Postale'}
+        description="Export CSV des opérations, ou relevé mensuel PDF (tous les comptes du relevé sont lus)."
+        action={
+          <Button variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
+            Choisir un fichier
+          </Button>
+        }
+      />
       <input
         ref={inputRef}
         id={inputId}
@@ -49,9 +54,6 @@ export function DropZone({ onFile, busy = false }: DropZoneProps) {
           e.target.value = '';
         }}
       />
-      <Button variant="primary" onClick={() => inputRef.current?.click()} disabled={busy}>
-        Choisir un fichier
-      </Button>
     </div>
   );
 }

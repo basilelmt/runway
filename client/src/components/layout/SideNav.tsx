@@ -3,11 +3,12 @@ import { useRef } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useOverview } from '@/api/hooks';
 import { useAsk } from '@/components/ask/ask-context';
+import { BrandMark, Button, CountBadge, Kbd } from '@/components/ui';
 import { budgetNeedsAttention } from '@/lib/budget';
 import { useActiveIndicator } from '@/lib/motion';
 import { LiftoffArrow } from './LiftoffArrow';
 import { NAV, SETTINGS_NAV, type NavItem } from './nav';
-import { useQuickAdd } from './quick-add-context';
+import { panelTrigger, useQuickAdd } from './quick-add-context';
 import styles from './SideNav.module.css';
 
 export function SideNav() {
@@ -24,12 +25,12 @@ export function SideNav() {
     <NavLink to={item.to} end={item.to === '/'} className={({ isActive }) => [styles.link, isActive ? styles.active : ''].join(' ')}>
       {item.liftoff ? <LiftoffArrow className={styles.icon} /> : <item.icon className={styles.icon} aria-hidden strokeWidth={1.75} />}
       <span className={styles.label}>{item.label}</span>
-      {item.badge === 'unsorted' && unsorted > 0 ? (
-        <span key={unsorted} className={['num', styles.count].join(' ')} aria-label={`${unsorted} à ranger`}>
-          {unsorted}
+      {item.badge === 'unsorted' ? <CountBadge count={unsorted} label={`${unsorted} à ranger`} /> : null}
+      {item.badge === 'toAllocate' && budgetDot ? (
+        <span className={styles.dot}>
+          <span className="visually-hidden">Argent à répartir</span>
         </span>
       ) : null}
-      {item.badge === 'toAllocate' && budgetDot ? <span className={styles.dot} aria-label="Argent à répartir" /> : null}
     </NavLink>
   );
 
@@ -37,21 +38,27 @@ export function SideNav() {
     <nav ref={navRef} className={styles.nav} aria-label="Navigation principale">
       {indicator ? <span className={styles.indicator} style={{ transform: `translateY(${indicator.top}px)`, height: indicator.height }} aria-hidden /> : null}
       <NavLink to="/" end className={styles.brand} aria-label="Runway, accueil" data-brand>
-        <span className={styles.brandMark} aria-hidden />
+        <BrandMark />
         <span className={styles.brandName}>Runway</span>
       </NavLink>
 
-      <button type="button" className={styles.newButton} onClick={openQuickAdd}>
-        <Plus aria-hidden strokeWidth={2} />
-        <span>Nouvelle opération</span>
-        <kbd>N</kbd>
-      </button>
+      <Button variant="secondary" icon={<Plus aria-hidden strokeWidth={2} />} className={styles.navAction} aria-keyshortcuts="n" onClick={openQuickAdd} {...panelTrigger}>
+        Nouvelle opération
+        <Kbd>N</Kbd>
+      </Button>
 
-      <button type="button" className={[styles.askButton, ask.open ? styles.askButtonOpen : ''].join(' ')} aria-expanded={ask.open} onClick={ask.toggle}>
-        <Sparkles aria-hidden strokeWidth={2} />
-        <span>Demander</span>
-        <kbd>K</kbd>
-      </button>
+      <Button
+        variant="ghost"
+        icon={<Sparkles aria-hidden strokeWidth={2} />}
+        className={[styles.navAction, ask.open ? styles.navActionOpen : ''].join(' ')}
+        aria-expanded={ask.open}
+        aria-keyshortcuts="k"
+        onClick={ask.toggle}
+        {...panelTrigger}
+      >
+        Demander
+        <Kbd>K</Kbd>
+      </Button>
 
       <ul className={styles.list}>
         {NAV.map((item) => (

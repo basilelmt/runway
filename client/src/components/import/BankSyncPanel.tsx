@@ -13,8 +13,8 @@ import {
   useRunBankSync,
   useStartBankConnection,
 } from '@/api/hooks';
-import { Badge, Button, Input, Select, SkeletonRows, useToast } from '@/components/ui';
-import { formatDateLong, formatDateTime, plural, syncSummary } from '@/lib/format';
+import { Badge, Button, ConfirmDialog, ErrorState, FieldError, Input, ListRowSkeleton, Notice, Select, useToast } from '@/components/ui';
+import { formatDateLong, formatDateTime, NBSP, plural, syncSummary } from '@/lib/format';
 import styles from './BankSyncPanel.module.css';
 
 const EXPIRY_WARNING_DAYS = 15;
@@ -55,6 +55,7 @@ export function BankSyncPanel() {
   const [auth, setAuth] = useState<Auth | null>(null);
   const [pasted, setPasted] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [disconnectId, setDisconnectId] = useState<number | null>(null);
 
   const start = useStartBankConnection({
     onSuccess: (a) => {
@@ -83,7 +84,12 @@ export function BankSyncPanel() {
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
-  const disconnect = useDisconnectBank({ onSuccess: () => toast.success('Banque déconnectée'), onError: (e) => toast.error(errorMessage(e)) });
+  const disconnect = useDisconnectBank({
+    onSuccess: () => {
+      setDisconnectId(null);
+      toast.success('Banque déconnectée');
+    },
+  });
 
   function submitPaste() {
     if (!auth) return;
@@ -97,18 +103,25 @@ export function BankSyncPanel() {
 
   if (state.isPending) {
     return (
-      <div className={styles.card}>
-        <SkeletonRows rows={2} />
+      <div className={styles.panel}>
+        <ListRowSkeleton rows={2} />
       </div>
     );
   }
-  if (!state.data) return null;
+  // Une erreur de rafraîchissement garde les données déjà là ; sans données, c'est un échec de chargement.
+  if (!state.data) {
+    return (
+      <div className={styles.panel}>
+        <ErrorState title="Impossible de charger la synchronisation bancaire" description={errorMessage(state.error)} onRetry={() => state.refetch()} />
+      </div>
+    );
+  }
 
   const visible = state.data.connections.filter((c) => c.status !== 'revoked');
   const connection = visible.at(-1) ?? null;
 
   return (
-    <div className={styles.card}>
+    <div className={styles.panel}>
       {connection ? (
         <div className={styles.head}>
           <Badge tone={STATUS_LABEL[connection.status].tone}>{STATUS_LABEL[connection.status].label}</Badge>
@@ -143,9 +156,7 @@ export function BankSyncPanel() {
             </Button>
           </div>
           {pasteError ? (
-            <p id="bank-paste-error" className={styles.error} role="alert">
-              {pasteError}
-            </p>
+            <FieldError id="bank-paste-error">{pasteError}</FieldError>
           ) : (
             <p className={styles.text}>
               L'onglet ne s'est pas ouvert ?{' '}
@@ -164,7 +175,7 @@ export function BankSyncPanel() {
         <>
           <p className={styles.text}>Les doublons, virements internes et opérations prévues sont traités comme pour un relevé.</p>
           <div className={styles.actions}>
-            <Button variant="primary" icon={<Landmark aria-hidden />} loading={start.isPending} onClick={() => start.mutate(undefined)}>
+            <Button variant="secondary" icon={<Landmark aria-hidden />} loading={start.isPending} onClick={() => start.mutate(undefined)}>
               Connecter La Banque Postale
             </Button>
           </div>
@@ -186,11 +197,19 @@ export function BankSyncPanel() {
           onRenew={() => start.mutate(connection.id)}
           renewing={start.isPending}
           disconnecting={disconnect.isPending}
-          onDisconnect={() => {
-            if (window.confirm('Déconnecter La Banque Postale ? Les opérations déjà importées restent.')) disconnect.mutate(connection.id);
-          }}
+          onDisconnect={() => setDisconnectId(connection.id)}
         />
       )}
+      <ConfirmDialog
+        open={disconnectId !== null}
+        onClose={() => setDisconnectId(null)}
+        onConfirm={() => disconnectId !== null && disconnect.mutate(disconnectId)}
+        title="Déconnecter La Banque Postale ?"
+        description="Les opérations déjà importées restent."
+        confirmLabel="Déconnecter"
+        loading={disconnect.isPending}
+        error={disconnect.error ? errorMessage(disconnect.error) : null}
+      />
     </div>
   );
 }
@@ -256,11 +275,7 @@ function LinkStep({
           </div>
         ))}
       </div>
-      {duplicates ? (
-        <p className={styles.error} role="alert">
-          Deux comptes de la banque pointent vers le même compte Runway.
-        </p>
-      ) : null}
+      {duplicates ? <Notice tone="negative">Deux comptes de la banque pointent vers le même compte Runway.</Notice> : null}
       <div className={styles.actions}>
         <Button
           variant="primary"
@@ -308,8 +323,12 @@ function ActiveState({
   return (
     <>
       <div className={styles.meta}>
-        <span>{connection.lastSyncAt ? `Dernière synchronisation ${formatDateTime(connection.lastSyncAt)}` : 'Jamais synchronisé'}</span>
-        {connection.validUntil ? <span className="muted">· consentement jusqu'au {formatDateLong(connection.validUntil.slice(0, 10))}</span> : null}
+        <span>
+          {connection.lastSyncAt ? `Dernière synchronisation ${formatDateTime(connection.lastSyncAt)}` : 'Jamais synchronisé'}
+          {connection.validUntil ? `${NBSP}·` : ''}
+        </span>
+        {/* Le séparateur reste collé à la phrase précédente (espace insécable) : il ne peut pas se retrouver seul en début de ligne quand ce bloc passe à la ligne. */}
+        {connection.validUntil ? <span className="muted">consentement jusqu'au {formatDateLong(connection.validUntil.slice(0, 10))}</span> : null}
       </div>
       <div className={styles.accounts}>
         {linked.map((a) => (
@@ -321,19 +340,16 @@ function ActiveState({
             <ArrowRight className={styles.arrow} aria-hidden />
             <span>
               {accountName(a.accountId!)}
-              {a.syncFrom ? <span className="muted"> · depuis le {formatDateLong(a.syncFrom)}</span> : null}
-              {a.lastSyncedDate ? <span className="muted"> · à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
+              {/* Espace insécable avant le séparateur : il ne commence jamais une ligne quand ça renvoie à la ligne. */}
+              {a.syncFrom ? <span className="muted">{`${NBSP}· `}depuis le {formatDateLong(a.syncFrom)}</span> : null}
+              {a.lastSyncedDate ? <span className="muted">{`${NBSP}· `}à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
             </span>
           </div>
         ))}
       </div>
-      {connection.lastError ? (
-        <p className={styles.error} role="status">
-          Dernière synchronisation en échec : {connection.lastError}
-        </p>
-      ) : null}
+      {connection.lastError ? <Notice tone="negative" role="status">Dernière synchronisation en échec : {connection.lastError}</Notice> : null}
       {expired ? (
-        <p className={styles.error}>Le consentement a expiré : la banque n'envoie plus rien tant que tu ne l'as pas renouvelé.</p>
+        <Notice tone="negative">Le consentement a expiré : la banque n'envoie plus rien tant que tu ne l'as pas renouvelé.</Notice>
       ) : expiringSoon ? (
         <p className={styles.text}>Le consentement expire {expiresIn! <= 0 ? "aujourd'hui" : `dans ${plural(expiresIn!, 'jour')}`}. Renouvelle-le pour ne pas interrompre la synchronisation.</p>
       ) : null}
@@ -344,7 +360,7 @@ function ActiveState({
           </Button>
         ) : null}
         {!expired ? (
-          <Button variant={expiringSoon ? 'secondary' : 'primary'} icon={<RefreshCw aria-hidden />} loading={syncing} onClick={onSync}>
+          <Button variant="secondary" icon={<RefreshCw aria-hidden />} loading={syncing} onClick={onSync}>
             Synchroniser maintenant
           </Button>
         ) : null}

@@ -1,18 +1,8 @@
-.banner {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
+.sentence {
+  display: inline-flex;
   flex-wrap: wrap;
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--radius-md);
-  background: var(--marking-soft);
-  color: var(--marking-ink);
-  font-size: var(--text-sm);
-  animation: open var(--dur) var(--ease-out);
-}
-
-.text {
-  white-space: nowrap;
+  align-items: center;
+  gap: var(--s-1);
 }
 
 .pattern {
@@ -22,30 +12,4 @@
   height: 30px;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-}
-
-.actions {
-  display: flex;
-  gap: var(--s-1);
-  margin-left: auto;
-}
-
-@keyframes open {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-
-@media (max-width: 767px) {
-  .pattern {
-    flex: 1;
-    max-width: none;
-  }
-
-  .actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-end;
-  }
 }

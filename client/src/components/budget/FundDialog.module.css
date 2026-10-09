@@ -51,28 +51,6 @@
   padding-bottom: var(--s-1);
 }
 
-.summary {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s-4);
-}
-
-.summary > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.summaryRight {
-  align-items: flex-end;
-}
-
-.summaryLabel {
-  font-size: var(--text-sm);
-  color: var(--ink-mute);
-}
-
 .negative {
   color: var(--negative);
 }
@@ -81,9 +59,3 @@
   font-size: var(--text-sm);
   color: var(--warning);
 }
-
-.error {
-  font-size: var(--text-sm);
-  color: var(--negative);
-}
-
