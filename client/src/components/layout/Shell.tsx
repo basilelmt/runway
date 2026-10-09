@@ -1,5 +1,5 @@
 import { Settings, Sparkles } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useMatch } from 'react-router';
 import { useAsk } from '@/components/ask/ask-context';
 import { AskProvider } from '@/components/ask/AskProvider';
 import { useAutoBankSync } from '@/components/import/useAutoBankSync';
@@ -22,6 +22,7 @@ export function Shell() {
 
 function Layout() {
   const ask = useAsk();
+  const settingsActive = Boolean(useMatch('/reglages/*'));
   return (
     <div className={styles.shell} data-ask-open={ask.open || undefined}>
       <SideNav />
@@ -39,7 +40,14 @@ function Layout() {
             aria-expanded={ask.open}
             onClick={ask.toggle}
           />
-          <ButtonLink to="/reglages" variant="ghost" icon={<Settings aria-hidden strokeWidth={1.75} />} aria-label="Réglages" />
+          <ButtonLink
+            to="/reglages"
+            variant="ghost"
+            icon={<Settings aria-hidden strokeWidth={1.75} />}
+            aria-label="Réglages"
+            aria-current={settingsActive ? 'page' : undefined}
+            className={settingsActive ? styles.topActionOpen : undefined}
+          />
         </div>
       </header>
       <main className={styles.main} id="main">
