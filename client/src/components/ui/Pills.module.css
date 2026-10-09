@@ -9,7 +9,8 @@
   font-size: var(--text-sm);
   transition:
     background var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out);
+    color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .pill:has(:focus-visible) {
@@ -64,9 +65,8 @@
 
 .select {
   height: 100%;
+  /* Largeur de l'option la plus longue : la pastille ne bouge pas quand la valeur change. */
   max-width: 240px;
-  /* Largeur de l'option choisie, et non de la plus longue. */
-  field-sizing: content;
   padding: 0 var(--s-8) 0 var(--s-4);
   border: none;
   border-radius: inherit;
@@ -111,13 +111,11 @@
   color: var(--ink);
 }
 
+/* Valeur choisie : surélevée comme l'option active d'un Segmented. */
 .active {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.active:hover {
-  color: var(--paper);
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-raise);
 }
 
 .clear {
@@ -131,12 +129,12 @@
   border: none;
   border-radius: var(--radius-pill);
   background: none;
-  color: var(--rule-strong);
+  color: var(--ink-mute);
 }
 
 .clear:hover {
-  background: color-mix(in oklab, var(--paper) 18%, transparent);
-  color: var(--paper);
+  background: var(--paper-sunken);
+  color: var(--ink);
 }
 
 .clear :global(svg) {
