@@ -5,6 +5,7 @@ import { addMonths, endOfMonth, startOfMonth, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useTransactions } from '@/api/hooks';
+import { operationsHref } from '@/components/transactions/TransactionFilters';
 import { Amount, ButtonLink, Dialog, Dot, EmptyState, ErrorState, GroupLabel, ListRow, ListRowSkeleton, listRowDate, Segmented, Stat, StatGroup } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
@@ -62,7 +63,6 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
   const total = confirmed.reduce((s, t) => s + t.amount, 0);
   const budget = envelope.monthlyBudget > 0 ? envelope.monthlyBudget * months : null;
   const verb = envelope.isSavings ? 'Versé' : 'Dépensé';
-  const params = new URLSearchParams({ envelope: String(envelope.id), period: 'custom', from, to });
 
   return (
     <div className={styles.body}>
@@ -107,7 +107,7 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
         </div>
       )}
 
-      <ButtonLink to={`/operations?${params}`} variant="ghost" size="sm" icon={<ArrowRight />} className={styles.more}>
+      <ButtonLink to={operationsHref({ envelope: envelope.id, from, to })} variant="ghost" size="sm" icon={<ArrowRight />} className={styles.more}>
         Voir dans Opérations
       </ButtonLink>
     </div>

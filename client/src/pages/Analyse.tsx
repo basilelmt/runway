@@ -10,6 +10,7 @@ import { Upcoming } from '@/components/analyse/Upcoming';
 import { MonthlyBars } from '@/components/charts/MonthlyBars';
 import { NetWorthLine } from '@/components/charts/NetWorthLine';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { operationsHref } from '@/components/transactions/TransactionFilters';
 import {
   Amount,
   Badge,
@@ -168,9 +169,7 @@ function ByEnvelope({ report, months }: { report: SpendingReport; months: number
           {report.byEnvelope.map((e) => {
             const target = months && e.monthlyBudget > 0 ? e.monthlyBudget * months : null;
             const over = target !== null && e.amount > target;
-            const params = new URLSearchParams({ period: 'custom', from: report.from, to: report.to });
-            if (e.envelopeId) params.set('envelope', String(e.envelopeId));
-            const to = e.envelopeId ? `/operations?${params}` : '/operations?vue=a-ranger';
+            const to = e.envelopeId ? operationsHref({ envelope: e.envelopeId, from: report.from, to: report.to }) : '/operations?vue=a-ranger';
             const share = Math.round((e.amount / report.total) * 100);
             return (
               <ListRow

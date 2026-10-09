@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ForecastResponse, SpendingReport } from '@shared/api-types';
 import { AnalysePage } from './Analyse';
 
@@ -23,7 +23,16 @@ const fetchMock = vi.fn();
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-09T12:00:00'));
 });
+afterEach(() => vi.useRealTimers());
+
+/** Le rapport des dépenses sur la période demandée. */
+const spendingFor = (url: string) => {
+  const query = new URL(url, 'http://x').searchParams;
+  return json({ ...spending, from: query.get('from'), to: query.get('to') });
+};
 
 function Where() {
   const location = useLocation();
@@ -54,7 +63,25 @@ describe('Analyse', () => {
     expect(bars.map((b) => b.getAttribute('aria-valuenow'))).toEqual(['100', '20']);
 
     await userEvent.click(screen.getByRole('button', { name: 'Voir les opérations de Sorties' }));
-    expect(screen.getByTestId('where')).toHaveTextContent('/operations?period=custom&from=2026-10-01&to=2026-10-31&envelope=14');
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/operations\?envelope=14$/);
+  });
+
+  it('ouvre les opérations sur « Mois dernier » depuis le mois précédent', async () => {
+    fetchMock.mockImplementation(async (url: string) => (url.startsWith('/api/reports/spending') ? spendingFor(url) : json([])));
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('radio', { name: 'Mois dernier' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Voir les opérations de Sorties' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/operations?envelope=14&period=last-month');
+  });
+
+  it('garde des dates explicites pour les autres périodes', async () => {
+    fetchMock.mockImplementation(async (url: string) => (url.startsWith('/api/reports/spending') ? spendingFor(url) : json([])));
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('radio', { name: '3 mois' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Voir les opérations de Sorties' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/operations?envelope=14&period=custom&from=2026-08-01&to=2026-10-31');
   });
 
   it('signale l’échec du chargement des plus grosses dépenses', async () => {

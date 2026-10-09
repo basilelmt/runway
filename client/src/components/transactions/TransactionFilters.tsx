@@ -78,6 +78,19 @@ export function filtersToParams(f: FiltersState): URLSearchParams {
   return params;
 }
 
+/**
+ * Lien vers Opérations sur une plage de dates : le preset « Ce mois » ou « Mois dernier » quand
+ * la plage y correspond, pour que l'écran l'affiche sélectionné, des dates explicites sinon.
+ */
+export function operationsHref({ envelope, from, to }: { envelope?: number; from: string; to: string }): string {
+  const preset = (['month', 'last-month'] as const).find((p) => {
+    const range = periodRange(p);
+    return range.from === from && range.to === to;
+  });
+  const params = filtersToParams({ ...DEFAULT_FILTERS, envelope, period: preset ?? 'custom', from, to });
+  return `/operations${params.size ? `?${params}` : ''}`;
+}
+
 type TransactionFiltersProps = {
   value: FiltersState;
   onChange: (next: FiltersState) => void;
