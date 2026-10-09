@@ -49,6 +49,16 @@ describe('FieldError', () => {
     render(<FieldError>Le montant doit être supérieur à zéro.</FieldError>);
     expect(screen.getByRole('alert')).toHaveTextContent('Le montant doit être supérieur à zéro.');
   });
+
+  it('peut décrire le champ qu’elle concerne', () => {
+    render(
+      <>
+        <input aria-label="Montant" aria-describedby="montant-erreur" />
+        <FieldError id="montant-erreur">Le montant doit être supérieur à zéro.</FieldError>
+      </>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Montant' })).toHaveAccessibleDescription('Le montant doit être supérieur à zéro.');
+  });
 });
 
 describe('ErrorState', () => {

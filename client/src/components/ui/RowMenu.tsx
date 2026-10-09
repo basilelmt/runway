@@ -22,6 +22,12 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
   const enabledItems = () => Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Tab') {
+      // Tab quitte le menu : on repart du bouton, le navigateur passe au suivant (ou au précédent).
+      triggerRef.current?.focus();
+      menuRef.current?.hidePopover();
+      return;
+    }
     const list = enabledItems();
     if (list.length === 0) return;
     const index = list.indexOf(document.activeElement as HTMLButtonElement);

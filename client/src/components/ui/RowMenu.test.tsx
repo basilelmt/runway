@@ -60,4 +60,19 @@ describe('RowMenu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(trigger).toHaveFocus();
   });
+
+  it('se ferme avec Tab et laisse le focus continuer après le bouton', async () => {
+    render(
+      <>
+        <RowMenu label="Actions pour Courses" items={[{ label: 'Modifier', onSelect: vi.fn() }]} />
+        <button type="button">Suivant</button>
+      </>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Actions pour Courses' });
+    await userEvent.click(trigger);
+    expect(screen.getByRole('menuitem', { name: 'Modifier' })).toHaveFocus();
+    await userEvent.tab();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Suivant' })).toHaveFocus();
+  });
 });

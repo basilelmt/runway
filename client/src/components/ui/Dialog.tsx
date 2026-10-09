@@ -36,6 +36,8 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   const [rendered, setRendered] = useState(open);
   const [closing, setClosing] = useState(false);
   const [content, setContent] = useState({ title, description, children, footer, size });
+  // Élément qui avait le focus à l'ouverture, pour le lui rendre si le parent retire le dialogue encore ouvert.
+  const openerRef = useRef<HTMLElement | null>(null);
 
   if (open && !rendered) setRendered(true);
   if (open && closing) setClosing(false);
@@ -49,6 +51,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) {
+      openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       el.showModal();
       // Le focus va d'abord au champ marqué `data-autofocus`, sinon au premier champ, jamais au bouton Fermer.
       const target = el.querySelector<HTMLElement>('[data-autofocus], input, select, textarea');
@@ -59,6 +62,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   useEffect(() => {
     if (!closing) return;
     const finish = () => {
+      openerRef.current = null;
       ref.current?.close();
       setClosing(false);
       setRendered(false);
@@ -70,6 +74,15 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     const id = window.setTimeout(finish, CLOSE_MS);
     return () => window.clearTimeout(id);
   }, [closing]);
+
+  // Retiré du DOM sans passer par `close()` : le navigateur ne rend pas le focus, on s'en charge.
+  useEffect(
+    () => () => {
+      const opener = openerRef.current;
+      if (opener?.isConnected && (document.activeElement === null || document.activeElement === document.body)) opener.focus();
+    },
+    [],
+  );
 
   // Filets sous l'en-tête et au-dessus du pied, seulement quand du contenu est caché de ce côté.
   const measure = useCallback(() => {

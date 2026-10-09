@@ -29,7 +29,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, description, ch
       size="sm"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} data-autofocus>
             Annuler
           </Button>
           <Button variant={tone} loading={loading} onClick={onConfirm}>
