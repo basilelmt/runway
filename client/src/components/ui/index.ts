@@ -19,6 +19,7 @@ export { ColumnHeader, GroupLabel, ListRow, ListRowSkeleton, listRowDate } from 
 export { MoneyInput } from './MoneyInput';
 export { FilterPill, InlinePill, SearchPill } from './Pills';
 export { ProgressBar } from './ProgressBar';
+export { RowMenu, type RowMenuItem } from './RowMenu';
 export { Segmented } from './Segmented';
 export { Skeleton, SkeletonRows } from './Skeleton';
 export { Kbd } from './Kbd';
