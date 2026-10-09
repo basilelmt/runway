@@ -166,3 +166,28 @@ describe('migration 0010 (marchands)', () => {
     db.close();
   });
 });
+
+describe('migration 0011 (espaces compactés)', () => {
+  it('compacte les espaces multiples des libellés et notes existants, sans toucher la clé marchand', () => {
+    const db = new Database(':memory:');
+    for (const tag of journalTags(10)) applyMigration(db, tag);
+
+    const noisy = 'ACHAT CB CARREFOUR EXPR 03.10.26 CARTE NUMERO                089';
+    const compact = 'ACHAT CB CARREFOUR EXPR 03.10.26 CARTE NUMERO 089';
+    db.prepare(`INSERT INTO transactions (kind, date, amount, label, note, merchant_key) VALUES ('expense', '2026-10-03', 4556, ?, ?, 'CARREFOUR EXPR')`).run(noisy, noisy);
+    // Une opération déjà propre, et une note vide : ne doivent pas changer ni planter.
+    db.prepare(`INSERT INTO transactions (kind, date, amount, label, note) VALUES ('expense', '2026-10-01', 1000, 'ACHAT CB BOULANGERIE', NULL)`).run();
+    db.prepare(
+      `INSERT INTO recurring_rules (name, kind, amount, label, frequency, start_date) VALUES ('Loyer', 'expense', 80000, ?, 'monthly', '2026-01-01')`,
+    ).run('PRELEVEMENT DE   AGENCE IMMO   LOYER');
+
+    // La migration à tester.
+    applyMigration(db, '0011_compact_label_spaces');
+
+    expect(db.prepare('SELECT label, note, merchant_key FROM transactions WHERE date = ?').get('2026-10-03')).toEqual({ label: compact, note: compact, merchant_key: 'CARREFOUR EXPR' });
+    expect(db.prepare('SELECT label, note FROM transactions WHERE date = ?').get('2026-10-01')).toEqual({ label: 'ACHAT CB BOULANGERIE', note: null });
+    expect(db.prepare('SELECT label FROM recurring_rules').get()).toEqual({ label: 'PRELEVEMENT DE AGENCE IMMO LOYER' });
+
+    db.close();
+  });
+});

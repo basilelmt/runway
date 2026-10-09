@@ -78,6 +78,13 @@
       "when": 1791537101416,
       "tag": "0010_merchants",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791550100716,
+      "tag": "0011_compact_label_spaces",
+      "breakpoints": true
     }
   ]
 }

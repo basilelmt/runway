@@ -82,6 +82,11 @@ function rowText(row: ImportPreviewRow): string {
   return `${row.label} ${row.note ?? ''}`;
 }
 
+/** Espaces superflus compactés (certains relevés alignent un numéro de carte avec une longue suite d'espaces). */
+function compactSpaces(s: string): string {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Virements entre comptes propres : un débit « VIREMENT » (ou « VIR ») avec un crédit du même montant à ±4 jours
  * chez un compte frère devient un transfert vers ce compte. Le texte examiné est le libellé plus la note :
@@ -167,20 +172,22 @@ export function buildPreview(db: Db, source: Source, accountId: number | null): 
   // Deux lignes identiques le même jour (deux cafés) doivent garder deux empreintes distinctes.
   const seen = new Map<string, number>();
   const rows: ImportPreviewRow[] = source.rows.map((r, index) => {
-    const key = `${r.date}|${r.signedAmount}|${r.label}`;
+    const label = compactSpaces(r.label);
+    const note = r.note === null ? null : compactSpaces(r.note);
+    const key = `${r.date}|${r.signedAmount}|${label}`;
     const occurrence = seen.get(key) ?? 0;
     seen.set(key, occurrence + 1);
     return {
       index,
       date: r.date,
-      label: r.label,
+      label,
       signedAmount: r.signedAmount,
       status: 'new',
-      fingerprint: fingerprint(accountId ?? 0, r.date, r.signedAmount, r.label, occurrence),
+      fingerprint: fingerprint(accountId ?? 0, r.date, r.signedAmount, label, occurrence),
       plannedId: null,
       plannedLabel: null,
-      envelopeId: r.signedAmount < 0 ? applySortingRules(r.label, rules) : null,
-      note: r.note,
+      envelopeId: r.signedAmount < 0 ? applySortingRules(label, rules) : null,
+      note,
       transferToAccountId: null,
     };
   });

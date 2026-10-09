@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { fingerprint } from '@core/fingerprint';
 import type { ImportPreview } from '@shared/api-types';
-import { createTestApp, type TestApp } from './helpers';
+import { createTransaction } from '../src/repos/transactions';
+import { buildPreview, type Source, type SourceRow } from '../src/services/import';
+import { createTestApp, createTestDb, type TestApp, type TestContext } from './helpers';
 
 const fixture = readFileSync(fileURLToPath(new URL('./fixtures/lbp.csv', import.meta.url)));
 
@@ -110,5 +113,53 @@ describe('import', () => {
     expect(((await res.json()) as any).error).toContain('non reconnu');
     const empty = await t.app.request('/api/imports/preview', { method: 'POST', body: new FormData() });
     expect(empty.status).toBe(400);
+  });
+});
+
+describe('espaces superflus du libellé et de la note', () => {
+  const NOISY_LABEL = 'ACHAT CB CARREFOUR EXPR 03.10.26 CARTE NUMERO                089';
+  const COMPACT_LABEL = 'ACHAT CB CARREFOUR EXPR 03.10.26 CARTE NUMERO 089';
+
+  function source(rows: SourceRow[]): Source {
+    return { parserId: 'test', bankAccountNumber: null, rows, sections: [], sectionIndex: 0, siblings: [] };
+  }
+
+  let ctx: TestContext;
+  beforeEach(() => {
+    ctx = createTestDb();
+  });
+
+  it('compacte les espaces multiples du libellé et de la note à la prévisualisation', () => {
+    const rows: SourceRow[] = [{ date: '2026-10-03', label: NOISY_LABEL, signedAmount: -45_56, note: NOISY_LABEL }];
+    const preview = buildPreview(ctx.db, source(rows), ctx.courant.id);
+    expect(preview.rows[0]).toMatchObject({ label: COMPACT_LABEL, note: COMPACT_LABEL });
+  });
+
+  it('une opération déjà enregistrée avec des espaces multiples est reconnue comme doublon réimportée avec un libellé compacté', () => {
+    createTransaction(ctx.db, {
+      kind: 'expense',
+      date: '2026-10-03',
+      amount: 45_56,
+      label: NOISY_LABEL,
+      accountId: ctx.courant.id,
+      fingerprint: fingerprint(ctx.courant.id, '2026-10-03', -45_56, NOISY_LABEL, 0),
+    });
+    const rows: SourceRow[] = [{ date: '2026-10-03', label: COMPACT_LABEL, signedAmount: -45_56, note: null }];
+    const preview = buildPreview(ctx.db, source(rows), ctx.courant.id);
+    expect(preview.rows[0]!.status).toBe('duplicate');
+  });
+
+  it('une opération déjà enregistrée avec un libellé compacté est reconnue comme doublon réimportée avec des espaces multiples', () => {
+    createTransaction(ctx.db, {
+      kind: 'expense',
+      date: '2026-10-03',
+      amount: 45_56,
+      label: COMPACT_LABEL,
+      accountId: ctx.courant.id,
+      fingerprint: fingerprint(ctx.courant.id, '2026-10-03', -45_56, COMPACT_LABEL, 0),
+    });
+    const rows: SourceRow[] = [{ date: '2026-10-03', label: NOISY_LABEL, signedAmount: -45_56, note: null }];
+    const preview = buildPreview(ctx.db, source(rows), ctx.courant.id);
+    expect(preview.rows[0]!.status).toBe('duplicate');
   });
 });

@@ -26,6 +26,12 @@ describe('merchantKey', () => {
     expect(merchantKey('achat cb  Boulangerie   Élise')).toBe('BOULANGERIE ELISE');
   });
 
+  it('la clé est inchangée que le libellé stocké ait des espaces multiples ou compactés', () => {
+    const noisy = 'ACHAT CB CARREFOUR EXPR 03.10.26 CARTE NUMERO                089';
+    const compact = 'ACHAT CB CARREFOUR EXPR 03.10.26 CARTE NUMERO 089';
+    expect(merchantKey(noisy)).toBe(merchantKey(compact));
+  });
+
   it.each(MERCHANT_PREFIXES)('retire le préfixe « %s »', (prefix) => {
     expect(merchantKey(`${prefix} BOUTIQUE DU COIN`)).toBe('BOUTIQUE DU COIN');
   });
