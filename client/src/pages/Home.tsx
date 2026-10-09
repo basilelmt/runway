@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Check, ChevronRight, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { EnvelopeWithBalance, Overview } from '@shared/api-types';
@@ -10,7 +10,24 @@ import { keys, useBankSync, useOverview } from '@/api/hooks';
 import { EnvelopeDetailDialog } from '@/components/budget/EnvelopeDetailDialog';
 import { EnvelopeRow, EnvelopeRowHeader } from '@/components/budget/EnvelopeRow';
 import { FundingBanner } from '@/components/budget/FundingBanner';
-import { Amount, Button, ButtonLink, EmptyState, ProgressBar, Skeleton } from '@/components/ui';
+import {
+  Amount,
+  Badge,
+  ButtonLink,
+  EmptyState,
+  ErrorState,
+  KeyFigure,
+  ListRowSkeleton,
+  ProgressBar,
+  SectionHeader,
+  SectionLink,
+  Skeleton,
+  Stat,
+  StatGroup,
+  TodoItem,
+  Total,
+} from '@/components/ui';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { bankSyncTodo } from '@/lib/bank';
 import { budgetOverIncome, monthProgress } from '@/lib/budget';
 import { plural } from '@/lib/format';
@@ -29,7 +46,7 @@ export function HomePage() {
   if (overview.isError) {
     return (
       <div className="page">
-        <EmptyState title="Impossible de charger l’accueil" description={errorMessage(overview.error)} action={<Button onClick={() => overview.refetch()}>Réessayer</Button>} />
+        <ErrorState title="Impossible de charger l’accueil" description={errorMessage(overview.error)} onRetry={() => overview.refetch()} />
       </div>
     );
   }
@@ -58,11 +75,11 @@ export function HomePage() {
 
   return (
     <div className="page">
-      <header className={styles.header}>
-        <p className={styles.date}>{longDay(data.today)}</p>
-        <h1 className={styles.title}>{monthName(data.today)}</h1>
-        <p className={styles.daysLeft}>{daysLeft === 0 ? 'Dernier jour du mois' : `Encore ${plural(daysLeft, 'jour')} ce mois-ci`}</p>
-      </header>
+      <PageHeader
+        eyebrow={longDay(data.today)}
+        title={monthName(data.today)}
+        subtitle={daysLeft === 0 ? 'Dernier jour du mois' : `Encore ${plural(daysLeft, 'jour')} ce mois-ci`}
+      />
 
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
       <MonthHero data={data} />
@@ -81,63 +98,62 @@ function MonthHero({ data }: { data: Overview }) {
   const pace = Math.round(variable.budget * progress) - variable.spent;
 
   return (
-    <section className={styles.hero} aria-label="Ce mois-ci">
-      <div className={styles.heroMain}>
-        <p className="eyebrow">Dépensé ce mois-ci</p>
-        <div className={styles.heroFigure}>
-          <Amount cents={spent} size="xl" tone="neutral" animate />
-          {budget > 0 ? <span className={styles.heroBudget}>sur {formatEuros(budget)} prévus</span> : null}
-        </div>
-        {budget > 0 ? (
-          <>
-            <ProgressBar ratio={spent / budget} size="md" color="var(--ink)" label={`${formatEuros(spent)} dépensés sur un budget de ${formatEuros(budget)}`} />
-            {variable.budget > 0 ? (
-              <div className={styles.variable}>
-                <div className={styles.variableHead}>
-                  <span>
-                    Dépenses courantes <span className={[styles.muted, styles.nowrap].join(' ')}>hors charges fixes</span>
-                  </span>
-                  <span className={['num', styles.nowrap].join(' ')}>
-                    {formatEuros(variable.spent)} <span className={styles.muted}>/ {formatEuros(variable.budget)}</span>
-                  </span>
-                </div>
-                <ProgressBar
-                  ratio={variable.spent / variable.budget}
-                  color="var(--ink-soft)"
-                  label={`Dépenses courantes : ${formatEuros(variable.spent)} sur ${formatEuros(variable.budget)}`}
-                  marker={progress}
-                  markerLabel="Aujourd’hui"
-                />
-                <p className={[styles.pace, pace < 0 ? styles.paceOver : ''].join(' ')}>
-                  <strong className="num">{formatEuros(Math.abs(pace))}</strong> {pace >= 0 ? 'sous le' : 'au-dessus du'} rythme du mois. Le trait marque aujourd’hui.
-                </p>
-              </div>
-            ) : null}
-          </>
+    <KeyFigure
+      label="Dépensé ce mois-ci"
+      figure={<Amount cents={spent} size="xl" tone="neutral" animate />}
+      context={budget > 0 ? `sur ${formatEuros(budget)} prévus` : undefined}
+      caption={
+        budget > 0 ? (
+          variable.budget > 0 ? (
+            <>
+              <strong className={['num', pace < 0 ? styles.paceOver : styles.paceUnder].join(' ')}>{formatEuros(Math.abs(pace))}</strong> {pace >= 0 ? 'sous le' : 'au-dessus du'} rythme du
+              mois pour les dépenses courantes. Le trait marque aujourd’hui.
+            </>
+          ) : undefined
         ) : (
-          <p className={styles.pace}>
+          <>
             Aucun budget mensuel pour l’instant. <Link to="/budget">Fixe un budget à tes enveloppes</Link> pour suivre ton rythme.
-          </p>
-        )}
-      </div>
-
-      <dl className={styles.stats}>
-        {budget > 0 ? (
-          <div className={styles.stat}>
-            <dt>{margin >= 0 ? 'Marge restante' : 'Budget dépassé de'}</dt>
-            <dd>
+          </>
+        )
+      }
+      aside={
+        <StatGroup direction="column" divided>
+          {budget > 0 ? (
+            <Stat label={margin >= 0 ? 'Marge restante' : 'Budget dépassé de'}>
               <Amount cents={Math.abs(margin)} size="lg" tone="neutral" className={margin < 0 ? styles.negative : ''} animate />
-            </dd>
-          </div>
-        ) : null}
-        <div className={styles.stat}>
-          <dt>Mis de côté</dt>
-          <dd>
+            </Stat>
+          ) : null}
+          <Stat label="Mis de côté">
             <Amount cents={saved} size="lg" tone="neutral" className={saved > 0 ? styles.positive : saved < 0 ? styles.negative : ''} animate />
-          </dd>
-        </div>
-      </dl>
-    </section>
+          </Stat>
+        </StatGroup>
+      }
+    >
+      {budget > 0 ? (
+        <>
+          <ProgressBar ratio={spent / budget} size="md" color="var(--ink)" label={`${formatEuros(spent)} dépensés sur un budget de ${formatEuros(budget)}`} />
+          {variable.budget > 0 ? (
+            <div className={styles.variable}>
+              <div className={styles.variableHead}>
+                <span>
+                  Dépenses courantes <span className={[styles.muted, styles.nowrap].join(' ')}>hors charges fixes</span>
+                </span>
+                <span className={['num', styles.nowrap].join(' ')}>
+                  {formatEuros(variable.spent)} <span className={styles.muted}>/ {formatEuros(variable.budget)}</span>
+                </span>
+              </div>
+              <ProgressBar
+                ratio={variable.spent / variable.budget}
+                color="var(--ink-soft)"
+                label={`Dépenses courantes : ${formatEuros(variable.spent)} sur ${formatEuros(variable.budget)}`}
+                marker={progress}
+                markerLabel="Aujourd’hui"
+              />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </KeyFigure>
   );
 }
 
@@ -228,24 +244,16 @@ function TodoList({ data }: { data: Overview }) {
 
   return (
     <section aria-labelledby="todo-title">
-      <div className="section-title">
-        <h2 id="todo-title">À faire</h2>
-      </div>
+      <SectionHeader id="todo-title" title="À faire" />
       {todos.length === 0 ? (
-        <p className={styles.allClear}>
-          <Check aria-hidden /> Rien à faire. Tout est rangé et la piste est dégagée.
-        </p>
+        <EmptyState icon={<Check />} title="Rien à faire" description="Tout est rangé et la piste est dégagée." />
       ) : (
         <ul className={[styles.todos, 'stagger'].join(' ')}>
           {todos.map((t) => (
             <li key={t.key}>
-              <Link to={t.to} className={[styles.todo, t.tone === 'alert' ? styles.todoAlert : ''].join(' ')}>
-                <span className={styles.todoIcon} aria-hidden>
-                  {t.icon}
-                </span>
-                <span className={styles.todoText}>{t.text}</span>
-                <ChevronRight className={styles.todoChevron} aria-hidden />
-              </Link>
+              <TodoItem to={t.to} icon={t.icon} tone={t.tone === 'alert' ? 'negative' : 'marking'}>
+                {t.text}
+              </TodoItem>
             </li>
           ))}
         </ul>
@@ -263,12 +271,11 @@ function EnvelopesPreview({ data }: { data: Overview }) {
 
   return (
     <section aria-labelledby="envelopes-title">
-      <div className="section-title">
-        <h2 id="envelopes-title">Enveloppes</h2>
-        <Link to="/budget" className="section-link">
-          {spending.length > HOME_ENVELOPES ? `Voir les ${spending.length}` : 'Voir le budget'} →
-        </Link>
-      </div>
+      <SectionHeader
+        id="envelopes-title"
+        title="Enveloppes"
+        aside={<SectionLink to="/budget">{spending.length > HOME_ENVELOPES ? `Voir les ${spending.length}` : 'Voir le budget'}</SectionLink>}
+      />
       {shown.length === 0 ? (
         <EmptyState
           icon={<WalletCards />}
@@ -280,9 +287,9 @@ function EnvelopesPreview({ data }: { data: Overview }) {
         <>
           <EnvelopeRowHeader />
           <div className="ledger stagger">
-          {shown.map((e) => (
-            <EnvelopeRow key={e.id} envelope={e} onOpen={() => setDetail(e)} />
-          ))}
+            {shown.map((e) => (
+              <EnvelopeRow key={e.id} envelope={e} onOpen={() => setDetail(e)} />
+            ))}
           </div>
         </>
       )}
@@ -294,18 +301,13 @@ function EnvelopesPreview({ data }: { data: Overview }) {
 function AccountsStrip({ data }: { data: Overview }) {
   return (
     <section aria-labelledby="accounts-title" className={styles.accounts}>
-      <div className="section-title">
-        <h2 id="accounts-title">Comptes</h2>
-        <span className={styles.netWorth}>
-          Total <Amount cents={data.netWorth} tone="neutral" />
-        </span>
-      </div>
+      <SectionHeader id="accounts-title" title="Comptes" aside={<Total cents={data.netWorth} />} />
       <ul className={styles.accountList}>
         {data.accounts.map((a) => (
           <li key={a.id} className={styles.account}>
             <span className={styles.accountName}>
               {a.name}
-              {!a.onBudget ? <span className={styles.accountKind}>Épargne</span> : null}
+              {!a.onBudget ? <Badge>Épargne</Badge> : null}
             </span>
             <Amount cents={a.balance} size="lg" />
           </li>
@@ -318,26 +320,16 @@ function AccountsStrip({ data }: { data: Overview }) {
 function HomeSkeleton() {
   return (
     <div className="page" aria-busy>
-      <div className={styles.header}>
+      <div className="stack">
         <Skeleton width={140} height={14} />
-        <Skeleton width={260} height={40} />
-      </div>
-      <div className={styles.hero}>
-        <div className={styles.heroMain}>
-          <Skeleton width={120} height={12} />
-          <Skeleton width={280} height={64} />
-          <Skeleton height={10} />
-        </div>
-        <div className={styles.stats}>
-          <Skeleton width={140} height={48} />
-          <Skeleton width={140} height={48} />
-        </div>
+        <Skeleton width={220} height={36} />
       </div>
       <div className="stack">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} height={44} />
-        ))}
+        <Skeleton width={120} height={12} />
+        <Skeleton width={280} height={68} />
+        <Skeleton height={10} />
       </div>
+      <ListRowSkeleton rows={4} meta={false} middle />
     </div>
   );
 }
