@@ -1,10 +1,27 @@
+/* Le filet reste entier sous la rangée, même quand elle défile */
+.wrap {
+  border-bottom: 1px solid var(--rule);
+}
+
 .tabs {
   position: relative;
   display: flex;
   gap: var(--s-6);
-  border-bottom: 1px solid var(--rule);
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+/* Rangée trop large (mobile) : le bord qui cache des onglets s'estompe, signe qu'on peut faire défiler */
+.tabs[data-overflow='end'] {
+  mask-image: linear-gradient(to right, black calc(100% - var(--s-10)), transparent);
+}
+
+.tabs[data-overflow='start'] {
+  mask-image: linear-gradient(to left, black calc(100% - var(--s-10)), transparent);
+}
+
+.tabs[data-overflow='both'] {
+  mask-image: linear-gradient(to right, transparent, black var(--s-10), black calc(100% - var(--s-10)), transparent);
 }
 
 .tab {

@@ -71,7 +71,6 @@
   color: var(--ink-mute);
 }
 
-
 @media (max-width: 767px) {
   .horizon {
     min-width: 0;
@@ -81,5 +80,15 @@
   /* Montant à sa largeur : le libellé garde la place */
   .list {
     --list-trail: auto;
+  }
+
+  /* Libellé sur deux lignes au plus : un virement garde son compte d'arrivée */
+  .eventTitle {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
   }
 }

@@ -87,19 +87,24 @@
   color: var(--ink);
 }
 
+/* Le repère est posé dans la pastille active, contre son bord gauche (la pastille commence au retrait de la barre) */
 .indicator {
   position: absolute;
-  left: 0;
+  left: var(--s-4);
   top: 0;
   width: 3px;
-  padding: 8px 0;
-  background-clip: content-box;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background-color: var(--marking);
   transition:
     transform 320ms var(--ease-out),
     height 320ms var(--ease-out);
   z-index: 1;
+}
+
+.indicator::before {
+  content: '';
+  position: absolute;
+  inset: var(--s-2) 0;
+  border-radius: var(--radius-pill);
+  background: var(--marking);
 }
 
 .icon {

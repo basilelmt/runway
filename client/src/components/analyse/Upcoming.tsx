@@ -146,7 +146,7 @@ export function Upcoming() {
                           <ListRow
                             key={`${e.source}-${e.sourceId}-${e.date}-${i}`}
                             lead={<span className={listRowDate}>{formatDateCompact(e.date)}</span>}
-                            title={e.label}
+                            title={<span className={styles.eventTitle}>{e.label}</span>}
                             meta={
                               <>
                                 {KIND_LABELS[e.kind]}
