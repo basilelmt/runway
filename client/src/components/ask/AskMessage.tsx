@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react';
-import { Amount, Button } from '@/components/ui';
+import { Amount, Button, KeyFigure, Notice, PulseDot } from '@/components/ui';
 import { keepTogether } from '@/lib/format';
 import type { AskTurn } from './ask-context';
 import { ActionCard } from './ActionCard';
@@ -17,26 +17,29 @@ export function AskMessage({ turn, onRetry }: AskMessageProps) {
     <li className={styles.turn}>
       <p className={styles.question}>{turn.question}</p>
       {turn.status === 'pending' ? (
-        <p className={styles.pending} role="status" aria-live="polite">
-          <span className={styles.pulse} aria-hidden />
-          {turn.step ?? 'Je réfléchis…'}
+        <p className={styles.pending}>
+          <PulseDot label="Claude réfléchit" />
+          <span role="status" aria-live="polite">
+            {turn.step ?? 'Je réfléchis…'}
+          </span>
         </p>
       ) : null}
       {turn.status === 'error' ? (
-        <div className={styles.error} role="alert">
-          <p>{turn.error}</p>
-          <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={onRetry}>
-            Réessayer
-          </Button>
-        </div>
+        <Notice
+          tone="negative"
+          action={
+            <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={onRetry}>
+              Réessayer
+            </Button>
+          }
+        >
+          {turn.error}
+        </Notice>
       ) : null}
       {turn.answer ? (
         <div className={styles.answer}>
           {turn.answer.highlight ? (
-            <div className={styles.highlight}>
-              <span className="eyebrow">{turn.answer.highlight.label}</span>
-              <Amount cents={turn.answer.highlight.amount} size="lg" tone="neutral" />
-            </div>
+            <KeyFigure size="compact" label={turn.answer.highlight.label} figure={<Amount cents={turn.answer.highlight.amount} size="lg" tone="neutral" />} />
           ) : null}
           <p className={styles.text}>{keepTogether(turn.answer.answer)}</p>
           {turn.answer.chart ? <AskChart data={turn.answer.chart} /> : null}

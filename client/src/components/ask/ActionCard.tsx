@@ -6,7 +6,7 @@ import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useApplySorting, useCreateRecurringRule, useCreateTransaction, useUpdateEnvelope } from '@/api/hooks';
 import { describeFrequency } from '@/components/recurring/frequency';
-import { Button, Checkbox } from '@/components/ui';
+import { Button, Card, Checkbox, FieldError } from '@/components/ui';
 import { keepTogether, plural } from '@/lib/format';
 import styles from './ActionCard.module.css';
 
@@ -66,31 +66,29 @@ export function ActionCard({ action }: { action: AskActionView }) {
 
   const { title, detail } = describe(action);
   return (
-    <li className={styles.card} data-done={done || undefined}>
-      <div className={styles.body}>
-        <div className={styles.heading}>
-          <p className={styles.title}>{keepTogether(title)}</p>
-          {detail ? <p className={styles.detail}>{keepTogether(detail)}</p> : null}
+    <li>
+      <Card tone="raised" padding="sm" className={styles.card} data-done={done || undefined}>
+        <div className={styles.body}>
+          <div className={styles.heading}>
+            <p className={styles.title}>{keepTogether(title)}</p>
+            {detail ? <p className={styles.detail}>{keepTogether(detail)}</p> : null}
+          </div>
+          {action.type === 'sort' && action.rulePattern ? (
+            <Checkbox label={keepTogether(`Créer aussi la règle « ${action.rulePattern} »`)} checked={withRule} disabled={done} onChange={(e) => setWithRule(e.target.checked)} />
+          ) : null}
+          <FieldError>{mutation.error ? errorMessage(mutation.error) : null}</FieldError>
         </div>
-        {action.type === 'sort' && action.rulePattern ? (
-          <Checkbox label={keepTogether(`Créer aussi la règle « ${action.rulePattern} »`)} checked={withRule} disabled={done} onChange={(e) => setWithRule(e.target.checked)} />
-        ) : null}
-        {mutation.error ? (
-          <p className={styles.error} role="alert">
-            {errorMessage(mutation.error)}
-          </p>
-        ) : null}
-      </div>
-      {done ? (
-        <span className={styles.done}>
-          <Check aria-hidden />
-          Fait
-        </span>
-      ) : (
-        <Button size="sm" variant="primary" loading={mutation.isPending} onClick={apply} className={styles.apply}>
-          Appliquer
-        </Button>
-      )}
+        {done ? (
+          <span className={styles.done}>
+            <Check aria-hidden />
+            Fait
+          </span>
+        ) : (
+          <Button size="sm" variant="primary" loading={mutation.isPending} onClick={apply} className={styles.apply}>
+            Appliquer
+          </Button>
+        )}
+      </Card>
     </li>
   );
 }

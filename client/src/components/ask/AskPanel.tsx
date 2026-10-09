@@ -1,6 +1,6 @@
 import { ArrowUp, RotateCcw, Sparkles, Square, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Button } from '@/components/ui';
+import { Button, ListRow, Textarea } from '@/components/ui';
 import { useAsk } from './ask-context';
 import { AskMessage } from './AskMessage';
 import styles from './AskPanel.module.css';
@@ -87,13 +87,9 @@ export function AskPanel() {
         {turns.length === 0 ? (
           <div className={styles.empty}>
             <p className={styles.emptyText}>Pose une question sur ton argent. Claude lit tes données sans rien modifier, et te propose des actions que tu valides d’un clic.</p>
-            <ul className={styles.suggestions} aria-label="Suggestions">
+            <ul className="ledger" aria-label="Suggestions">
               {ASK_SUGGESTIONS.map((s) => (
-                <li key={s}>
-                  <button type="button" className={styles.suggestion} onClick={() => submit(s)}>
-                    {s}
-                  </button>
-                </li>
+                <ListRow key={s} compact onClick={() => submit(s)} clickLabel={s} title={s} />
               ))}
             </ul>
           </div>
@@ -113,9 +109,9 @@ export function AskPanel() {
           submit(draft);
         }}
       >
-        <textarea
+        <Textarea
           ref={inputRef}
-          className={styles.input}
+          className={styles.field}
           aria-label="Ta question"
           placeholder="Combien en restos depuis mars ?"
           rows={1}

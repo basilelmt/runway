@@ -39,6 +39,7 @@
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .title :global(svg) {
@@ -71,31 +72,6 @@
   color: var(--ink-soft);
   font-size: var(--text-sm);
   line-height: 1.5;
-}
-
-.suggestions {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
-.suggestion {
-  width: 100%;
-  padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-md);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: var(--text-sm);
-  text-align: left;
-  transition: border-color var(--dur) var(--ease-out);
-}
-
-.suggestion:hover {
-  border-color: var(--rule-strong);
 }
 
 .turns {
@@ -136,31 +112,10 @@
   font-size: var(--text-sm);
 }
 
-.pulse {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--marking);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.3;
-    transform: scale(0.7);
-  }
-}
-
 .answer {
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-}
-
-.highlight {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
 }
 
 .text {
@@ -191,22 +146,6 @@
   gap: var(--s-2);
 }
 
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
-  border-radius: var(--radius-md);
-  background: var(--negative-soft);
-  color: var(--ink);
-  font-size: var(--text-sm);
-}
-
-.error p {
-  margin: 0;
-}
-
 .composer {
   display: flex;
   align-items: flex-end;
@@ -216,27 +155,8 @@
   flex: none;
 }
 
-.input {
+.field {
   flex: 1;
-  min-height: 36px;
-  padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius-md);
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--text-md);
-  line-height: 1.35;
-  resize: none;
-}
-
-.input:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: -1px;
-}
-
-.input:disabled {
-  color: var(--ink-mute);
 }
 
 .send {
@@ -255,8 +175,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .panel,
-  .pulse {
+  .panel {
     animation: none;
   }
 }
