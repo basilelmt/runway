@@ -24,8 +24,6 @@ const ALLOWED: Record<string, string[]> = {
   'styles/tokens.css': ['couleur hex', 'couleur rgb/hsl', 'taille de police en dur', 'ombre en dur'],
   // La devise suit la taille du montant qu'elle accompagne (0.55em) : une proportion, pas une taille de l'échelle.
   'components/ui/AmountHero.module.css': ['taille de police en dur'],
-  // Travail en cours de Basile, à migrer vers --ring-focus après fusion.
-  'components/ui/Pills.module.css': ['ombre en dur'],
 };
 
 function cssFiles(dir: string): string[] {

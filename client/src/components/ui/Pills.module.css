@@ -13,9 +13,7 @@
 }
 
 .pill:has(:focus-visible) {
-  box-shadow:
-    0 0 0 2px var(--paper),
-    0 0 0 4px var(--marking);
+  box-shadow: var(--ring-focus);
 }
 
 .icon {
@@ -39,6 +37,20 @@
   border-radius: inherit;
   background: none;
   color: var(--ink);
+}
+
+/* Croix d'effacement native redessinée dans l'encre de l'app, au lieu du bleu du navigateur */
+.searchInput::-webkit-search-cancel-button {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--ink-mute);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
+  cursor: pointer;
+}
+
+.searchInput::-webkit-search-cancel-button:hover {
+  background: var(--ink);
 }
 
 .searchInput::placeholder {
@@ -188,9 +200,7 @@
 }
 
 .inline:has(:focus-visible) .face {
-  box-shadow:
-    0 0 0 2px var(--paper),
-    0 0 0 4px var(--marking);
+  box-shadow: var(--ring-focus);
 }
 
 .disabled {
