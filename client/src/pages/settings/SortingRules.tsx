@@ -133,10 +133,14 @@ export function SortingRulesSettings() {
                     </>
                   }
                   title={
-                    <>
-                      <span className="mono">{rule.pattern}</span> <span className={styles.arrow}>→</span>{' '}
-                      {env ? <EnvelopeTag name={env.name} color={env.color} /> : <span className="muted">Enveloppe supprimée</span>}
-                    </>
+                    <span className={styles.ruleTitle}>
+                      <span className={['mono', styles.pattern].join(' ')}>{rule.pattern}</span>
+                      {/* Le motif s'ellipse en premier : la flèche et l'enveloppe restent lisibles, jamais compressées. */}
+                      <span className={styles.tail}>
+                        <span className={styles.arrow}>→</span>
+                        {env ? <EnvelopeTag name={env.name} color={env.color} /> : <span className="muted">Enveloppe supprimée</span>}
+                      </span>
+                    </span>
                   }
                   actions={
                     <RowMenu

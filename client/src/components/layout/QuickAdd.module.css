@@ -8,8 +8,8 @@
     position: fixed;
     right: var(--s-4);
     bottom: calc(var(--bottomnav-height) + var(--s-4) + env(safe-area-inset-bottom));
-    width: 52px;
-    height: 52px;
+    width: var(--fab-size);
+    height: var(--fab-size);
     border-radius: 50%;
     border: none;
     background: var(--ink);

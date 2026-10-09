@@ -97,6 +97,8 @@
   --bottomnav-height: 60px;
   --ask-width: 420px;
   --content-max: 1040px;
+  /* Bouton flottant de saisie rapide, sur mobile */
+  --fab-size: 52px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 160ms;

@@ -40,3 +40,25 @@
 .arrow {
   color: var(--ink-mute);
 }
+
+/* Le motif (long, parfois) rétrécit en premier ; la flèche et l'enveloppe gardent leur taille. */
+.ruleTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.pattern {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tail {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}

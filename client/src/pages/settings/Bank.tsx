@@ -171,7 +171,7 @@ function ImportHistory() {
       key={imp.id}
       lead={<span className={listRowDate}>{formatDateCompact(imp.importedAt.slice(0, 10))}</span>}
       title={<span className="mono">{imp.fileName}</span>}
-      meta={`${plural(imp.newCount, 'ajoutée')} · ${plural(imp.matchedCount, 'rapprochée')} · ${plural(imp.duplicateCount, 'doublon')}`}
+      meta={`${plural(imp.newCount, 'ajoutée')}\u00A0· ${plural(imp.matchedCount, 'rapprochée')}\u00A0· ${plural(imp.duplicateCount, 'doublon')}`}
       trail={accountName(imp.accountId)}
     />
   );

@@ -47,7 +47,9 @@ describe('ListRow', () => {
     expect(screen.getByRole('listitem').className).not.toMatch(/undefined/);
   });
 
-  it('garde cliquables les contrôles posés dans la méta et la fin d’une ligne cliquable', async () => {
+  // Le CSS (pointer-events, z-index) qui fait vraiment passer ces contrôles au-dessus du bouton de ligne
+  // ne se vérifie que dans un vrai navigateur ; ce test couvre seulement que chaque gestionnaire reste indépendant.
+  it('un clic sur un contrôle de la méta ou de la fin n’ouvre pas la ligne', async () => {
     const onClick = vi.fn();
     const onMeta = vi.fn();
     const onTrail = vi.fn();

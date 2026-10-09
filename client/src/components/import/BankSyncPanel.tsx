@@ -316,8 +316,12 @@ function ActiveState({
   return (
     <>
       <div className={styles.meta}>
-        <span>{connection.lastSyncAt ? `Dernière synchronisation ${formatDateTime(connection.lastSyncAt)}` : 'Jamais synchronisé'}</span>
-        {connection.validUntil ? <span className="muted">· consentement jusqu'au {formatDateLong(connection.validUntil.slice(0, 10))}</span> : null}
+        <span>
+          {connection.lastSyncAt ? `Dernière synchronisation ${formatDateTime(connection.lastSyncAt)}` : 'Jamais synchronisé'}
+          {connection.validUntil ? ' ·' : ''}
+        </span>
+        {/* Le séparateur reste collé à la phrase précédente (espace insécable) : il ne peut pas se retrouver seul en début de ligne quand ce bloc passe à la ligne. */}
+        {connection.validUntil ? <span className="muted">consentement jusqu'au {formatDateLong(connection.validUntil.slice(0, 10))}</span> : null}
       </div>
       <div className={styles.accounts}>
         {linked.map((a) => (
@@ -329,8 +333,9 @@ function ActiveState({
             <ArrowRight className={styles.arrow} aria-hidden />
             <span>
               {accountName(a.accountId!)}
-              {a.syncFrom ? <span className="muted"> · depuis le {formatDateLong(a.syncFrom)}</span> : null}
-              {a.lastSyncedDate ? <span className="muted"> · à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
+              {/* Espace insécable avant le séparateur : il ne commence jamais une ligne quand ça renvoie à la ligne. */}
+              {a.syncFrom ? <span className="muted">{' · '}depuis le {formatDateLong(a.syncFrom)}</span> : null}
+              {a.lastSyncedDate ? <span className="muted">{' · '}à jour au {formatDateLong(a.lastSyncedDate)}</span> : null}
             </span>
           </div>
         ))}

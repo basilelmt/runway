@@ -66,7 +66,8 @@
     background: var(--paper-sunken);
   }
 
+  /* Le bas de page doit dépasser le bouton flottant de saisie rapide pour que le dernier contenu défile au-dessus. */
   .main {
-    padding: var(--s-6) var(--s-4) calc(var(--bottomnav-height) + var(--s-16) + env(safe-area-inset-bottom));
+    padding: var(--s-6) var(--s-4) calc(var(--bottomnav-height) + var(--fab-size) + var(--s-8) + env(safe-area-inset-bottom));
   }
 }
