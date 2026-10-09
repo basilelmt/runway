@@ -1,5 +1,5 @@
 import { cmpQty, costShare, hasOversell, isZeroQty, portfolioSeries, position, simpleReturn, subQty, toUnits, valueCents, type DatedPrice, type Trade } from '@core/invest';
-import type { BinanceState, HoldingView, PortfolioRange, PortfolioView, TradeView } from '@shared/api-types';
+import type { BinanceState, HoldingView, PortfolioRange, PortfolioView, SeriesPoint, TradeView } from '@shared/api-types';
 import { addDays, compareISODate, type ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
 import { AppError } from '../errors';
@@ -40,7 +40,7 @@ function weekly<T>(points: T[]): T[] {
   return points.filter((_, i) => i % 7 === 0 || i === points.length - 1);
 }
 
-type Valued = { view: HoldingView; trades: Trade[]; closes: DatedPrice[] };
+type Valued = { view: Omit<HoldingView, 'series'>; trades: Trade[]; closes: DatedPrice[] };
 
 async function valueHolding(h: HoldingRow, rows: TradeRow[], prices: Prices, from: ISODate, today: ISODate): Promise<Valued> {
   const trades = rows.map(toTrade);
@@ -67,7 +67,7 @@ async function valueHolding(h: HoldingRow, rows: TradeRow[], prices: Prices, fro
   const value = price ? valueCents(quantity, price.eur) : null;
   const gain = price ? valueCents(pos.quantity, price.eur) - pos.costBasis : null;
 
-  const view: HoldingView = {
+  const view: Valued['view'] = {
     id: h.id,
     platform: h.platform,
     ticker: h.ticker,
@@ -125,17 +125,19 @@ export async function buildPortfolio(db: Db, prices: Prices, today: ISODate, ran
   const coveredValue = sorted.reduce((s, { view }) => s + (view.gain !== null ? view.gain + view.costBasis : view.costBasis), 0);
   const gain = coveredValue - totals.invested;
 
-  const daily = portfolioSeries(
-    sorted.map(({ trades, closes }) => ({ trades, prices: closes })),
-    from,
-    today,
+  const sample = <T>(points: T[]): T[] => (range === '1y' || range === 'all' ? weekly(points) : points);
+  const perHolding = sorted.map(({ trades, closes }) => portfolioSeries([{ trades, prices: closes }], from, today));
+  // La courbe du portefeuille est la somme des courbes des positions.
+  const daily = perHolding.reduce<SeriesPoint[]>(
+    (sum, series) => sum.map((p, i) => ({ date: p.date, value: p.value + series[i]!.value, invested: p.invested + series[i]!.invested })),
+    portfolioSeries([], from, today),
   );
 
   return {
     today,
     totals: { ...totals, gain, gainPct: totals.invested > 0 ? gain / totals.invested : null },
-    holdings: sorted.map(({ view }) => view),
-    series: range === '1y' || range === 'all' ? weekly(daily) : daily,
+    holdings: sorted.map(({ view }, i) => ({ ...view, series: sample(perHolding[i]!) })),
+    series: sample(daily),
     stale: sorted.some(({ view }) => view.price?.stale === true),
     binance: binanceState(db),
   };

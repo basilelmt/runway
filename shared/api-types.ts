@@ -279,6 +279,9 @@ export type TradeView = {
   source: 'manual' | 'binance';
 };
 
+/** Point de courbe : valeur et montant investi à une date. */
+export type SeriesPoint = { date: ISODate; value: Cents; invested: Cents };
+
 export type HoldingView = {
   id: number;
   platform: Platform;
@@ -300,6 +303,8 @@ export type HoldingView = {
   /** Quantité achetée d'après les mouvements mais absente du solde Binance (retrait, staking bloqué), sinon null. */
   missingQuantity: string | null;
   trades: TradeView[];
+  /** Courbe de la position seule, même période et même échantillonnage que celle du portefeuille. */
+  series: SeriesPoint[];
 };
 
 export type BinanceState = { configured: boolean; apiKeyHint: string | null; lastSyncAt: string | null; lastError: string | null };
@@ -308,7 +313,7 @@ export type PortfolioView = {
   today: ISODate;
   totals: { value: Cents; invested: Cents; gain: Cents; gainPct: number | null; realized: Cents };
   holdings: HoldingView[];
-  series: { date: ISODate; value: Cents; invested: Cents }[];
+  series: SeriesPoint[];
   /** Vrai si au moins un cours affiché n'a pas pu être rafraîchi. */
   stale: boolean;
   binance: BinanceState;

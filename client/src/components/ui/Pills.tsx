@@ -13,19 +13,21 @@ export const SearchPill = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<
   );
 });
 
-type FilterPillProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'value' | 'onChange'> & {
+type FilterPillProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'value' | 'onChange' | 'size'> & {
   value: string;
   onChange: (value: string) => void;
   /** Valeur neutre (« Tous ») : ailleurs, la pastille passe en encre et propose une croix. */
   resetValue?: string;
+  /** `sm` : à la hauteur d'un Segmented `sm`, pour les en-têtes de section. */
+  size?: 'sm' | 'md';
 };
 
 /** Filtre en pastille : un select natif habillé. */
-export function FilterPill({ value, onChange, resetValue, className, children, ...rest }: FilterPillProps) {
+export function FilterPill({ value, onChange, resetValue, size = 'md', className, children, ...rest }: FilterPillProps) {
   const active = resetValue !== undefined && value !== resetValue;
   const name = rest['aria-label'];
   return (
-    <span className={[styles.pill, styles.filter, active ? styles.active : '', className ?? ''].join(' ')}>
+    <span className={[styles.pill, styles.filter, size === 'sm' ? styles.sm : '', active ? styles.active : '', className ?? ''].join(' ')}>
       <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)} {...rest}>
         {children}
       </select>

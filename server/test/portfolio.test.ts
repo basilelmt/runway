@@ -6,6 +6,7 @@ import { createTestApp } from './helpers';
 function setup() {
   const fetch = fakeFetch({
     'chart/SXR8.DE': chart('SXR8.DE', 'EUR', [['2025-10-01', 600], ['2026-10-06', 710]], { date: '2026-10-07', price: 720 }),
+    'chart/BTC-EUR': chart('BTC-EUR', 'EUR', [['2026-09-01', 50000], ['2026-10-06', 60000]], { date: '2026-10-07', price: 61000 }),
     'finance/search': { quotes: [{ symbol: 'SXR8.DE', longname: 'iShares Core S&P 500', exchDisp: 'XETRA', typeDisp: 'ETF' }] },
   });
   return createTestApp('2026-10-07', { investDeps: { fetch, now: () => new Date('2026-10-07T10:00:00Z') } });
@@ -41,6 +42,24 @@ describe('portefeuille', () => {
     const r = await t.call('GET', '/api/invest/portfolio?range=1m');
     expect(r.body.series).toHaveLength(31);
     expect(r.body.series[0]).toEqual({ date: '2026-09-07', value: 3000_00, invested: 3001_00 });
+  });
+
+  it('donne la courbe de chaque position, dont la somme fait celle du portefeuille', async () => {
+    const t = setup();
+    await t.call('POST', '/api/invest/holdings', holding);
+    const btc = { side: 'buy', date: '2026-09-15', quantity: '0.1', amount: 5000_00, fees: 0 };
+    await t.call('POST', '/api/invest/holdings', { platform: 'binance', ticker: 'BTC-EUR', name: 'Bitcoin', firstTrade: btc });
+    const r = await t.call('GET', '/api/invest/portfolio?range=1m');
+    const [sp, bitcoin] = [r.body.holdings.find((h: { ticker: string }) => h.ticker === 'SXR8.DE'), r.body.holdings.find((h: { ticker: string }) => h.ticker === 'BTC-EUR')];
+    expect(sp.series.at(-1)).toEqual({ date: '2026-10-07', value: 3600_00, invested: 3001_00 });
+    expect(bitcoin.series[0]).toEqual({ date: '2026-09-07', value: 0, invested: 0 });
+    expect(bitcoin.series.at(-1)).toEqual({ date: '2026-10-07', value: 6100_00, invested: 5000_00 });
+    expect(r.body.series.at(-1)).toEqual({ date: '2026-10-07', value: 9700_00, invested: 8001_00 });
+    expect(r.body.series).toHaveLength(31);
+    r.body.series.forEach((p: { value: number; invested: number }, i: number) => {
+      expect(p.value).toBe(sp.series[i].value + bitcoin.series[i].value);
+      expect(p.invested).toBe(sp.series[i].invested + bitcoin.series[i].invested);
+    });
   });
 
   it('refuse un ticker inconnu, une vente trop grande et une suppression qui rendrait une vente impossible', async () => {

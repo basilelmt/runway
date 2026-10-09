@@ -50,7 +50,7 @@ export function InvestPage() {
           {data.holdings.length > 0 ? (
             <>
               <PortfolioSummary portfolio={data} />
-              <PortfolioChart series={data.series} range={range} onRange={setRange} loading={portfolio.isPlaceholderData} />
+              <PortfolioChart series={data.series} holdings={data.holdings} range={range} onRange={setRange} loading={portfolio.isPlaceholderData} />
             </>
           ) : null}
           <section aria-labelledby="holdings-title">

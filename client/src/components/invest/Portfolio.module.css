@@ -107,6 +107,14 @@
 }
 
 /* Graphique */
+.chartControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+
 .chart {
   height: 260px;
   transition: opacity var(--dur) var(--ease-out);
