@@ -18,12 +18,14 @@ type KeyFigureProps = {
   size?: 'md' | 'compact';
   /** Couche décorative derrière le contenu, en variante `night`. */
   decoration?: ReactNode;
+  /** Mise en page propre à l'écran (hauteur laissée à la décoration). */
+  className?: string;
 };
 
 /** Le chiffre clé d'un écran : un seul par écran, sans cadre sauf la nuit d'Investir. */
-export function KeyFigure({ label, figure, context, caption, children, aside, variant = 'plain', size = 'md', decoration }: KeyFigureProps) {
+export function KeyFigure({ label, figure, context, caption, children, aside, variant = 'plain', size = 'md', decoration, className }: KeyFigureProps) {
   return (
-    <section aria-label={label} className={[styles.figure, styles[variant], styles[size]].join(' ')}>
+    <section aria-label={label} className={[styles.figure, styles[variant], styles[size], className ?? ''].join(' ')}>
       {decoration ? (
         <div className={styles.decoration} aria-hidden="true">
           {decoration}

@@ -1,10 +1,10 @@
 import { useIsMutating } from '@tanstack/react-query';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import type { BinanceState } from '@shared/api-types';
 import { errorMessage } from '@/api/client';
 import { keys, useDisconnectBinance, useSyncBinance } from '@/api/hooks';
-import { Button, useToast } from '@/components/ui';
+import { Button, ConfirmDialog, ListRow, Notice, useToast } from '@/components/ui';
 import { formatDateTime, plural } from '@/lib/format';
 import { BinanceConnectDialog } from './BinanceConnectDialog';
 import styles from './BinancePanel.module.css';
@@ -21,7 +21,12 @@ export function BinancePanel({ state }: { state: BinanceState }) {
       for (const w of r.warnings) toast.error(w);
     },
   });
-  const disconnect = useDisconnectBinance({ onSuccess: () => toast.success('Binance déconnecté') });
+  const disconnect = useDisconnectBinance({
+    onSuccess: () => {
+      setConfirm(false);
+      toast.success('Binance déconnecté');
+    },
+  });
 
   if (!state.configured) {
     return (
@@ -37,45 +42,50 @@ export function BinancePanel({ state }: { state: BinanceState }) {
   return (
     <div className={styles.wrap}>
       {error && !syncing ? (
-        <div className={styles.error} role="alert">
-          <AlertTriangle aria-hidden />
-          <span>{error}</span>
-          <Button size="sm" onClick={() => sync.mutate(undefined)}>
-            Réessayer
-          </Button>
-        </div>
+        <Notice
+          tone="negative"
+          action={
+            <Button size="sm" onClick={() => sync.mutate(undefined)}>
+              Réessayer
+            </Button>
+          }
+        >
+          {error}
+        </Notice>
       ) : null}
-      <div className={styles.panel}>
-        <p className={styles.text}>
-          Binance <span className="mono">…{state.apiKeyHint}</span>
-          <span className={styles.muted}>
-            {' · '}
-            {syncing ? 'synchronisation…' : state.lastSyncAt ? `synchronisé le ${formatDateTime(state.lastSyncAt)}` : 'jamais synchronisé'}
-          </span>
-        </p>
-        <div className={styles.actions}>
-          {confirm ? (
-            <>
-              <span className={styles.muted}>Les positions Binance seront retirées de Runway.</span>
-              <Button variant="ghost" size="sm" onClick={() => setConfirm(false)}>
-                Annuler
-              </Button>
-              <Button variant="danger" size="sm" loading={disconnect.isPending} onClick={() => disconnect.mutate()}>
-                Déconnecter
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => setConfirm(true)}>
-                Déconnecter
-              </Button>
-              <Button size="sm" icon={<RefreshCw />} loading={syncing} onClick={() => sync.mutate(undefined)}>
-                Synchroniser
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <ListRow
+        as="div"
+        compact
+        className={styles.status}
+        title={
+          <>
+            Binance <span className="mono">…{state.apiKeyHint}</span>
+          </>
+        }
+        meta={syncing ? 'synchronisation…' : state.lastSyncAt ? `synchronisé le ${formatDateTime(state.lastSyncAt)}` : 'jamais synchronisé'}
+        actions={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setConfirm(true)}>
+              Déconnecter
+            </Button>
+            <Button size="sm" icon={<RefreshCw />} loading={syncing} onClick={() => sync.mutate(undefined)}>
+              Synchroniser
+            </Button>
+          </>
+        }
+      />
+      <ConfirmDialog
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        onConfirm={() => disconnect.mutate()}
+        title="Déconnecter Binance ?"
+        description="Les positions Binance seront retirées de Runway."
+        confirmLabel="Déconnecter"
+        loading={disconnect.isPending}
+        error={disconnect.error ? errorMessage(disconnect.error) : null}
+      >
+        <strong>Binance</strong> <span className="mono">…{state.apiKeyHint}</span>
+      </ConfirmDialog>
     </div>
   );
 }

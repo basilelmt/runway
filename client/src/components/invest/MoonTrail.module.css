@@ -29,11 +29,11 @@
 }
 
 .body {
-  fill: #f2efe8;
+  fill: var(--night-ink);
 }
 
 .window {
-  fill: #4386d3;
+  fill: var(--night-sky);
 }
 
 /* Flamme : deux images qui alternent, en jaune de piste et orange */
@@ -47,7 +47,7 @@
 }
 
 .flameB {
-  fill: #ef6f58;
+  fill: var(--night-negative);
   animation-delay: 90ms;
 }
 

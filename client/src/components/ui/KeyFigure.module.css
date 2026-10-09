@@ -75,6 +75,7 @@
 .night {
   overflow: hidden;
   padding: var(--s-8);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-lg);
   background: var(--night);
   color: var(--night-ink);

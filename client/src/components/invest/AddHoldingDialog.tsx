@@ -1,10 +1,9 @@
-import { Search } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import type { AssetSearchResult } from '@shared/api-types';
 import { platforms, type Platform } from '@shared/invest';
 import { errorMessage } from '@/api/client';
 import { useAssetSearch, useCreateHolding } from '@/api/hooks';
-import { Button, Dialog, Field, Input, Segmented, useToast } from '@/components/ui';
+import { Button, Dialog, DialogFooter, Field, FieldError, Input, ListRow, SearchPill, Segmented, useToast } from '@/components/ui';
 import { platformLabel } from '@/lib/invest';
 import { unitOf } from './HoldingList';
 import { emptyTrade, parseTrade, TradeFields, type TradeDraft, type TradeErrors } from './TradeFields';
@@ -68,46 +67,29 @@ export function AddHoldingDialog({ open, onClose }: Props) {
       onClose={onClose}
       title="Ajouter une position"
       description={asset ? `${asset.ticker} · ${asset.exchange}` : 'Cherche l’actif par son nom, son ticker ou son ISIN.'}
-      footer={
-        asset ? (
-          <div className={[styles.actions, styles.actionsSpread].join(' ')}>
-            <Button variant="ghost" onClick={() => setAsset(null)}>
-              Changer d’actif
-            </Button>
-            <Button type="submit" form={formId} variant="primary" loading={create.isPending}>
-              Ajouter la position
-            </Button>
-          </div>
-        ) : null
-      }
     >
       {!asset ? (
         <div className={styles.fields}>
-          <Field label="Recherche">
-            {(id) => (
-              <div className={search.searchBox}>
-                <Search aria-hidden />
-                <Input id={id} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="iShares S&P 500, SXR8, IE00B5BMR087" autoFocus autoComplete="off" />
-              </div>
-            )}
+          <Field label="Recherche" className={search.field}>
+            {(id) => <SearchPill id={id} className={search.search} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="iShares S&P 500, SXR8, IE00B5BMR087" autoFocus autoComplete="off" />}
           </Field>
-          {results.isError ? (
-            <p className={styles.error} role="alert">
-              {errorMessage(results.error)}
-            </p>
-          ) : null}
+          <FieldError>{results.isError ? errorMessage(results.error) : null}</FieldError>
           {results.data && results.data.length === 0 ? <p className={search.empty}>Aucun résultat chez Yahoo Finance.</p> : null}
           {results.data && results.data.length > 0 ? (
-            <ul className={search.results} aria-label="Résultats">
+            <ul className={['ledger', search.results].join(' ')} aria-label="Résultats">
               {results.data.map((a) => (
-                <li key={a.ticker}>
-                  <button type="button" className={search.result} onClick={() => choose(a)}>
-                    <span className={search.resultName}>{a.name}</span>
-                    <span className={search.resultMeta}>
+                <ListRow
+                  key={a.ticker}
+                  compact
+                  onClick={() => choose(a)}
+                  clickLabel={`Choisir ${a.name} (${a.ticker})`}
+                  title={a.name}
+                  meta={
+                    <span>
                       <span className="mono">{a.ticker}</span> · {a.exchange} · {a.type}
                     </span>
-                  </button>
-                </li>
+                  }
+                />
               ))}
             </ul>
           ) : null}
@@ -140,11 +122,18 @@ export function AddHoldingDialog({ open, onClose }: Props) {
               setErrors({});
             }}
           />
-          {create.error ? (
-            <p className={styles.error} role="alert">
-              {errorMessage(create.error)}
-            </p>
-          ) : null}
+          <FieldError>{create.error ? errorMessage(create.error) : null}</FieldError>
+          <DialogFooter
+            start={
+              <Button variant="ghost" onClick={() => setAsset(null)}>
+                Changer d’actif
+              </Button>
+            }
+          >
+            <Button type="submit" form={formId} variant="primary" loading={create.isPending}>
+              Ajouter la position
+            </Button>
+          </DialogFooter>
         </form>
       )}
     </Dialog>

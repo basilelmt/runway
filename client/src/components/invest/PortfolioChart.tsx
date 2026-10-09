@@ -3,7 +3,7 @@ import type { PortfolioRange, PortfolioView } from '@shared/api-types';
 import { formatDateLong, formatDateShort } from '@shared/dates';
 import { axisEuros, ChartTooltip } from '@/components/charts/ChartTooltip';
 import chart from '@/components/charts/chart.module.css';
-import { Segmented } from '@/components/ui';
+import { SectionHeader, Segmented } from '@/components/ui';
 import styles from './Portfolio.module.css';
 
 const RANGES: { value: PortfolioRange; label: string }[] = [
@@ -19,10 +19,7 @@ type Props = { series: PortfolioView['series']; range: PortfolioRange; onRange: 
 export function PortfolioChart({ series, range, onRange, loading = false }: Props) {
   return (
     <section aria-labelledby="chart-title">
-      <div className="section-title">
-        <h2 id="chart-title">Évolution</h2>
-        <Segmented label="Période du graphique" size="sm" value={range} onChange={onRange} options={RANGES} />
-      </div>
+      <SectionHeader id="chart-title" title="Évolution" aside={<Segmented label="Période du graphique" size="sm" value={range} onChange={onRange} options={RANGES} />} />
       <div className={[chart.wrap, styles.chart, loading ? styles.loading : ''].join(' ')}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

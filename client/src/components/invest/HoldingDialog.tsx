@@ -4,9 +4,9 @@ import type { HoldingView, TradeView } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useDeleteHolding, useDeleteTrade } from '@/api/hooks';
-import { Amount, Button, Dialog, useToast } from '@/components/ui';
+import { Amount, Button, ConfirmDialog, Dialog, ListRow, listRowDate, Notice, RowMenu, SectionHeader, Stat, StatGroup, useToast } from '@/components/ui';
 import { formatDateCompact } from '@/lib/format';
-import { formatPct, formatQty, gainTone, platformLabel } from '@/lib/invest';
+import { formatPct, formatQty, platformLabel } from '@/lib/invest';
 import { unitOf } from './HoldingList';
 import { TradeDialog } from './TradeDialog';
 import styles from './HoldingDialog.module.css';
@@ -30,8 +30,14 @@ export function HoldingDialog({ holding, onClose }: Props) {
 function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: () => void }) {
   const toast = useToast();
   const [editing, setEditing] = useState<{ trade: TradeView | null; key: number } | null>(null);
+  const [deletingTrade, setDeletingTrade] = useState<TradeView | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const removeTrade = useDeleteTrade({ onSuccess: () => toast.success('Mouvement supprimé') });
+  const removeTrade = useDeleteTrade({
+    onSuccess: () => {
+      setDeletingTrade(null);
+      toast.success('Mouvement supprimé');
+    },
+  });
   const removeHolding = useDeleteHolding({
     onSuccess: () => {
       toast.success('Position supprimée');
@@ -42,120 +48,140 @@ function HoldingDetail({ holding, onClose }: { holding: HoldingView; onClose: ()
   const covered = holding.unpricedQuantity ? qty - Number(holding.unpricedQuantity) : qty;
   const average = covered > 0 ? Math.round(holding.costBasis / covered) : null;
   const manual = holding.source === 'manual';
-  const error = removeTrade.error ?? removeHolding.error;
+  // Une colonne d'actions dès qu'un mouvement est modifiable, pour que les montants restent alignés.
+  const editable = holding.trades.some((t) => t.source !== 'binance');
+  const sideLabel = (t: TradeView) => (t.side === 'buy' ? 'Achat' : 'Vente');
 
   return (
     <div className={styles.detail}>
-      <dl className={styles.figures}>
-        <div>
-          <dt>Quantité</dt>
-          <dd className="num">
+      <StatGroup>
+        <Stat label="Quantité">
+          <span className={['num', styles.quantity].join(' ')}>
             {formatQty(holding.quantity)} <span className={styles.unit}>{unitOf(holding.ticker, holding.quantity)}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Prix moyen d’achat</dt>
-          <dd className="num">{average !== null ? formatEuros(average) : '-'}</dd>
-        </div>
-        <div>
-          <dt>Valeur</dt>
-          <dd>{holding.value !== null ? <Amount cents={holding.value} /> : '-'}</dd>
-        </div>
-        <div>
-          <dt>Plus-value</dt>
-          <dd className={['num', styles[gainTone(holding.gain)]].join(' ')}>
-            {holding.gain !== null ? `${formatEuros(holding.gain, { signed: true })} · ${formatPct(holding.gainPct, { signed: true })}` : '-'}
-          </dd>
-        </div>
+          </span>
+        </Stat>
+        <Stat label="Prix moyen d’achat">{average !== null ? <Amount cents={average} size="lg" tone="neutral" /> : '-'}</Stat>
+        <Stat label="Valeur">{holding.value !== null ? <Amount cents={holding.value} size="lg" tone="neutral" /> : '-'}</Stat>
+        <Stat label="Plus-value">
+          {holding.gain !== null ? (
+            <>
+              <Amount cents={holding.gain} size="lg" tone="always" /> <span className={['num', styles.unit].join(' ')}>{formatPct(holding.gainPct, { signed: true })}</span>
+            </>
+          ) : (
+            '-'
+          )}
+        </Stat>
         {holding.realized !== 0 ? (
-          <div>
-            <dt>Plus-value réalisée</dt>
-            <dd className={['num', styles[gainTone(holding.realized)]].join(' ')}>{formatEuros(holding.realized, { signed: true })}</dd>
-          </div>
+          <Stat label="Plus-value réalisée">
+            <Amount cents={holding.realized} size="lg" tone="always" />
+          </Stat>
         ) : null}
         {holding.price ? (
-          <div>
-            <dt>Cours</dt>
-            <dd className="num">
-              {formatEuros(Math.round(holding.price.eur * 100))} <span className={styles.unit}>le {formatDateCompact(holding.price.date)}</span>
-            </dd>
-          </div>
+          <Stat label="Cours">
+            <Amount cents={Math.round(holding.price.eur * 100)} size="lg" tone="neutral" /> <span className={styles.unit}>le {formatDateCompact(holding.price.date)}</span>
+          </Stat>
         ) : null}
-      </dl>
+      </StatGroup>
 
       {holding.unpricedQuantity ? (
-        <p className={styles.note}>
-          {formatQty(holding.unpricedQuantity)} {unitOf(holding.ticker, holding.unpricedQuantity)} détenus sur Binance n’ont pas de prix d’achat connu (dépôt depuis un autre portefeuille, par exemple). Ajoute
-          l’achat à la main pour un coût de revient exact.
-        </p>
+        <Notice tone="warning">
+          {formatQty(holding.unpricedQuantity)} {unitOf(holding.ticker, holding.unpricedQuantity)} détenus sur Binance n’ont pas de prix d’achat connu (dépôt depuis un autre portefeuille, par exemple). Ajoute l’achat
+          à la main pour un coût de revient exact.
+        </Notice>
       ) : null}
 
       {holding.missingQuantity ? (
-        <p className={styles.note}>
-          Les mouvements importés totalisent {formatQty(holding.missingQuantity)} {unitOf(holding.ticker, holding.missingQuantity)} de plus que le solde Binance (retrait vers un
-          autre portefeuille, staking bloqué ou vente sur une paire non suivie). Cette part sort au prix de revient, sans plus-value.
-        </p>
+        <Notice tone="warning">
+          Les mouvements importés totalisent {formatQty(holding.missingQuantity)} {unitOf(holding.ticker, holding.missingQuantity)} de plus que le solde Binance (retrait vers un autre
+          portefeuille, staking bloqué ou vente sur une paire non suivie). Cette part sort au prix de revient, sans plus-value.
+        </Notice>
       ) : null}
 
       <section aria-labelledby="trades-title">
-        <div className={styles.tradesHead}>
-          <h3 id="trades-title">Mouvements</h3>
-          <Button size="sm" onClick={() => setEditing({ trade: null, key: Date.now() })}>
-            Ajouter un mouvement
-          </Button>
-        </div>
+        <SectionHeader
+          as="h3"
+          id="trades-title"
+          title="Mouvements"
+          aside={
+            <Button size="sm" onClick={() => setEditing({ trade: null, key: Date.now() })}>
+              Ajouter un mouvement
+            </Button>
+          }
+        />
         <ul className="ledger">
           {[...holding.trades].reverse().map((t) => (
-            <li key={t.id} className={styles.trade}>
-              <span className={styles.tradeDate}>{formatDateCompact(t.date)}</span>
-              <span className={styles.tradeSide}>{t.side === 'buy' ? 'Achat' : 'Vente'}</span>
-              <span className={['num', styles.tradeQty].join(' ')}>
-                {formatQty(t.quantity)} {unitOf(holding.ticker, t.quantity)}
-              </span>
-              <span className={['num', styles.tradeAmount].join(' ')}>
-                {formatEuros(t.amount)}
-                {t.fees > 0 ? <span className={styles.unit}> + {formatEuros(t.fees)} de frais</span> : null}
-              </span>
-              <span className={styles.tradeActions}>
-                {t.source === 'binance' ? (
-                  <span className={styles.unit}>Importé de Binance</span>
+            <ListRow
+              key={t.id}
+              compact
+              lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+              title={sideLabel(t)}
+              meta={
+                <>
+                  <span className="num">
+                    {formatQty(t.quantity)} {unitOf(holding.ticker, t.quantity)}
+                  </span>
+                  {t.source === 'binance' ? <span>Importé de Binance</span> : null}
+                </>
+              }
+              trail={<Amount cents={t.amount} tone="neutral" />}
+              trailSub={t.fees > 0 ? `+ ${formatEuros(t.fees)} de frais` : undefined}
+              actions={
+                t.source === 'binance' ? (
+                  editable ? (
+                    <span />
+                  ) : undefined
                 ) : (
-                  <>
-                    <Button variant="ghost" size="sm" icon={<Pencil />} aria-label="Modifier le mouvement" onClick={() => setEditing({ trade: t, key: t.id })} />
-                    <Button variant="ghost" size="sm" icon={<Trash2 />} aria-label="Supprimer le mouvement" loading={removeTrade.isPending && removeTrade.variables === t.id} onClick={() => removeTrade.mutate(t.id)} />
-                  </>
-                )}
-              </span>
-            </li>
+                  <RowMenu
+                    label={`Actions du mouvement du ${formatDateCompact(t.date)}`}
+                    items={[
+                      { label: 'Modifier', icon: <Pencil />, onSelect: () => setEditing({ trade: t, key: t.id }) },
+                      { label: 'Supprimer', icon: <Trash2 />, danger: true, onSelect: () => setDeletingTrade(t) },
+                    ]}
+                  />
+                )
+              }
+            />
           ))}
         </ul>
       </section>
 
-      {error ? (
-        <p className={styles.error} role="alert">
-          {errorMessage(error)}
-        </p>
-      ) : null}
-
       {manual ? (
-        <div className={styles.danger}>
-          {confirmDelete ? (
-            <>
-              <span>La position et ses {holding.trades.length} mouvements seront effacés.</span>
-              <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                Annuler
-              </Button>
-              <Button variant="danger" size="sm" loading={removeHolding.isPending} onClick={() => removeHolding.mutate(holding.id)}>
-                Confirmer la suppression
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" size="sm" className={styles.deleteLink} icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
-              Supprimer la position
-            </Button>
-          )}
+        <div>
+          <Button variant="danger-quiet" size="sm" icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
+            Supprimer la position
+          </Button>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={deletingTrade !== null}
+        onClose={() => setDeletingTrade(null)}
+        onConfirm={() => deletingTrade && removeTrade.mutate(deletingTrade.id)}
+        title="Supprimer ce mouvement ?"
+        confirmLabel="Supprimer"
+        loading={removeTrade.isPending}
+        error={removeTrade.error ? errorMessage(removeTrade.error) : null}
+      >
+        {deletingTrade ? (
+          <span>
+            <strong>{sideLabel(deletingTrade)}</strong> du {formatDateCompact(deletingTrade.date)} : {formatQty(deletingTrade.quantity)} {unitOf(holding.ticker, deletingTrade.quantity)} pour{' '}
+            <Amount cents={deletingTrade.amount} tone="neutral" />.
+          </span>
+        ) : null}
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => removeHolding.mutate(holding.id)}
+        title="Supprimer la position ?"
+        description={`La position et ses ${holding.trades.length} mouvements seront effacés.`}
+        confirmLabel="Supprimer"
+        loading={removeHolding.isPending}
+        error={removeHolding.error ? errorMessage(removeHolding.error) : null}
+      >
+        <strong>{holding.name}</strong>
+      </ConfirmDialog>
 
       {editing ? <TradeDialog key={editing.key} holding={holding} trade={editing.trade} open onClose={() => setEditing(null)} /> : null}
     </div>

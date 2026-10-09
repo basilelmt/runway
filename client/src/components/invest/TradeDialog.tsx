@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import type { HoldingView, TradeView } from '@shared/api-types';
 import { errorMessage } from '@/api/client';
 import { useAddTrade, useUpdateTrade } from '@/api/hooks';
-import { Button, Dialog, useToast } from '@/components/ui';
+import { Button, Dialog, DialogFooter, FieldError, useToast } from '@/components/ui';
 import { unitOf } from './HoldingList';
 import { emptyTrade, parseTrade, TradeFields, tradeFromInput, type TradeDraft, type TradeErrors } from './TradeFields';
 import styles from './Forms.module.css';
@@ -38,16 +38,6 @@ export function TradeDialog({ holding, trade, open, onClose }: Props) {
       size="sm"
       title={trade ? 'Modifier le mouvement' : 'Ajouter un mouvement'}
       description={holding.name}
-      footer={
-        <div className={styles.actions}>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button type="submit" form={formId} variant="primary" loading={add.isPending || update.isPending}>
-            Enregistrer
-          </Button>
-        </div>
-      }
     >
       <form id={formId} className={styles.form} onSubmit={submit} noValidate>
         <TradeFields
@@ -59,11 +49,15 @@ export function TradeDialog({ holding, trade, open, onClose }: Props) {
             setErrors({});
           }}
         />
-        {serverError ? (
-          <p className={styles.error} role="alert">
-            {errorMessage(serverError)}
-          </p>
-        ) : null}
+        <FieldError>{serverError ? errorMessage(serverError) : null}</FieldError>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form={formId} variant="primary" loading={add.isPending || update.isPending}>
+            Enregistrer
+          </Button>
+        </DialogFooter>
       </form>
     </Dialog>
   );
