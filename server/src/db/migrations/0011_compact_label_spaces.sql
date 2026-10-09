@@ -4,6 +4,7 @@
 -- espaces en répétant replace('  ', ' ') assez de fois pour réduire une suite de 64 espaces à un seul
 -- (64 -> 32 -> 16 -> 8 -> 4 -> 2 -> 1, soit six passes), puis on retire les espaces de bord avec trim().
 -- La clé marchand (merchant_key) n'est pas touchée : elle compacte déjà les espaces à son propre calcul.
+-- Ne compacte que des suites d'espace ASCII (' '), jusqu'à 64 de suite ; l'ingestion normalise déjà tous les espaces (tabulations, insécables...) des nouvelles opérations.
 
 UPDATE `transactions`
 SET `label` = trim(replace(replace(replace(replace(replace(replace(`label`, '  ', ' '), '  ', ' '), '  ', ' '), '  ', ' '), '  ', ' '), '  ', ' '))
