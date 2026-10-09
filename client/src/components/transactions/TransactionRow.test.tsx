@@ -78,6 +78,35 @@ describe('TransactionRow', () => {
     expect(screen.getByRole('button', { name: 'Confirmer' })).toBeInTheDocument();
   });
 
+  it('affiche un virement par le compte crédité, sans répéter le couple de comptes en dessous', () => {
+    render(
+      <ul>
+        <TransactionRow
+          transaction={tx({ kind: 'transfer', amount: 20000, label: 'VIREMENT PERMANENT POUR MR X COMPTE FR21 REFERENCE : 42', accountId: 1, toAccountId: 2 })}
+          accounts={accounts}
+          envelopes={envelopes}
+        />
+      </ul>,
+    );
+    expect(screen.getByText('Virement vers Livret')).toBeInTheDocument();
+    expect(screen.queryByText(/REFERENCE/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Courant → Livret')).not.toBeInTheDocument();
+  });
+
+  it('vu depuis le compte crédité, affiche un virement par le compte débité', () => {
+    render(
+      <ul>
+        <TransactionRow
+          transaction={tx({ kind: 'transfer', amount: 20000, label: 'VIREMENT PERMANENT', accountId: 1, toAccountId: 2 })}
+          accounts={accounts}
+          envelopes={envelopes}
+          viewAccountId={2}
+        />
+      </ul>,
+    );
+    expect(screen.getByText('Virement depuis Courant')).toBeInTheDocument();
+  });
+
   it('affiche le nom du marchand, avec le libellé brut au survol', () => {
     render(
       <ul>

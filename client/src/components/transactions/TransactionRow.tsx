@@ -31,12 +31,12 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
   const fromEnvelope = t.fromEnvelopeId != null ? envelopes.get(t.fromEnvelopeId) : undefined;
   const account = t.accountId != null ? accounts.get(t.accountId) : undefined;
-  const toAccount = t.toAccountId != null ? accounts.get(t.toAccountId) : undefined;
   const planned = t.status === 'planned';
 
   const where =
+    // Le titre dit déjà « Virement vers/depuis » : pas la peine de répéter le même couple de comptes en dessous.
     t.kind === 'transfer'
-      ? `${account?.name ?? '?'} → ${toAccount?.name ?? '?'}`
+      ? ''
       : t.kind === 'allocation'
         ? `${fromEnvelope?.name ?? 'Pas encore réparti'} → ${envelope?.name ?? '?'}`
         : account?.name ?? '';
@@ -45,7 +45,7 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
     <li className={[styles.row, planned ? styles.planned : '', onClick ? `hover-row ${styles.clickable}` : ''].join(' ')}>
       <button type="button" className={styles.main} onClick={onClick} disabled={!onClick}>
         <span className={styles.label} title={t.label}>
-          {displayLabel(t)}
+          {displayLabel(t, accounts, viewAccountId)}
         </span>
         <span className={styles.meta}>
           {t.kind !== 'expense' ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}
