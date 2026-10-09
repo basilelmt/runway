@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, BankConnectionStatus, Envelope, ImportRecord, RecurringRuleInput, SortingRule, Transaction } from './schemas';
+import type { Account, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRuleInput, SortingRule, Transaction } from './schemas';
 import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
@@ -402,3 +402,9 @@ export type AskStreamEvent =
   | { event: 'step'; data: { text: string } }
   | { event: 'answer'; data: AskAnswerEvent }
   | { event: 'error'; data: { message: string; code: string } };
+
+/** État du nommage des marchands par Claude (`GET /api/merchants/status`). */
+export type MerchantStatus = { total: number; named: number; running: boolean; lastError: string | null };
+
+/** Un marchand et le nombre de ses opérations (`GET /api/merchants/:key`). */
+export type MerchantDetail = { key: string; name: string; source: MerchantSource | null; transactionCount: number };

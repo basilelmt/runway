@@ -321,6 +321,13 @@ export const sortingApplySchema = z.object({
 });
 export type SortingApply = z.infer<typeof sortingApplySchema>;
 
+/** Renommage d'un marchand par l'utilisateur ; un nom vide le rend à Claude. */
+export const merchantRenameSchema = z.object({ name: z.string().trim().max(60, '60 caractères au plus') });
+export type MerchantRename = z.infer<typeof merchantRenameSchema>;
+
+/** Sortie brute du nommage des marchands par Claude, filtrée clé par clé ensuite. */
+export const merchantNamesResultSchema = z.object({ names: z.array(z.object({ key: z.string(), name: z.string() })) });
+
 /** Quantité décimale exacte, transportée en texte (« 0.04512 »). */
 export const decimalSchema = z
   .string()
