@@ -4,6 +4,7 @@ import { BrandMark } from './BrandMark';
 import { Button } from './Button';
 import { CountBadge } from './CountBadge';
 import { Kbd } from './Kbd';
+import { Notice } from './Notice';
 import { PulseDot } from './PulseDot';
 import { Spinner } from './Spinner';
 
@@ -54,6 +55,17 @@ describe('BrandMark', () => {
     const el = container.firstElementChild as HTMLElement;
     expect(el).toHaveAttribute('aria-hidden');
     expect(el.style.width).toBe('20px');
+  });
+});
+
+describe('Notice', () => {
+  it('peut devenir une région vivante pour un travail en cours (fournée d’idées)', () => {
+    render(
+      <Notice tone="neutral" icon={<PulseDot />} role="status">
+        4 chercheurs fouillent l’actualité. Ça prend plusieurs minutes, tu peux continuer ailleurs.
+      </Notice>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('4 chercheurs fouillent l’actualité.');
   });
 });
 

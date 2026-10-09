@@ -52,7 +52,7 @@ export function IdeasSection() {
       />
 
       {running ? (
-        <Notice tone="neutral" icon={<PulseDot />}>
+        <Notice tone="neutral" icon={<PulseDot />} role="status">
           {current?.phase === 'review'
             ? 'Claude passe les pistes au crible.'
             : `${IDEA_ANGLES.length} chercheurs fouillent l’actualité. Ça prend plusieurs minutes, tu peux continuer ailleurs.`}

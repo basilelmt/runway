@@ -80,28 +80,17 @@
   box-shadow: 0 0 0 2px var(--marking-soft);
 }
 
+/* .asset, .assetName, .where (et le ticker en .mono) sont partagés avec la carte : Ideas.module.css est la source canonique. */
 .asset {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--rule);
+  composes: asset from './Ideas.module.css';
 }
 
 .assetName {
-  font-weight: 600;
-}
-
-.asset :global(.mono) {
-  font-size: var(--text-xs);
-  color: var(--ink-mute);
+  composes: assetName from './Ideas.module.css';
 }
 
 .where {
-  margin-left: auto;
-  font-size: var(--text-xs);
-  color: var(--ink-mute);
+  composes: where from './Ideas.module.css';
 }
 
 /* Ce que le cours avait déjà fait, rangé sous l'actif */

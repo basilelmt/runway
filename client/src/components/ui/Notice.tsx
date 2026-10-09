@@ -10,14 +10,16 @@ type NoticeProps = {
   action?: ReactNode;
   /** Nom du groupe (bandeau avec actions). */
   label?: string;
+  /** `status` : région vivante annoncée à chaque changement (travail en cours). Remplace le rôle automatique du ton. */
+  role?: 'status';
 };
 
 /** Le seul bandeau de l'app : proposition, erreur, mise en garde ou note. */
-export function Notice({ tone = 'neutral', icon, children, action, label }: NoticeProps) {
+export function Notice({ tone = 'neutral', icon, children, action, label, role }: NoticeProps) {
   const shownIcon = icon === undefined ? (tone === 'negative' || tone === 'warning' ? <AlertCircle /> : null) : icon;
-  const role = tone === 'negative' ? 'alert' : label ? 'group' : undefined;
+  const resolvedRole = role ?? (tone === 'negative' ? 'alert' : label ? 'group' : undefined);
   return (
-    <div className={[styles.notice, styles[tone]].join(' ')} role={role} aria-label={role === 'group' ? label : undefined}>
+    <div className={[styles.notice, styles[tone]].join(' ')} role={resolvedRole} aria-label={resolvedRole === 'group' ? label : undefined}>
       {shownIcon ? (
         <span className={styles.icon} aria-hidden>
           {shownIcon}

@@ -24,7 +24,7 @@ export function IdeasScore({ summary }: { summary: IdeasSummary }) {
         <Stat label="Auraient donné" emphasis>
           <span className={styles[gainTone(ideas - bench)]}>{formatEuros(ideas)}</span>
         </Stat>
-        <Stat label="Contre, sur le S&P 500">{formatEuros(bench)}</Stat>
+        <Stat label="Sur le S&P 500">{formatEuros(bench)}</Stat>
       </StatGroup>
       {summary.filter ? (
         <p className={styles.scoreLine}>
