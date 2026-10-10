@@ -8,7 +8,7 @@ import { migrationsFolder, openDb, type Db } from '../src/db/client';
 import { createDbHolder } from '../src/db/holder';
 import { createAccount, listAccounts } from '../src/repos/accounts';
 import { getSettings, saveSettings } from '../src/repos/settings';
-import { createBackupService, hasPendingMigrations, isRestorable, listBackups, writeBackup } from '../src/services/backup';
+import { createBackupService, hasPendingMigrations, isRestorable, listBackups, startupBackupReason, writeBackup } from '../src/services/backup';
 
 // Tous les fichiers de test vivent dans tmp/ (gitignoré), jamais dans /tmp : un sous-dossier par test, nettoyé après.
 const root = join('tmp', 'backup-tests');
@@ -183,6 +183,21 @@ describe('sauvegarde de démarrage', () => {
     const db = openDb(dbPath);
     db.$client.close();
     expect(hasPendingMigrations(dbPath, migrationsFolder)).toBe(false);
+  });
+
+  it('saute la sauvegarde si une a moins d’une heure, sauf migration en attente', async () => {
+    const backupsDir = join(dir, 'backups');
+    const at = (h: number, m: number) => new Date(2026, 0, 1, h, m, 0);
+    expect(await startupBackupReason(backupsDir, false, at(8, 0))).toBe('demarrage');
+
+    const db = openDb(dbPath);
+    mkdirSync(backupsDir, { recursive: true });
+    await writeBackup(db.$client, backupsDir, 'runway-2026-01-01T08-00-00-demarrage.db');
+    db.$client.close();
+
+    expect(await startupBackupReason(backupsDir, false, at(8, 59))).toBeNull();
+    expect(await startupBackupReason(backupsDir, true, at(8, 59))).toBe('avant-migration');
+    expect(await startupBackupReason(backupsDir, false, at(9, 1))).toBe('demarrage');
   });
 });
 

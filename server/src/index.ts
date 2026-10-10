@@ -10,7 +10,7 @@ import { migrationsFolder, openDb } from './db/client';
 import { createDbHolder } from './db/holder';
 import { failInterruptedRuns } from './repos/ideas';
 import { startBackgroundSync } from './services/bank-scheduler';
-import { createBackupService, defaultBackupsDir, hasPendingMigrations, performBackup } from './services/backup';
+import { createBackupService, defaultBackupsDir, hasPendingMigrations, performBackup, startupBackupReason } from './services/backup';
 import { materializeDue } from './services/materialize';
 import { backfillMerchantKeys, createMerchantNamer } from './services/merchants';
 import { detectSignals } from './services/signals';
@@ -22,13 +22,13 @@ const dbPath = process.env.RUNWAY_DB ?? fileURLToPath(new URL('../../data/runway
 const backupsDir = defaultBackupsDir(dbPath);
 
 // Sauvegarde d'avant-démarrage, avant d'ouvrir la base (et donc avant ses migrations). Sautée si la base
-// n'existe pas encore. Pas de second dossier ici : les réglages ne sont lisibles qu'une fois la base ouverte ;
+// n'existe pas encore, ou si une sauvegarde a moins d'une heure et qu'aucune migration n'attend. Pas de second dossier ici : les réglages ne sont lisibles qu'une fois la base ouverte ;
 // le prochain succès (quotidienne ou manuelle) rattrape le retard du miroir.
-if (existsSync(dbPath)) {
-  const reason = hasPendingMigrations(dbPath, migrationsFolder) ? 'avant-migration' : 'demarrage';
+const startupReason = existsSync(dbPath) ? await startupBackupReason(backupsDir, hasPendingMigrations(dbPath, migrationsFolder), new Date()) : null;
+if (startupReason) {
   const raw = new Database(dbPath);
   try {
-    const result = await performBackup({ sqlite: raw, dir: backupsDir, reason, date: new Date(), mirrorDir: null });
+    const result = await performBackup({ sqlite: raw, dir: backupsDir, reason: startupReason, date: new Date(), mirrorDir: null });
     if (result.localError) console.warn(`[sauvegardes] Sauvegarde de démarrage impossible : ${result.localError}`);
   } finally {
     raw.close();

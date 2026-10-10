@@ -122,6 +122,19 @@ export async function listBackups(dir: string): Promise<BackupFileEntry[]> {
   return entries;
 }
 
+/** Délai sous lequel un redémarrage ne refait pas de sauvegarde (le serveur de dev redémarre à chaque modification). */
+export const STARTUP_BACKUP_MIN_GAP_MS = 60 * 60_000;
+
+/**
+ * Raison de la sauvegarde de démarrage, ou null pour la sauter : une migration en attente sauvegarde
+ * toujours, sinon seulement si la dernière sauvegarde du dossier date de plus d'une heure.
+ */
+export async function startupBackupReason(dir: string, pendingMigration: boolean, now: Date): Promise<'avant-migration' | 'demarrage' | null> {
+  if (pendingMigration) return 'avant-migration';
+  const latest = Math.max(0, ...(await listBackups(dir)).map((e) => e.date.getTime()));
+  return now.getTime() - latest < STARTUP_BACKUP_MIN_GAP_MS ? null : 'demarrage';
+}
+
 /** Applique la règle de conservation à un dossier (local ou miroir) et supprime ce qui doit l'être. */
 export async function cleanupOldBackups(dir: string, now: Date): Promise<string[]> {
   const entries = await listBackups(dir);
