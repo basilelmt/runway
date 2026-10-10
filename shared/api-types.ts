@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRule, RecurringRuleInput, SignalKind, SortingRule, Transaction } from './schemas';
+import type { Account, AppliedReview, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRule, RecurringRuleInput, SignalKind, SortingRule, Transaction } from './schemas';
 import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
@@ -106,6 +106,9 @@ export type FundingView = {
   sourceLabel: string;
 };
 
+/** Bilan du mois précédent à faire, pour la carte d'Accueil : visible du 1er à la fin du mois tant qu'il n'est pas validé. */
+export type PendingReview = { month: string; spent: Cents; overspentCount: number };
+
 export type Overview = {
   today: ISODate;
   toAllocate: Cents;
@@ -123,6 +126,46 @@ export type Overview = {
   watch: WatchedEnvelope[];
   /** Signaux actifs (ni écartés, ni résolus). */
   signalCount: number;
+  /** Bilan du mois précédent restant à faire, ou null une fois validé ou hors de la fenêtre. */
+  pendingReview: PendingReview | null;
+};
+
+/** Chiffres du mois passé en revue : revenus, dépenses et épargne, sur les opérations confirmées. */
+export type ReviewMonthFigures = { income: Cents; spent: Cents; saved: Cents };
+
+/** Une ligne de la section Enveloppes du bilan (hors épargne) : `gap` = dépensé - budget (positif = dépassement, négatif = marge). */
+export type ReviewEnvelopeLine = { envelopeId: number; name: string; color: string; budget: Cents; spent: Cents; gap: Cents };
+
+/** Proposition de nouveau complément, à partir de la médiane des dépenses courantes des 3 derniers mois. */
+export type ReviewProposal = {
+  envelopeId: number;
+  name: string;
+  currentExtra: Cents | null;
+  proposedExtra: Cents;
+  /** Dépenses courantes des mois disponibles, du plus ancien au plus récent (le mois passé en revue en dernier). */
+  monthsSpent: Cents[];
+};
+
+/** Budget du mois courant d'une enveloppe, pour le contrôle d'ensemble recalculé côté client à chaque proposition acceptée. */
+export type ReviewControlEnvelope = { envelopeId: number; monthlyCharges: Cents; monthlyBudget: Cents };
+
+export type ReviewControl = { envelopes: ReviewControlEnvelope[]; medianIncome: Cents };
+
+/** Solde positif à aujourd'hui d'une enveloppe hors épargne, qu'on peut verser dans l'épargne. */
+export type ReviewRemainder = { envelopeId: number; name: string; color: string; amount: Cents };
+
+export type ReviewStatus = { validated: boolean; reviewedAt: string | null; applied: AppliedReview | null };
+
+/** Bilan complet d'un mois passé (`GET /api/reviews/:month`), calculé par `core/review.ts`. */
+export type MonthReview = {
+  month: string;
+  figures: ReviewMonthFigures;
+  envelopes: ReviewEnvelopeLine[];
+  proposals: ReviewProposal[];
+  control: ReviewControl;
+  /** `null` pour un mois déjà validé, ou plus ancien que le mois précédent. */
+  remainders: ReviewRemainder[] | null;
+  status: ReviewStatus;
 };
 
 export type SpendingReport = {
@@ -439,3 +482,28 @@ export type MerchantStatus = { total: number; named: number; running: boolean; l
 
 /** Un marchand et le nombre de ses opérations (`GET /api/merchants/:key`). */
 export type MerchantDetail = { key: string; name: string; source: MerchantSource | null; transactionCount: number };
+
+/** Une sauvegarde listée (`GET /api/backups`). */
+export type BackupEntry = {
+  name: string;
+  /** Horodatage ISO, déduit du nom du fichier (ou de sa date de modification pour une ancienne copie manuelle). */
+  date: string;
+  /** Suffixe technique du nom (`demarrage`, `avant-migration`, `quotidienne`, `manuelle`, `avant-restauration`, ou une raison personnalisée). */
+  reason: string;
+  /** Raison en clair, pour l'affichage. */
+  reasonLabel: string;
+  size: number;
+  /** Présente aussi dans le second dossier. */
+  inMirror: boolean;
+};
+
+/** État des sauvegardes (`GET /api/backups`). */
+export type BackupsState = {
+  backups: BackupEntry[];
+  /** Horodatage ISO de la dernière sauvegarde locale réussie, ou `null` si aucune. */
+  lastSuccessAt: string | null;
+  lastLocalError: string | null;
+  lastMirrorError: string | null;
+  localDir: string;
+  mirrorDir: string | null;
+};

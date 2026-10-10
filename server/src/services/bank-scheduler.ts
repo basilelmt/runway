@@ -3,6 +3,7 @@ import type { Settings } from '@shared/schemas';
 import type { PsuInfo } from '../bank/enable-banking';
 import type { BankProvider } from '../bank/provider';
 import type { Db } from '../db/client';
+import { toDbHolder, type DbHolder } from '../db/holder';
 import { getSettings } from '../repos/settings';
 import { defaultBankProvider, isBankConfigured, runSync } from './bank-sync';
 
@@ -19,7 +20,8 @@ export const BACKGROUND_SYNC_STALE_MINUTES = 360;
 export const BACKGROUND_SYNC_INTERVAL_MS = 30 * 60_000;
 
 export type BankSchedulerDeps = {
-  db: Db;
+  /** `Db` figé (tests) ou porteur de connexion remplaçable (production, pour la restauration). */
+  db: Db | DbHolder;
   /** Fabrique du fournisseur, injectable pour les tests. Par défaut, le vrai Enable Banking. */
   provider?: (settings: Settings, psu: PsuInfo) => BankProvider;
   now?: () => Date;
@@ -46,16 +48,20 @@ export function startBackgroundSync(deps: BankSchedulerDeps): { stop: () => void
   const enabled = deps.enabled ?? envEnabled;
   const makeProvider = deps.provider ?? defaultBankProvider;
   const now = deps.now ?? (() => new Date());
+  const holder = toDbHolder(deps.db);
 
   if (!enabled()) return { stop: () => {} };
 
   async function tick() {
     try {
-      const settings = getSettings(deps.db);
+      // Relit le porteur à chaque tentative, pas une connexion figée au démarrage : une restauration ne doit
+      // jamais écrire sur une connexion fermée.
+      const db = holder.current();
+      const settings = getSettings(db);
       if (!isBankConfigured(settings)) return;
       const provider = makeProvider(settings, BACKGROUND_PSU);
       const current = now();
-      const result = await runSync(deps.db, provider, { today: toISODate(current), now: current, onlyIfStaleMinutes: BACKGROUND_SYNC_STALE_MINUTES });
+      const result = await runSync(db, provider, { today: toISODate(current), now: current, onlyIfStaleMinutes: BACKGROUND_SYNC_STALE_MINUTES });
       deps.onResult?.(result);
     } catch (err) {
       deps.onError?.(err);

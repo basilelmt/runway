@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
   AnySignal,
+  BackupEntry,
+  BackupsState,
   BankAuthStart,
   BankConnectionView,
   BankSyncRunResult,
@@ -18,6 +20,7 @@ import type {
   MerchantDetail,
   MerchantStatus,
   MonthlyReport,
+  MonthReview,
   NetWorthReport,
   Overview,
   PortfolioRange,
@@ -39,6 +42,7 @@ import type {
   ImportRecord,
   RecurringRule,
   RecurringRuleInput,
+  ReviewApply,
   Settings,
   SortingApply,
   SortingRule,
@@ -79,6 +83,8 @@ export const keys = {
   merchant: (key: string) => ['merchants', 'detail', key] as const,
   merchantStatus: ['merchants', 'status'] as const,
   signals: ['signals'] as const,
+  backups: ['backups'] as const,
+  review: (month: string) => ['reviews', month] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -187,6 +193,34 @@ export function useDismissFunding(opts?: MutOpts<void, number>) {
 export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (ids) => api.put<Envelope[]>('/api/envelopes/reorder', { ids }), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });
+}
+
+// Bilan du mois
+
+export const useReview = (month: string) => useQuery({ queryKey: keys.review(month), queryFn: () => api.get<MonthReview>(`/api/reviews/${month}`) });
+
+export function useApplyReview(month: string, opts?: MutOpts<MonthReview, ReviewApply>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (input) => api.post<MonthReview>(`/api/reviews/${month}`, input),
+    onSuccess: (...a) => {
+      invalidate(keys.review(month), ['envelopes']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export function useCancelReview(month: string, opts?: MutOpts<{ skipped: { envelopeId: number; name: string }[] }, void>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: () => api.delete<{ skipped: { envelopeId: number; name: string }[] }>(`/api/reviews/${month}`),
+    onSuccess: (...a) => {
+      invalidate(keys.review(month), ['envelopes']);
+      opts?.onSuccess?.(...a);
+    },
+  });
 }
 
 // Transactions
@@ -375,7 +409,21 @@ export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: ()
 
 export function useSaveSettings(opts?: MutOpts<Settings, Settings>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (input) => api.put<Settings>('/api/settings', input), onSuccess: (...a) => { invalidate(keys.settings); opts?.onSuccess?.(...a); } });
+  // `backupMirrorDir` vit dans les réglages mais s'affiche dans l'état des sauvegardes : les deux se rafraîchissent ensemble.
+  return useMutation({ ...opts, mutationFn: (input) => api.put<Settings>('/api/settings', input), onSuccess: (...a) => { invalidate(keys.settings, keys.backups); opts?.onSuccess?.(...a); } });
+}
+
+// Sauvegardes
+
+export const useBackups = () => useQuery({ queryKey: keys.backups, queryFn: () => api.get<BackupsState>('/api/backups') });
+
+export function useRunBackup(opts?: MutOpts<BackupEntry, void>) {
+  const qc = useQueryClient();
+  return useMutation({ ...opts, mutationFn: () => api.post<BackupEntry>('/api/backups'), onSuccess: (...a) => { void qc.invalidateQueries({ queryKey: keys.backups }); opts?.onSuccess?.(...a); } });
+}
+
+export function useRestoreBackup(opts?: MutOpts<void, string>) {
+  return useMutation({ ...opts, mutationFn: (name) => api.post<void>(`/api/backups/${encodeURIComponent(name)}/restore`) });
 }
 
 // Synchronisation bancaire

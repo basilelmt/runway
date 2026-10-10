@@ -1,0 +1,82 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+}
+
+.pickerLabel {
+  min-width: 11ch;
+  text-align: center;
+  font-weight: 600;
+}
+
+.over {
+  color: var(--negative);
+}
+
+.under {
+  color: var(--positive);
+}
+
+.proposals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.proposalRow,
+.remainderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-4);
+  border-bottom: 1px solid var(--rule);
+}
+
+.proposalRow:last-child,
+.remainderRow:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.proposalInput {
+  flex: none;
+  width: 110px;
+}
+
+.control {
+  margin: var(--s-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.control.over {
+  color: var(--negative);
+  font-weight: 500;
+}
+
+.submit {
+  align-self: flex-start;
+}
+
+@media (max-width: 767px) {
+  .proposalRow,
+  .remainderRow {
+    flex-direction: column;
+  }
+
+  .submit {
+    align-self: stretch;
+  }
+}

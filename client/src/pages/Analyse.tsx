@@ -6,6 +6,7 @@ import { addMonths, endOfMonth, startOfMonth, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useEnvelopes, useMonthly, useNetWorth, useSpending, useTransactions } from '@/api/hooks';
+import { Review } from '@/components/analyse/Review';
 import { Upcoming } from '@/components/analyse/Upcoming';
 import { MonthlyBars } from '@/components/charts/MonthlyBars';
 import { NetWorthLine } from '@/components/charts/NetWorthLine';
@@ -37,13 +38,14 @@ import { displayLabel } from '@/lib/merchants';
 import { useCountUp } from '@/lib/motion';
 import styles from './Analyse.module.css';
 
-type View = 'depenses' | 'evolution' | 'a-venir';
+type View = 'depenses' | 'evolution' | 'a-venir' | 'bilan';
 type Preset = 'month' | 'last' | 'quarter' | 'year' | 'custom';
 
 const VIEWS: { value: View; label: string }[] = [
   { value: 'depenses', label: 'Où part l’argent' },
   { value: 'evolution', label: 'Évolution' },
   { value: 'a-venir', label: 'À venir' },
+  { value: 'bilan', label: 'Bilan' },
 ];
 
 const PRESETS: { value: Preset; label: string }[] = [
@@ -77,14 +79,14 @@ export function periodFor(preset: Preset, now: string): { from: string; to: stri
 export function AnalysePage() {
   const [params, setParams] = useSearchParams();
   const raw = params.get('vue');
-  const view: View = raw === 'evolution' || raw === 'a-venir' ? raw : 'depenses';
+  const view: View = raw === 'evolution' || raw === 'a-venir' || raw === 'bilan' ? raw : 'depenses';
 
   return (
     <div className="page">
       <PageHeader title="Analyse" subtitle="Où part ton argent, ce que tu mets de côté, et ce qui arrive." />
       <div className={styles.body}>
         <Tabs<View> label="Vues de l’analyse" value={view} onChange={(v) => setParams(v === 'depenses' ? {} : { vue: v }, { replace: true })} items={VIEWS} />
-        {view === 'depenses' ? <Spending /> : view === 'evolution' ? <Evolution /> : <Upcoming />}
+        {view === 'depenses' ? <Spending /> : view === 'evolution' ? <Evolution /> : view === 'a-venir' ? <Upcoming /> : <Review />}
       </div>
     </div>
   );
