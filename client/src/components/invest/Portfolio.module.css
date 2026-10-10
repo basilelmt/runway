@@ -10,6 +10,13 @@
   width: 100%;
   /* Cadré sur la Terre et l'horizon : le haut du ciel et le bas du sol sortent du bloc. */
   transform: translateY(-6%);
+  /* L'image est dessinée par un worker (voir EarthriseArt) : elle se lève en fondu à la première image. */
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.art[data-drawn] {
+  opacity: 1;
 }
 
 /* Voiles à gauche sous les chiffres et à droite sous les stats, pour qu'ils se lisent sur les cratères */

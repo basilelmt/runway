@@ -1,9 +1,8 @@
-import { Ascii } from 'ascii.rest/react';
-import * as earthrise from 'ascii.rest/pieces/earthrise';
 import type { PortfolioView } from '@shared/api-types';
 import { Amount, KeyFigure, Skeleton, Stat, StatGroup } from '@/components/ui';
 import { formatPct, gainTone } from '@/lib/invest';
 import { formatDateCompact } from '@/lib/format';
+import { EarthriseArt } from './EarthriseArt';
 import { MoonTrail } from './MoonTrail';
 import styles from './Portfolio.module.css';
 
@@ -50,7 +49,7 @@ export function PortfolioSummary({ portfolio }: { portfolio: PortfolioView }) {
       }
       decoration={
         <>
-          <Ascii piece={earthrise} className={styles.art} label="La Terre qui se lève sur l’horizon de la Lune, en ascii art" />
+          <EarthriseArt className={styles.art} label="La Terre qui se lève sur l’horizon de la Lune, en ascii art" />
           <div className={styles.veil} />
           <MoonTrail />
         </>
