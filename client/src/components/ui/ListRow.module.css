@@ -211,8 +211,9 @@
   }
 
   /* Action principale en bouton ou lien (pas un simple montant) : elle a besoin de largeur, donc
-     le titre garde toute la première ligne pour lui ; l'action et le menu de la ligne descendent
-     ensemble sur une deuxième ligne, alignés à droite. */
+     le titre garde la première ligne pour lui, à côté de son icône ; l'action et le menu de la
+     ligne descendent ensemble sur une deuxième ligne, alignés à droite. C'est la fin de ligne,
+     large de tout sauf le menu, qui force le retour à la ligne. */
   .row:has(.actions):not(:has(.middle)):has(.trail a),
   .row:has(.actions):not(:has(.middle)):has(.trail button) {
     flex-wrap: wrap;
@@ -221,13 +222,18 @@
 
   .row:has(.actions):not(:has(.middle)):has(.trail a) > .body,
   .row:has(.actions):not(:has(.middle)):has(.trail button) > .body {
-    flex-basis: 100%;
+    flex-basis: 50%;
+  }
+
+  /* La ligne tient déjà sur deux lignes : le titre peut passer à la ligne plutôt que d'être coupé. */
+  .row:has(.actions):not(:has(.middle)):has(.trail a) .title,
+  .row:has(.actions):not(:has(.middle)):has(.trail button) .title {
+    white-space: normal;
   }
 
   .row:has(.actions):not(:has(.middle)):has(.trail a) > .trail,
   .row:has(.actions):not(:has(.middle)):has(.trail button) > .trail {
-    margin-left: auto;
-    flex: 0 0 auto;
+    flex: 1 0 calc(100% - 38px - var(--s-4));
   }
 
   .row:has(.actions):not(:has(.middle)):has(.trail a) > .actions,
