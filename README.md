@@ -34,8 +34,27 @@ La variable `PORT` change le port, et `RUNWAY_DB` le chemin de la base.
 ## Où sont les données
 
 Dans `data/runway.db` (gitignoré).
-Une sauvegarde se résume à copier ce fichier.
 L'écran Paramètres propose aussi un export JSON complet et un export CSV des opérations.
+
+## Sauvegardes et restauration
+
+Le serveur se sauvegarde lui-même, sans réglage : au démarrage (avant une éventuelle migration), une fois par jour tant qu'il tourne, et juste avant chaque restauration.
+Les sauvegardes vivent dans `data/backups/`, au format `runway-<date>T<heure>-<raison>.db`, et sont conservées 30 jours puis une par mois calendaire (les sauvegardes manuelles et celles d'avant restauration ne sont jamais supprimées automatiquement).
+
+Réglages > Général, section Données :
+
+- l'état de la dernière sauvegarde, et d'un second dossier facultatif (clé USB, NAS, dossier synchronisé) pour survivre à une panne de la machine ;
+- le bouton "Sauvegarder maintenant" ;
+- la liste des sauvegardes, avec la restauration dans le menu de chaque ligne (confirmée, et toujours précédée d'une sauvegarde de l'état actuel pour pouvoir se raviser).
+
+En ligne de commande, serveur allumé ou non :
+
+```sh
+npm run db:backup                      # raison "manuelle"
+npm run db:backup -- "avant purge"     # raison personnalisée
+```
+
+Lit `RUNWAY_DB` comme le serveur.
 
 ## Importer un relevé La Banque Postale
 
@@ -68,6 +87,7 @@ L'écran Investir suit ton portefeuille et propose des idées d'investissement t
 | `npm run typecheck` | vérification TypeScript |
 | `npm run lint` | eslint |
 | `npm run db:generate` | génère une migration après modification de `server/src/db/schema.ts` |
+| `npm run db:backup` | sauvegarde manuelle immédiate, serveur allumé ou non |
 
 ## Structure
 
