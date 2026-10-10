@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chart, fakeFetch } from './fixtures/yahoo';
@@ -8,7 +9,7 @@ import { migrationsFolder, openDb, type Db } from '../src/db/client';
 import { createDbHolder } from '../src/db/holder';
 import { createAccount, listAccounts } from '../src/repos/accounts';
 import { getSettings, saveSettings } from '../src/repos/settings';
-import { createBackupService, hasPendingMigrations, isRestorable, listBackups, startupBackupReason, writeBackup } from '../src/services/backup';
+import { createBackupService, hasPendingMigrations, isRestorable, listBackups, readMirrorDirRaw, startupBackupReason, writeBackup } from '../src/services/backup';
 
 // Tous les fichiers de test vivent dans tmp/ (gitignoré), jamais dans /tmp : un sous-dossier par test, nettoyé après.
 const root = join('tmp', 'backup-tests');
@@ -288,5 +289,41 @@ describe('autres services qui captent une base à la création', () => {
     expect(after.body.holdings).toHaveLength(1);
 
     holder.current().$client.close();
+  });
+});
+
+describe('npm run db:backup', () => {
+  // Base d'une version antérieure : une table de réglages avec un second dossier, aucune migration appliquée.
+  function oldDb(mirrorDir: string): void {
+    const sqlite = new Database(dbPath);
+    sqlite.pragma('journal_mode = WAL');
+    sqlite.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    sqlite.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('backupMirrorDir', JSON.stringify(mirrorDir));
+    sqlite.close();
+  }
+
+  it('sauvegarde la base telle quelle, sans la migrer, et copie vers le second dossier lu dans les réglages', () => {
+    const mirrorDir = join(dir, 'miroir');
+    mkdirSync(mirrorDir, { recursive: true });
+    oldDb(mirrorDir);
+
+    const run = spawnSync(process.execPath, ['--import', 'tsx', 'server/scripts/db-backup.ts', 'avant purge'], {
+      env: { ...process.env, RUNWAY_DB: dbPath },
+      encoding: 'utf8',
+    });
+    expect(run.stderr).toBe('');
+    expect(run.status).toBe(0);
+
+    expect(hasPendingMigrations(dbPath, migrationsFolder)).toBe(true);
+    const local = readdirSync(join(dir, 'backups')).filter((n) => n.endsWith('.db'));
+    expect(local).toHaveLength(1);
+    expect(local[0]).toMatch(/-avant-purge\.db$/);
+    expect(readdirSync(mirrorDir)).toEqual(local);
+  });
+
+  it('readMirrorDirRaw renvoie null sans table de réglages', () => {
+    const sqlite = new Database(dbPath);
+    expect(readMirrorDirRaw(sqlite)).toBeNull();
+    sqlite.close();
   });
 });

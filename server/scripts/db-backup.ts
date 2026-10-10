@@ -5,14 +5,13 @@
  *   npm run db:backup -- "avant purge"    -- raison "avant-purge"
  *
  * Lit `RUNWAY_DB` comme le serveur. Remplace les copies que les agents faisaient à la main avant de
- * corriger des données.
+ * corriger des données. N'applique jamais les migrations : la base est sauvegardée telle quelle, même si
+ * ce code est plus récent qu'elle (un serveur d'une autre version peut l'avoir ouverte).
  */
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { kebabCase } from '@core/backups';
-import { getSettings } from '../src/repos/settings';
-import { defaultBackupsDir, performBackup } from '../src/services/backup';
-import { openDb } from '../src/db/client';
+import { backupDbFile, defaultBackupsDir } from '../src/services/backup';
 
 const dbPath = process.env.RUNWAY_DB ?? fileURLToPath(new URL('../../data/runway.db', import.meta.url));
 if (!existsSync(dbPath)) {
@@ -23,10 +22,7 @@ if (!existsSync(dbPath)) {
 const reasonArg = process.argv[2];
 const reason = reasonArg ? kebabCase(reasonArg) : 'manuelle';
 
-const db = openDb(dbPath);
-const mirrorDir = getSettings(db).backupMirrorDir || null;
-const result = await performBackup({ sqlite: db.$client, dir: defaultBackupsDir(dbPath), reason, date: new Date(), mirrorDir });
-db.$client.close();
+const result = await backupDbFile({ dbPath, dir: defaultBackupsDir(dbPath), reason, date: new Date(), mirror: true });
 
 if (result.localError) {
   console.error(`Sauvegarde impossible : ${result.localError}`);

@@ -226,6 +226,38 @@ export async function performBackup(opts: { sqlite: Database.Database; dir: stri
   return { name, localError, mirrorError };
 }
 
+/**
+ * Second dossier lu directement dans la table `settings`, sans Drizzle ni migration : la base peut être d'une
+ * version antérieure (sauvegarde d'avant-migration) ou encore vide. Null si la table ou la clé manque.
+ */
+export function readMirrorDirRaw(sqlite: Database.Database): string | null {
+  const hasTable = sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'settings'").get();
+  if (!hasTable) return null;
+  const row = sqlite.prepare("SELECT value FROM settings WHERE key = 'backupMirrorDir'").get() as { value: string } | undefined;
+  if (!row) return null;
+  try {
+    const value = JSON.parse(row.value) as unknown;
+    return typeof value === 'string' && value !== '' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sauvegarde d'un fichier de base sans l'ouvrir pour de bon : connexion brute en lecture seule, aucune migration
+ * (une sauvegarde doit montrer la base telle qu'elle est), aucun fichier annexe supprimé. Sert au démarrage du
+ * serveur et à `npm run db:backup`, qui peut tourner pendant que le serveur écrit.
+ */
+export async function backupDbFile(opts: { dbPath: string; dir: string; reason: string; date: Date; mirror: boolean }): Promise<PerformBackupResult> {
+  const raw = new Database(opts.dbPath, { readonly: true, fileMustExist: true });
+  try {
+    const mirrorDir = opts.mirror ? readMirrorDirRaw(raw) : null;
+    return await performBackup({ sqlite: raw, dir: opts.dir, reason: opts.reason, date: opts.date, mirrorDir });
+  } finally {
+    raw.close();
+  }
+}
+
 function toView(entry: BackupFileEntry, inMirror: boolean): BackupEntry {
   return { name: entry.name, date: entry.date.toISOString(), reason: entry.reason, reasonLabel: reasonLabel(entry.reason), size: entry.size, inMirror };
 }
