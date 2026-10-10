@@ -100,10 +100,10 @@ export function BackupSettings() {
               <Notice tone="neutral">{data.lastSuccessAt ? <>Dernière sauvegarde {formatBackupMoment(data.lastSuccessAt)}.</> : 'Aucune sauvegarde pour l’instant.'}</Notice>
             )}
 
-            <form className={styles.form} onSubmit={submitMirror} noValidate>
+            <form className={styles.wideForm} onSubmit={submitMirror} noValidate>
               <Field label="Second dossier" error={mirrorError} hint="Chemin absolu : clé USB, NAS ou dossier synchronisé, pour survivre à une panne de la machine.">
                 {(id, describedBy) => (
-                  <Input id={id} aria-describedby={describedBy} value={mirrorDir} onChange={(e) => setMirrorDir(e.target.value)} placeholder="Vide : aucun second dossier" className="mono" spellCheck={false} />
+                  <Input id={id} aria-describedby={describedBy} value={mirrorDir} onChange={(e) => setMirrorDir(e.target.value)} placeholder="Vide : aucun second dossier" spellCheck={false} />
                 )}
               </Field>
               <p className={styles.text}>Les sauvegardes contiennent les clés Binance et Enable Banking, en clair : protège ce dossier comme la base elle-même.</p>
