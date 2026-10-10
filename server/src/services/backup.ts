@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { rmSync, statSync } from 'node:fs';
+import { existsSync, rmSync, statSync } from 'node:fs';
 import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
@@ -255,6 +255,27 @@ export async function backupDbFile(opts: { dbPath: string; dir: string; reason: 
     return await performBackup({ sqlite: raw, dir: opts.dir, reason: opts.reason, date: opts.date, mirrorDir });
   } finally {
     raw.close();
+  }
+}
+
+export type StartupBackupResult = { reason: 'avant-migration' | 'demarrage' | null; error: string | null };
+
+/**
+ * Sauvegarde d'avant-démarrage, avant d'ouvrir la base (et donc avant ses migrations). Sautée si la base n'existe
+ * pas encore, ou si une sauvegarde a moins d'une heure et qu'aucune migration n'attend. Pas de second dossier ici,
+ * pour ne pas retarder le démarrage : le prochain succès (quotidienne ou manuelle) rattrape le retard du miroir.
+ * N'échoue jamais : l'erreur est renvoyée avec la raison, à l'appelant de décider (voir `index.ts`).
+ */
+export async function startupBackup(opts: { dbPath: string; dir: string; date: Date; migrationsFolder?: string }): Promise<StartupBackupResult> {
+  if (!existsSync(opts.dbPath)) return { reason: null, error: null };
+  const pending = hasPendingMigrations(opts.dbPath, opts.migrationsFolder ?? defaultMigrationsFolder);
+  const reason = await startupBackupReason(opts.dir, pending, opts.date);
+  if (!reason) return { reason: null, error: null };
+  try {
+    const result = await backupDbFile({ dbPath: opts.dbPath, dir: opts.dir, reason, date: opts.date, mirror: false });
+    return { reason, error: result.localError };
+  } catch (err) {
+    return { reason, error: message(err) };
   }
 }
 

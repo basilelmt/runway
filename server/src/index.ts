@@ -1,6 +1,5 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
-import Database from 'better-sqlite3';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { relative } from 'node:path';
@@ -10,7 +9,7 @@ import { migrationsFolder, openDb } from './db/client';
 import { createDbHolder } from './db/holder';
 import { failInterruptedRuns } from './repos/ideas';
 import { startBackgroundSync } from './services/bank-scheduler';
-import { createBackupService, defaultBackupsDir, hasPendingMigrations, performBackup, startupBackupReason } from './services/backup';
+import { createBackupService, defaultBackupsDir, startupBackup } from './services/backup';
 import { materializeDue } from './services/materialize';
 import { backfillMerchantKeys, createMerchantNamer } from './services/merchants';
 import { detectSignals } from './services/signals';
@@ -21,19 +20,15 @@ const clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url));
 const dbPath = process.env.RUNWAY_DB ?? fileURLToPath(new URL('../../data/runway.db', import.meta.url));
 const backupsDir = defaultBackupsDir(dbPath);
 
-// Sauvegarde d'avant-démarrage, avant d'ouvrir la base (et donc avant ses migrations). Sautée si la base
-// n'existe pas encore, ou si une sauvegarde a moins d'une heure et qu'aucune migration n'attend. Pas de second dossier ici : les réglages ne sont lisibles qu'une fois la base ouverte ;
-// le prochain succès (quotidienne ou manuelle) rattrape le retard du miroir.
-const startupReason = existsSync(dbPath) ? await startupBackupReason(backupsDir, hasPendingMigrations(dbPath, migrationsFolder), new Date()) : null;
-if (startupReason) {
-  const raw = new Database(dbPath);
-  try {
-    const result = await performBackup({ sqlite: raw, dir: backupsDir, reason: startupReason, date: new Date(), mirrorDir: null });
-    if (result.localError) console.warn(`[sauvegardes] Sauvegarde de démarrage impossible : ${result.localError}`);
-  } finally {
-    raw.close();
-  }
+// Sauvegarde d'avant-démarrage (voir `startupBackup`). Une sauvegarde de démarrage manquée n'empêche pas de
+// démarrer ; une sauvegarde d'avant-migration manquée, si : migrer sans filet, c'est risquer la base sans retour.
+const startup = await startupBackup({ dbPath, dir: backupsDir, date: new Date(), migrationsFolder });
+if (startup.error && startup.reason === 'avant-migration') {
+  console.error(`[sauvegardes] Sauvegarde d'avant-migration impossible : ${startup.error}`);
+  console.error(`[sauvegardes] Démarrage annulé : la base n'est pas migrée sans sauvegarde. Vérifie le dossier ${backupsDir} (place libre, droits), puis relance.`);
+  process.exit(1);
 }
+if (startup.error) console.warn(`[sauvegardes] Sauvegarde de démarrage impossible : ${startup.error}`);
 
 const db = openDb(dbPath);
 const holder = createDbHolder(db);

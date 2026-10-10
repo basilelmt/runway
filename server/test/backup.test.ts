@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chart, fakeFetch } from './fixtures/yahoo';
 import { createApp } from '../src/app';
@@ -9,7 +9,7 @@ import { migrationsFolder, openDb, type Db } from '../src/db/client';
 import { createDbHolder } from '../src/db/holder';
 import { createAccount, listAccounts } from '../src/repos/accounts';
 import { getSettings, saveSettings } from '../src/repos/settings';
-import { createBackupService, hasPendingMigrations, isRestorable, listBackups, readMirrorDirRaw, startupBackupReason, writeBackup } from '../src/services/backup';
+import { createBackupService, hasPendingMigrations, isRestorable, listBackups, readMirrorDirRaw, startupBackup, startupBackupReason, writeBackup } from '../src/services/backup';
 
 // Tous les fichiers de test vivent dans tmp/ (gitignoré), jamais dans /tmp : un sous-dossier par test, nettoyé après.
 const root = join('tmp', 'backup-tests');
@@ -325,5 +325,34 @@ describe('npm run db:backup', () => {
     const sqlite = new Database(dbPath);
     expect(readMirrorDirRaw(sqlite)).toBeNull();
     sqlite.close();
+  });
+});
+
+describe('démarrage du serveur', () => {
+  // Base avec une migration en attente, et un dossier de sauvegardes impossible à créer (un fichier à sa place).
+  function pendingMigrationWithBrokenBackupsDir(): string {
+    new Database(dbPath).close();
+    const backupsDir = join(dir, 'backups');
+    writeFileSync(backupsDir, 'pas un dossier');
+    return backupsDir;
+  }
+
+  it("startupBackup remonte l'échec d'une sauvegarde d'avant-migration avec sa raison", async () => {
+    const backupsDir = pendingMigrationWithBrokenBackupsDir();
+    const result = await startupBackup({ dbPath, dir: backupsDir, date: new Date(), migrationsFolder });
+    expect(result.reason).toBe('avant-migration');
+    expect(result.error).toBeTruthy();
+  });
+
+  it("s'arrête sans migrer quand la sauvegarde d'avant-migration échoue", () => {
+    pendingMigrationWithBrokenBackupsDir();
+    const run = spawnSync(process.execPath, ['--import', 'tsx', 'server/src/index.ts'], {
+      env: { ...process.env, RUNWAY_DB: resolve(dbPath), RUNWAY_BACKGROUND_SYNC: '0', PORT: '3106' },
+      encoding: 'utf8',
+      timeout: 20_000,
+    });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("Sauvegarde d'avant-migration impossible");
+    expect(hasPendingMigrations(dbPath, migrationsFolder)).toBe(true);
   });
 });
