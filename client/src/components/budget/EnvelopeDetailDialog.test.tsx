@@ -37,6 +37,21 @@ const expense = (id: number, date: string, label: string, amount: number) => ({
   splits: [],
 });
 
+const income = (id: number, date: string, label: string, amount: number) => ({
+  id,
+  date,
+  label,
+  amount,
+  kind: 'income',
+  status: 'confirmed',
+  accountId: 1,
+  envelopeId: 14,
+  merchantKey: null,
+  merchantName: null,
+  note: null,
+  splits: [],
+});
+
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 
 /** Réponses retenues jusqu'à ce que le test les libère, pour observer l'état de chargement. */
@@ -99,5 +114,19 @@ describe('EnvelopeDetailDialog', () => {
     await release();
     expect(await within(dialog).findByText('Cinéma')).toBeInTheDocument();
     expect(within(dialog).queryByText('Bolt')).not.toBeInTheDocument();
+  });
+
+  it('déduit un remboursement rangé dans l’enveloppe du dépensé affiché', async () => {
+    fetchMock.mockImplementationOnce((_url: string) =>
+      Promise.resolve(json([expense(1, '2026-10-05', 'Bolt', 13_90), expense(2, '2026-10-02', 'Occhio', 15_00), income(3, '2026-10-03', 'WERO DE MAX', 5_00)])),
+    );
+    const dialog = renderDialog();
+    const stats = dialog.querySelector('dl')!;
+    await release();
+
+    expect(await within(dialog).findByText('WERO DE MAX')).toBeInTheDocument();
+    expect(within(dialog).getByText('Remboursement')).toBeInTheDocument();
+    // 13,90 + 15,00 - 5,00 = 23,90 €.
+    expect(within(stats).getByText('23,90 €')).toBeInTheDocument();
   });
 });

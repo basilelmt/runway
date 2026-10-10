@@ -212,3 +212,40 @@ describe('migration 0012 (bilan du mois)', () => {
     db.close();
   });
 });
+
+describe('migration 0014 (avances)', () => {
+  it('ajoute la table advances, vide, référençant les opérations', () => {
+    const db = new Database(':memory:');
+    for (const tag of journalTags(13)) applyMigration(db, tag);
+    db.prepare(`INSERT INTO transactions (kind, date, amount, label) VALUES ('expense', '2026-07-26', 8250, 'Bowling')`).run();
+    const expenseId = (db.prepare('SELECT id FROM transactions').get() as { id: number }).id;
+
+    applyMigration(db, '0014_advances');
+
+    const columns = (db.prepare("PRAGMA table_info('advances')").all() as { name: string }[]).map((c) => c.name);
+    expect(columns).toEqual(['id', 'expense_id', 'person', 'amount', 'refund_id', 'settled_at', 'created_at']);
+
+    db.prepare(`INSERT INTO advances (expense_id, person, amount) VALUES (?, 'Max', 4150)`).run(expenseId);
+    expect(db.prepare('SELECT person, amount, refund_id, settled_at FROM advances').get()).toEqual({ person: 'Max', amount: 4150, refund_id: null, settled_at: null });
+
+    db.close();
+  });
+});
+
+describe('journal des migrations', () => {
+  it('idx se suivent et when sont strictement croissants : sinon drizzle ignore silencieusement une migration', () => {
+    const journal = JSON.parse(readFileSync(`${migrationsDir}/meta/_journal.json`, 'utf8')) as { entries: (JournalEntry & { when: number })[] };
+    const entries = [...journal.entries].sort((a, b) => a.idx - b.idx);
+
+    entries.forEach((entry, i) => expect(entry.idx).toBe(i));
+
+    for (let i = 1; i < entries.length; i++) {
+      const previous = entries[i - 1]!;
+      const current = entries[i]!;
+      // Le migrateur drizzle (SQLiteSyncDialect.migrate) compare le `when` de chaque migration au `created_at`
+      // maximum déjà appliqué en base : une migration dont le `when` est antérieur à une migration déjà
+      // appliquée est ignorée sans erreur, même si elle n'a jamais tourné.
+      expect(current.when).toBeGreaterThan(previous.when);
+    }
+  });
+});

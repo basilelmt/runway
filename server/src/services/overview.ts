@@ -40,19 +40,43 @@ export function buildOverview(db: Db, today: ISODate): Overview {
       toFundThisMonth: remainingToFund(e, allocated.get(e.id) ?? 0),
     }));
 
-  // Consommation du mois : toutes les dépenses confirmées (même à trier), hors enveloppes d'épargne.
+  // Consommation du mois : toutes les dépenses confirmées (même à trier), hors enveloppes d'épargne, remboursements déduits.
   // Dépenses courantes : les mêmes, sauf celles générées par une charge fixe (loyer, Navigo...).
   // Un ticket de métro rangé dans Transports compte donc, le Navigo non.
+  // Un remboursement vient d'abord en déduction des dépenses courantes de son enveloppe, puis de ses charges fixes :
+  // c'est le quotidien (restos, sorties...) qui se rembourse, rarement un loyer.
   const savings = new Set(state.envelopes.filter((e) => e.isSavings).map((e) => e.id));
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
-  let monthSpent = 0;
-  let variableSpent = 0;
+  const fixedByEnvelope = new Map<number, number>();
+  const variableByEnvelope = new Map<number, number>();
+  const reimbursedByEnvelope = new Map<number, number>();
+  const add = (map: Map<number, number>, id: number, amount: number) => map.set(id, (map.get(id) ?? 0) + amount);
+  let unsortedSpent = 0;
   for (const t of state.transactions) {
-    if (t.kind !== 'expense' || t.status !== 'confirmed' || t.date < monthStart || t.date > monthEnd) continue;
-    if (t.envelopeId != null && savings.has(t.envelopeId)) continue;
-    monthSpent += t.amount;
-    if (t.recurringRuleId == null) variableSpent += t.amount;
+    if (t.status !== 'confirmed' || t.date < monthStart || t.date > monthEnd) continue;
+    if (t.kind === 'expense') {
+      if (t.envelopeId != null && savings.has(t.envelopeId)) continue;
+      if (t.envelopeId == null) {
+        unsortedSpent += t.amount;
+        continue;
+      }
+      add(t.recurringRuleId == null ? variableByEnvelope : fixedByEnvelope, t.envelopeId, t.amount);
+    } else if (t.kind === 'income' && t.envelopeId != null) {
+      add(reimbursedByEnvelope, t.envelopeId, t.amount);
+    }
+  }
+  let monthSpent = unsortedSpent;
+  let variableSpent = unsortedSpent;
+  for (const e of state.envelopes) {
+    if (e.isSavings) continue;
+    const variable = variableByEnvelope.get(e.id) ?? 0;
+    const fixed = fixedByEnvelope.get(e.id) ?? 0;
+    const reimbursed = reimbursedByEnvelope.get(e.id) ?? 0;
+    const netVariable = Math.max(0, variable - reimbursed);
+    const netFixed = Math.max(0, fixed - Math.max(0, reimbursed - variable));
+    monthSpent += netVariable + netFixed;
+    variableSpent += netVariable;
   }
   const spending = envelopes.filter((e) => !e.isSavings);
   // Revenu attendu : revenus récurrents actifs et pas encore terminés, ramenés au mois.

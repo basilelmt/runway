@@ -57,6 +57,25 @@ describe('TransactionRow', () => {
     expect(screen.getByText('À ranger')).toBeInTheDocument();
   });
 
+  it('un revenu rangé dans une enveloppe (remboursement) affiche l’enveloppe comme une dépense', () => {
+    render(
+      <ul>
+        <TransactionRow transaction={tx({ kind: 'income', amount: 4000, label: 'WERO DE MAX', envelopeId: 10 })} accounts={accounts} envelopes={envelopes} />
+      </ul>,
+    );
+    expect(screen.getByText('Courses')).toBeInTheDocument();
+    expect(screen.queryByText('Revenu')).not.toBeInTheDocument();
+  });
+
+  it('une dépense avec une avance ouverte porte la pastille Avance', () => {
+    render(
+      <ul>
+        <TransactionRow transaction={tx({ kind: 'expense', amount: 8250, label: 'Bowling', envelopeId: 10 })} accounts={accounts} envelopes={envelopes} hasOpenAdvance />
+      </ul>,
+    );
+    expect(screen.getByText('Avance')).toBeInTheDocument();
+  });
+
   it('masque une note qui ne fait que répéter le libellé, garde une vraie note', () => {
     render(
       <ul>

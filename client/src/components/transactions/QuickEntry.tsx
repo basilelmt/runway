@@ -1,10 +1,13 @@
-import { ArrowLeftRight, Check, Minus, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeftRight, Check, Link2, Minus, Plus, Sparkles } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { addDays, today } from '@shared/dates';
+import type { AdvanceSuggestionView } from '@shared/api-types';
+import { formatDateLong, addDays, today } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { transactionInputSchema, type Transaction, type TransactionInput } from '@shared/schemas';
-import { testSortingRule, useAccounts, useEnvelopes, useTransactions } from '@/api/hooks';
-import { Amount, AmountHero, Button, ChipPicker, DateField, DialogFooter, Dot, FieldError, GroupLabel, Kbd, ListRow, Segmented, Select, Textarea } from '@/components/ui';
+import { errorMessage } from '@/api/client';
+import { testSortingRule, useAccounts, useAdvanceSuggestions, useEnvelopes, useSettleAdvances, useTransactions } from '@/api/hooks';
+import { Amount, AmountHero, Button, ChipPicker, DateField, DialogFooter, Dot, FieldError, GroupLabel, Kbd, ListRow, Notice, Segmented, Select, Textarea, useToast } from '@/components/ui';
+import { AdvancesEditor } from './AdvancesEditor';
 import styles from './QuickEntry.module.css';
 
 type Kind = 'expense' | 'income' | 'transfer';
@@ -34,6 +37,8 @@ type QuickEntryProps = {
   footerStart?: ReactNode;
   /** Action avant le bouton principal (Confirmer sans modifier). */
   footerExtra?: ReactNode;
+  /** Un rapprochement d'avances vient de ranger ce revenu : l'appelant peut fermer le dialogue. */
+  onReconciled?: () => void;
 };
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -46,7 +51,7 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 /** Saisie d'une opération : le montant d'abord, puis le libellé qui propose l'enveloppe. Sert aussi à la modifier. */
-export function QuickEntry({ mode = 'create', initial, submitting, serverError, onSubmit, resetKey = 0, footerStart, footerExtra }: QuickEntryProps) {
+export function QuickEntry({ mode = 'create', initial, submitting, serverError, onSubmit, resetKey = 0, footerStart, footerExtra, onReconciled }: QuickEntryProps) {
   const accounts = useAccounts();
   const envelopes = useEnvelopes();
   const amountRef = useRef<HTMLInputElement>(null);
@@ -141,7 +146,7 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
       label: label.trim(),
       accountId: effectiveAccount,
       toAccountId: kind === 'transfer' ? toAccountId : null,
-      envelopeId: kind === 'expense' ? envelopeId : null,
+      envelopeId: kind === 'expense' || kind === 'income' ? envelopeId : null,
       fromEnvelopeId: null,
       note: note.trim() || null,
     };
@@ -279,6 +284,23 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
         </div>
       ) : null}
 
+      {kind === 'expense' && editing && initial ? <AdvancesEditor expenseId={initial.id} expenseAmount={initial.amount} /> : null}
+
+      {kind === 'income' ? (
+        <div className={styles.group}>
+          {editing && initial ? <ReconciliationBanner incomeId={initial.id} envelopeId={envelopeId} onReconciled={onReconciled} /> : null}
+          <GroupLabel as="p" id={`${formId}-reimburse`}>
+            Rembourse une dépense de
+          </GroupLabel>
+          <ChipPicker
+            aria-labelledby={`${formId}-reimburse`}
+            value={envelopeId}
+            onChange={chooseEnvelope}
+            options={[{ value: null, label: 'Aucune' }, ...(envelopes.data ?? []).map((env) => ({ value: env.id, label: env.name, color: env.color }))]}
+          />
+        </div>
+      ) : null}
+
       <div className={styles.meta}>
         <div className={styles.dates} role="group" aria-label="Date">
           <ChipPicker
@@ -357,5 +379,51 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
         </Button>
       </DialogFooter>
     </form>
+  );
+}
+
+/** Décrit les dépenses couvertes par une proposition : « Bowling du 26 juillet et Ciné du 2 août ». */
+function describeExpenses(expenses: AdvanceSuggestionView['expenses']): string {
+  return expenses.map((e) => `${e.label} du ${formatDateLong(e.date)}`).join(' et ');
+}
+
+/** Rapprochement proposé pour ce revenu : une avance ouverte du même nom et du même montant. */
+function ReconciliationBanner({ incomeId, envelopeId, onReconciled }: { incomeId: number; envelopeId: number | null; onReconciled?: () => void }) {
+  const suggestions = useAdvanceSuggestions();
+  const settle = useSettleAdvances();
+  const toast = useToast();
+  const suggestion = envelopeId === null ? suggestions.data?.find((s) => s.incomeId === incomeId) : undefined;
+  if (!suggestion) return null;
+
+  return (
+    <Notice
+      tone="marking"
+      icon={<Link2 />}
+      action={
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={settle.isPending}
+          onClick={() =>
+            settle.mutate(
+              { advanceIds: suggestion.advanceIds, refundId: incomeId },
+              {
+                onSuccess: () => {
+                  toast.success(`Revenu rapproché de l’avance de ${suggestion.person}`);
+                  onReconciled?.();
+                },
+                onError: (e) => toast.error(errorMessage(e)),
+              },
+            )
+          }
+        >
+          Rapprocher
+        </Button>
+      }
+    >
+      <strong>
+        {suggestion.person} doit {formatEuros(suggestion.amount)} pour {describeExpenses(suggestion.expenses)}, rapprocher ?
+      </strong>
+    </Notice>
   );
 }

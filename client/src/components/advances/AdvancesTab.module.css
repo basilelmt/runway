@@ -1,0 +1,20 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-mute);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.subList {
+  padding-left: var(--s-8);
+}

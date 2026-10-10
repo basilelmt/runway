@@ -72,6 +72,9 @@
   line-height: 1.5;
   resize: none;
   field-sizing: content;
+  /* Un libellé bancaire long et sans ponctuation doit passer à la ligne plutôt que déborder (mobile étroit). */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .mono {

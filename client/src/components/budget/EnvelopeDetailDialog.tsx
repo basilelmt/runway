@@ -57,11 +57,14 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
   const [period, setPeriod] = useState<Period>('month');
   const { from, to, months } = range(period);
   // En changeant de période, la liste précédente reste affichée jusqu'à l'arrivée de la nouvelle.
-  const transactions = useTransactions({ envelope: envelope.id, from, to, kind: 'expense', limit: 1000 }, { keepPrevious: true });
+  // Les répartitions ne concernent pas cette liste ; les remboursements (revenus rangés ici) y figurent, en déduction.
+  const transactions = useTransactions({ envelope: envelope.id, from, to, limit: 1000 }, { keepPrevious: true });
 
-  const list = transactions.data ?? [];
+  const list = (transactions.data ?? []).filter((t) => t.kind !== 'allocation');
   const confirmed = list.filter((t) => t.status === 'confirmed');
-  const total = confirmed.reduce((s, t) => s + t.amount, 0);
+  const spent = confirmed.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0);
+  const reimbursed = confirmed.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0);
+  const total = Math.max(0, spent - reimbursed);
   const budget = envelope.monthlyBudget > 0 ? envelope.monthlyBudget * months : null;
   const verb = envelope.isSavings ? 'Versé' : 'Dépensé';
 
@@ -116,6 +119,12 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
                   title={
                     <>
                       <span title={t.label}>{displayLabel(t)}</span>
+                      {t.kind === 'income' ? (
+                        <>
+                          {' '}
+                          <Badge tone="positive">Remboursement</Badge>
+                        </>
+                      ) : null}
                       {t.status === 'planned' ? (
                         <>
                           {' '}
@@ -124,7 +133,7 @@ function Detail({ envelope }: { envelope: EnvelopeWithBalance }) {
                       ) : null}
                     </>
                   }
-                  trail={<Amount cents={-t.amount} tone="neutral" />}
+                  trail={<Amount cents={t.kind === 'income' ? t.amount : -t.amount} tone={t.kind === 'income' ? 'always' : 'neutral'} />}
                 />
               ))}
             </ul>

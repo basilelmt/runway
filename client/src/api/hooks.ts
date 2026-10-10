@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
+  AdvanceSuggestionView,
+  AdvanceView,
   AnySignal,
   BackupEntry,
   BackupsState,
@@ -23,6 +25,7 @@ import type {
   MonthReview,
   NetWorthReport,
   Overview,
+  PersonAdvancesSummary,
   PortfolioRange,
   PortfolioView,
   SpendingReport,
@@ -32,6 +35,9 @@ import type {
   Account,
   AccountInput,
   AccountPatch,
+  Advance,
+  AdvanceLineInput,
+  AdvancesSettle,
   BankLinkInput,
   BinanceKeys,
   Envelope,
@@ -82,12 +88,17 @@ export const keys = {
   binanceSync: ['invest', 'binance', 'sync'] as const,
   merchant: (key: string) => ['merchants', 'detail', key] as const,
   merchantStatus: ['merchants', 'status'] as const,
+  advances: (status: 'open' | 'all') => ['advances', status] as const,
+  advancesForExpense: (expenseId: number) => ['advances', 'expense', expenseId] as const,
+  advancePeople: ['advances', 'people'] as const,
+  advanceSuggestions: ['advances', 'suggestions'] as const,
+  unsortedIncomes: ['advances', 'unsorted-incomes'] as const,
   signals: ['signals'] as const,
   backups: ['backups'] as const,
   review: (month: string) => ['reviews', month] as const,
 };
 
-const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
+const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction'], ['advances']];
 
 function useInvalidate() {
   const qc = useQueryClient();
@@ -252,6 +263,42 @@ export function useConfirmTransaction(opts?: MutOpts<Transaction, number>) {
 export function useDeleteTransaction(opts?: MutOpts<void, number>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (id) => api.delete(`/api/transactions/${id}`), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
+}
+
+// Avances
+
+export const useAdvances = (status: 'open' | 'all' = 'open') => useQuery({ queryKey: keys.advances(status), queryFn: () => api.get<AdvanceView[]>(`/api/advances?status=${status}`) });
+
+export const useAdvancesForExpense = (expenseId: number | null) =>
+  useQuery({
+    queryKey: keys.advancesForExpense(expenseId ?? 0),
+    queryFn: () => api.get<AdvanceView[]>(`/api/advances?status=all&expenseId=${expenseId}`),
+    enabled: expenseId !== null,
+  });
+
+export const useAdvancePeople = () => useQuery({ queryKey: keys.advancePeople, queryFn: () => api.get<PersonAdvancesSummary[]>('/api/advances/people') });
+
+export const useAdvanceSuggestions = () => useQuery({ queryKey: keys.advanceSuggestions, queryFn: () => api.get<AdvanceSuggestionView[]>('/api/advances/suggestions') });
+
+export const useUnsortedIncomes = () => useQuery({ queryKey: keys.unsortedIncomes, queryFn: () => api.get<Transaction[]>('/api/advances/unsorted-incomes') });
+
+export function useSetAdvances(opts?: MutOpts<Advance[], { expenseId: number; lines: AdvanceLineInput[] }>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: ({ expenseId, lines }) => api.put<Advance[]>(`/api/transactions/${expenseId}/advances`, lines),
+    onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); },
+  });
+}
+
+export function useSettleAdvances(opts?: MutOpts<Advance[], AdvancesSettle>) {
+  const invalidate = useInvalidate();
+  return useMutation({ ...opts, mutationFn: (input) => api.post<Advance[]>('/api/advances/settle', input), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
+}
+
+export function useReopenAdvance(opts?: MutOpts<Advance, number>) {
+  const invalidate = useInvalidate();
+  return useMutation({ ...opts, mutationFn: (id) => api.post<Advance>(`/api/advances/${id}/reopen`), onSuccess: (...a) => { invalidate(); opts?.onSuccess?.(...a); } });
 }
 
 // Recurring rules

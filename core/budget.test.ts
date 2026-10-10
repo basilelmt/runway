@@ -24,6 +24,32 @@ describe('budget', () => {
     expect(spent.get(courses.id)).toBe(40_00);
   });
 
+  it('monthActivity : un remboursement confirmé réduit le dépensé de son enveloppe, jamais sous zéro', () => {
+    const courant = account({ name: 'Courant' });
+    const sorties = envelope({ name: 'Sorties' });
+    const { spent } = monthActivity(
+      [
+        tx({ kind: 'expense', amount: 80_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-02' }),
+        tx({ kind: 'income', amount: 40_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-06' }),
+        // Revenu sans enveloppe : ne touche à rien.
+        tx({ kind: 'income', amount: 10_00, accountId: courant.id, date: '2026-03-07' }),
+        // Remboursement non confirmé : ignoré.
+        tx({ kind: 'income', amount: 1000_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-08', status: 'planned' }),
+      ],
+      '2026-03-10',
+    );
+    expect(spent.get(sorties.id)).toBe(40_00);
+
+    const { spent: spentRembourseTropGros } = monthActivity(
+      [
+        tx({ kind: 'expense', amount: 20_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-02' }),
+        tx({ kind: 'income', amount: 50_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-06' }),
+      ],
+      '2026-03-10',
+    );
+    expect(spentRembourseTropGros.get(sorties.id)).toBe(0);
+  });
+
   it('remainingToFund : jamais négatif, nul sans budget', () => {
     expect(remainingToFund({ monthlyBudget: 400_00 }, 150_00)).toBe(250_00);
     expect(remainingToFund({ monthlyBudget: 400_00 }, 500_00)).toBe(0);

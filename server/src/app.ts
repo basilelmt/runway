@@ -4,6 +4,7 @@ import type { Db } from './db/client';
 import { toDbHolder, type DbHolder } from './db/holder';
 import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
+import { advanceRoutes } from './routes/advances';
 import { askRoutes } from './routes/ask';
 import { backupRoutes } from './routes/backups';
 import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
@@ -89,6 +90,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
 
   app.get('/api/health', (c) => c.json({ ok: true }));
   app.route('/api/accounts', accountRoutes);
+  app.route('/api/advances', advanceRoutes);
   app.route('/api/backups', backupRoutes(backups));
   app.route('/api/envelopes', envelopeRoutes);
   app.route('/api/fundings', fundingRoutes);

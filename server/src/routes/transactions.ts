@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { transactionFilterSchema, transactionInputSchema } from '@shared/schemas';
+import { advancesReplaceSchema, transactionFilterSchema, transactionInputSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import type { Db } from '../db/client';
+import { listAdvancesForExpense, replaceAdvances } from '../repos/advances';
+import { BadRequestError } from '../errors';
 import { createTransaction, deleteTransaction, getTransaction, listTransactions, updateTransaction } from '../repos/transactions';
 import { autoFund } from '../services/auto-funding';
 import { validate } from '../validate';
@@ -20,7 +22,16 @@ export const transactionRoutes = new Hono<AppEnv>()
     return c.json(getTransaction(c.get('db'), c.req.valid('param').id));
   })
   .put('/:id', validate('param', idParam), validate('json', transactionInputSchema), (c) => {
-    return c.json(updateTransaction(c.get('db'), c.req.valid('param').id, c.req.valid('json')));
+    const db = c.get('db');
+    const { id } = c.req.valid('param');
+    const input = c.req.valid('json');
+    // La somme des avances (soldées comprises) ne peut jamais dépasser le montant de la dépense qui les porte.
+    const advancesTotal = listAdvancesForExpense(db, id).reduce((s, a) => s + a.amount, 0);
+    if (advancesTotal > input.amount) throw new BadRequestError('Le montant ne peut pas descendre sous la somme des avances de cette dépense');
+    return c.json(updateTransaction(db, id, input));
+  })
+  .put('/:id/advances', validate('param', idParam), validate('json', advancesReplaceSchema), (c) => {
+    return c.json(replaceAdvances(c.get('db'), c.req.valid('param').id, c.req.valid('json')));
   })
   .post('/:id/confirm', validate('param', idParam), (c) => {
     const db = c.get('db');

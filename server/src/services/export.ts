@@ -1,5 +1,6 @@
 import type { Db } from '../db/client';
 import { listAccounts } from '../repos/accounts';
+import { listAdvanceViews } from '../repos/advances';
 import { listEnvelopes } from '../repos/envelopes';
 import { listFundings } from '../repos/fundings';
 import { listImports } from '../repos/imports';
@@ -17,6 +18,7 @@ export function exportJson(db: Db) {
     accounts: listAccounts(db, { includeArchived: true }),
     envelopes: listEnvelopes(db, { includeArchived: true }),
     transactions: allTransactions(db),
+    advances: listAdvanceViews(db, 'all'),
     recurringRules: listRules(db),
     sortingRules: listSortingRules(db),
     imports: listImports(db),

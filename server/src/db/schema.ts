@@ -118,6 +118,25 @@ export const merchants = sqliteTable('merchants', {
   updatedAt: text('updated_at').notNull().default(now),
 });
 
+/** Dépense avancée pour une personne ; ouverte tant qu'elle n'a ni remboursement (`refundId`) ni solde manuel (`settledAt`). */
+export const advances = sqliteTable(
+  'advances',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    expenseId: integer('expense_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+    person: text('person').notNull(),
+    amount: integer('amount').notNull(),
+    /** Revenu qui solde l'avance ; remis à null si ce revenu est supprimé, ce qui rouvre l'avance. */
+    refundId: integer('refund_id').references(() => transactions.id, { onDelete: 'set null' }),
+    /** Date du solde sans remboursement (réglé en liquide, abandonné) ; null si soldée par un remboursement ou ouverte. */
+    settledAt: text('settled_at'),
+    createdAt: text('created_at').notNull().default(now),
+  },
+  (t) => [index('advances_expense_idx').on(t.expenseId), index('advances_refund_idx').on(t.refundId)],
+);
+
 export const sortingRules = sqliteTable('sorting_rules', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   pattern: text('pattern').notNull(),

@@ -483,6 +483,36 @@ export type MerchantStatus = { total: number; named: number; running: boolean; l
 /** Un marchand et le nombre de ses opérations (`GET /api/merchants/:key`). */
 export type MerchantDetail = { key: string; name: string; source: MerchantSource | null; transactionCount: number };
 
+/** Une avance avec sa dépense et son remboursement, pour l'affichage (`GET /api/advances`). */
+export type AdvanceView = {
+  id: number;
+  person: string;
+  amount: Cents;
+  expense: { id: number; date: ISODate; label: string; envelopeId: number | null; envelopeName: string | null };
+  refund: { id: number; date: ISODate; label: string } | null;
+  settledAt: ISODate | null;
+  createdAt: string;
+};
+
+/**
+ * Une personne qui doit de l'argent : total ouvert et date de la dépense la plus ancienne qui porte
+ * encore une avance ouverte (`GET /api/advances/people`).
+ */
+export type PersonAdvancesSummary = { person: string; totalOpen: Cents; oldestOpenDate: ISODate; openCount: number };
+
+/** Rapprochement proposé entre un revenu sans enveloppe et une ou plusieurs avances ouvertes de la même personne. */
+export type AdvanceSuggestionView = {
+  incomeId: number;
+  incomeLabel: string;
+  incomeAmount: Cents;
+  incomeDate: ISODate;
+  person: string;
+  advanceIds: number[];
+  amount: Cents;
+  /** Dépenses couvertes par les avances proposées. */
+  expenses: { id: number; label: string; date: ISODate }[];
+};
+
 /** Une sauvegarde listée (`GET /api/backups`). */
 export type BackupEntry = {
   name: string;

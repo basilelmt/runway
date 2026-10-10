@@ -6,14 +6,16 @@ import { addMonths, endOfMonth, monthKey, startOfMonth, type ISODate } from '@sh
 import type { Db } from '../db/client';
 import { loadState } from './state';
 
-/** Dépenses de [from, to] par enveloppe ; les budgets sont ceux du mois de `today`. */
+/** Dépenses de [from, to] par enveloppe, remboursements déduits (jamais sous zéro) ; les budgets sont ceux du mois de `today`. */
 export function spendingReport(db: Db, today: ISODate, from: ISODate, to: ISODate): SpendingReport {
   const state = loadState(db, today);
   const totals = new Map<number | null, number>();
   for (const t of state.transactions) {
-    if (t.kind !== 'expense' || t.status !== 'confirmed' || t.date < from || t.date > to) continue;
-    totals.set(t.envelopeId, (totals.get(t.envelopeId) ?? 0) + t.amount);
+    if (t.status !== 'confirmed' || t.date < from || t.date > to) continue;
+    if (t.kind === 'expense') totals.set(t.envelopeId, (totals.get(t.envelopeId) ?? 0) + t.amount);
+    else if (t.kind === 'income' && t.envelopeId != null) totals.set(t.envelopeId, (totals.get(t.envelopeId) ?? 0) - t.amount);
   }
+  for (const [id, amount] of totals) if (amount < 0) totals.set(id, 0);
   const byEnvelope: SpendingReport['byEnvelope'] = [];
   for (const env of state.envelopes) {
     if (env.isSavings) continue;

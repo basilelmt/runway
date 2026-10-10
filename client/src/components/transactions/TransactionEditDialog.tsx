@@ -88,6 +88,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
                 submitting={update.isPending}
                 serverError={serverError}
                 onSubmit={(input) => update.mutate({ id: t.id, ...input })}
+                onReconciled={close}
                 footerStart={deleteButton}
                 footerExtra={
                   t.status === 'planned' ? (
