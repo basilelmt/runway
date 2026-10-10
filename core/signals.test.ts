@@ -118,6 +118,28 @@ describe('detectNewRecurring', () => {
     expect(detectNewRecurring(txs, [], TODAY)).toEqual([]);
   });
 
+  it('une règle créée après coup, au nom différent du libellé bancaire, couvre quand même via l’enveloppe et le montant', () => {
+    // Cas réel : virement permanent "MAX CEKANOWSKI LOYER" (986 €), règle "Loyer Max" créée plus tard,
+    // ses opérations passées (août, septembre) n'ont jamais de recurringRuleId.
+    resetIds();
+    const txs = [
+      tx({ kind: 'expense', amount: 986_00, date: '2026-08-01', merchantKey: 'MAX CEKANOWSKI LOYER', merchantName: 'Max (coloc)', envelopeId: 1 }),
+      tx({ kind: 'expense', amount: 986_00, date: '2026-09-01', merchantKey: 'MAX CEKANOWSKI LOYER', merchantName: 'Max (coloc)', envelopeId: 1 }),
+      tx({ kind: 'expense', amount: 986_00, date: '2026-10-01', merchantKey: 'MAX CEKANOWSKI LOYER', merchantName: 'Max (coloc)', envelopeId: 1 }),
+    ];
+    const r = rule({ kind: 'expense', amount: 986_00, label: 'Loyer Max', envelopeId: 1, active: true, startDate: '2026-10-01' });
+    expect(detectNewRecurring(txs, [r], TODAY)).toEqual([]);
+  });
+
+  it('une règle de même enveloppe mais de montant trop différent (plus de 10 %) ne couvre pas', () => {
+    resetIds();
+    const txs = regular();
+    const other = rule({ kind: 'expense', amount: 50_00, label: 'Autre chose', envelopeId: 7, active: true });
+    expect(detectNewRecurring(txs, [other], TODAY)).toEqual([
+      { kind: 'new_recurring', key: 'recurring:NETFLIX', payload: { merchantKey: 'NETFLIX', merchantName: 'Netflix', amount: 9_99, envelopeId: 7, dayOfMonth: 8 } },
+    ]);
+  });
+
   it('la dernière occurrence hors fenêtre de 45 jours n’est pas signalée', () => {
     resetIds();
     const txs = [

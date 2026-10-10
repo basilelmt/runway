@@ -51,9 +51,12 @@ Seules les opérations des 45 derniers jours peuvent déclencher un signal, pour
 - `unusual_expense` - **Dépense inhabituelle** : une dépense confirmée d'au moins 100 € qui vaut au moins 2,5 fois la médiane des dépenses de son marchand (au moins 3 dépenses passées), ou d'au moins 150 € chez un marchand jamais vu.
   Clé `unusual:<transaction_id>`.
   Action : ouvrir l'opération.
-- `new_recurring` - **Nouveau prélèvement régulier** : un marchand avec au moins 3 dépenses sur 3 mois consécutifs, à 25 à 35 jours d'écart, montants à ±10 % de leur médiane, sans règle récurrente qui le couvre (aucune de ces opérations n'a de `recurring_rule_id`).
+- `new_recurring` - **Nouveau prélèvement régulier** : un marchand avec au moins 3 dépenses sur 3 mois consécutifs, à 25 à 35 jours d'écart, montants à ±10 % de leur médiane, sans règle récurrente qui le couvre.
   Clé `recurring:<merchant_key>`.
   Action : « Créer la charge fixe », qui ouvre le dialogue de charge fixe prérempli (libellé, montant médian, enveloppe la plus fréquente, jour du mois, mensuelle).
+  Couvert : une des 3 opérations porte déjà un `recurring_rule_id`, ou une règle active vise la même enveloppe à un montant proche (± 10 %), ou le libellé de la règle retombe sur la même clé marchand.
+  Le nom d'une règle suit rarement le libellé bancaire mot pour mot, et une règle créée après coup ne porte jamais sur les opérations passées : s'appuyer sur le seul `recurring_rule_id` recréerait sans fin le signal d'un prélèvement pourtant déjà couvert.
+  Le repli par libellé reste utile quand l'enveloppe diffère ou que le montant a changé depuis la création de la règle.
 - `price_change` - **Montant d'une charge qui change** : une opération confirmée rapprochée d'une règle (`recurring_rule_id`) dont le montant diffère de celui de la règle d'au moins 1 € et 3 %.
   Clé `price:<rule_id>:<montant>`.
   Action : « Mettre à jour la charge » au nouveau montant, qui résout le signal.

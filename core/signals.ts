@@ -103,7 +103,10 @@ export function detectUnusualExpenses(transactions: Transaction[], today: ISODat
  * même si ses anciennes opérations n'ont pas de `recurringRuleId` (la règle n'existait pas encore).
  */
 export function detectNewRecurring(transactions: Transaction[], rules: RecurringRule[], today: ISODate): DetectedSignal[] {
-  const coveredKeys = new Set(rules.filter((r) => r.active && r.kind === 'expense').map((r) => merchantKeyFor('expense', r.label)).filter((k): k is string => k !== null));
+  const activeExpenseRules = rules.filter((r) => r.active && r.kind === 'expense');
+  // Repli par libellé : rarement fiable (le nom d'une règle suit rarement le libellé bancaire mot pour mot),
+  // gardé en plus du critère enveloppe + montant ci-dessous.
+  const coveredByLabel = new Set(activeExpenseRules.map((r) => merchantKeyFor('expense', r.label)).filter((k): k is string => k !== null));
   const groups = new Map<string, Transaction[]>();
   for (const t of transactions) {
     if (t.kind !== 'expense' || t.status !== 'confirmed' || t.merchantKey === null) continue;
@@ -114,11 +117,9 @@ export function detectNewRecurring(transactions: Transaction[], rules: Recurring
 
   const out: DetectedSignal[] = [];
   for (const [key, list] of groups) {
-    if (coveredKeys.has(key)) continue;
     const sorted = [...list].sort(byDateThenId);
     if (sorted.length < 3) continue;
     const last3 = sorted.slice(-3);
-    if (last3.some((t) => t.recurringRuleId !== null)) continue;
     if (!inWindow(last3[2]!.date, today)) continue;
 
     const gap1 = daysBetween(last3[0]!.date, last3[1]!.date);
@@ -132,6 +133,14 @@ export function detectNewRecurring(transactions: Transaction[], rules: Recurring
     if (amounts.some((a) => Math.abs(a - med) / med > NEW_RECURRING_AMOUNT_TOLERANCE)) continue;
 
     const envelopeId = mostFrequent(last3.map((t) => t.envelopeId));
+    // Couvert : une des 3 opérations tient déjà d'une règle, ou une règle active vise la même enveloppe à
+    // un montant proche (± 10 %), ou son libellé retombe sur la même clé marchand. Les règles sont souvent
+    // créées après coup (les opérations passées n'ont donc pas de recurringRuleId) avec un nom qui ne reprend
+    // pas le libellé bancaire mot pour mot : le montant et l'enveloppe sont le critère le plus fiable.
+    const coveredByAmount = envelopeId !== null && activeExpenseRules.some((r) => r.envelopeId === envelopeId && Math.abs(r.amount - med) / med <= NEW_RECURRING_AMOUNT_TOLERANCE);
+    const covered = last3.some((t) => t.recurringRuleId !== null) || coveredByAmount || coveredByLabel.has(key);
+    if (covered) continue;
+
     const dayOfMonth = Number(last3[2]!.date.slice(8, 10));
     out.push({
       kind: 'new_recurring',
