@@ -57,6 +57,13 @@ describe('EnableBankingClient', () => {
     expect(headers.get('psu-user-agent')).toBe('Runway test');
   });
 
+  it('sans utilisateur présent (psu null), n’envoie aucun en-tête PSU', async () => {
+    const { fetchFn, calls } = fakeFetch({ '/application': [{ body: { name: 'Runway', environment: 'PRODUCTION' } }] });
+    await new EnableBankingClient({ appId: 'app-123', privateKey: pem, psu: null, fetch: fetchFn }).getApplication();
+    const headers = new Headers(calls[0]!.init.headers);
+    expect([...headers.keys()].filter((k) => k.startsWith('psu-'))).toEqual([]);
+  });
+
   it('lit la durée maximale de consentement de la banque', async () => {
     const { fetchFn } = fakeFetch({
       '/aspsps': [{ body: { aspsps: [{ name: 'Autre', country: 'FR', maximum_consent_validity: 1 }, { name: 'La Banque Postale', country: 'FR', maximum_consent_validity: 15552000 }] } }],

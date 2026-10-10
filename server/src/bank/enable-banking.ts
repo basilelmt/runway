@@ -7,8 +7,12 @@ export type PsuInfo = { ip: string; userAgent: string };
 export type EnableBankingOptions = {
   appId: string;
   privateKey: string;
-  /** Utilisateur présent : ces en-têtes évitent de consommer le quota DSP2 des accès sans présence. */
-  psu: PsuInfo;
+  /**
+   * Utilisateur présent (action depuis l'interface) : les en-têtes `Psu-*` disent à Enable Banking que la
+   * personne est en ligne, ce qui ne consomme pas le quota DSP2 des accès sans présence (4 par jour). Null pour
+   * la synchro de fond : la personne n'est pas là, et le prétendre serait faux.
+   */
+  psu: PsuInfo | null;
   fetch?: typeof fetch;
   baseUrl?: string;
   /** Délai maximal d'une requête, en millisecondes. */
@@ -67,8 +71,7 @@ export class EnableBankingClient implements BankProvider {
           authorization,
           accept: 'application/json',
           'content-type': 'application/json',
-          'psu-ip-address': this.opts.psu.ip,
-          'psu-user-agent': this.opts.psu.userAgent,
+          ...(this.opts.psu ? { 'psu-ip-address': this.opts.psu.ip, 'psu-user-agent': this.opts.psu.userAgent } : {}),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(this.timeoutMs),

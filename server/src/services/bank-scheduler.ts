@@ -7,9 +7,6 @@ import { toDbHolder, type DbHolder } from '../db/holder';
 import { getSettings } from '../repos/settings';
 import { defaultBankProvider, isBankConfigured, runSync } from './bank-sync';
 
-/** La synchro de fond se présente comme un accès avec l'utilisateur absent : pas d'IP ni de navigateur réels. */
-const BACKGROUND_PSU: PsuInfo = { ip: '127.0.0.1', userAgent: 'Runway (tâche de fond)' };
-
 /**
  * Au-delà de ce délai depuis la dernière synchro réussie (toutes origines confondues), la tâche de fond
  * resynchronise. 6 h parce que la DSP2 limite à 4 accès par jour sans l'utilisateur présent : à ce rythme,
@@ -22,8 +19,11 @@ export const BACKGROUND_SYNC_INTERVAL_MS = 30 * 60_000;
 export type BankSchedulerDeps = {
   /** `Db` figé (tests) ou porteur de connexion remplaçable (production, pour la restauration). */
   db: Db | DbHolder;
-  /** Fabrique du fournisseur, injectable pour les tests. Par défaut, le vrai Enable Banking. */
-  provider?: (settings: Settings, psu: PsuInfo) => BankProvider;
+  /**
+   * Fabrique du fournisseur, injectable pour les tests. Par défaut, le vrai Enable Banking. Appelée avec `psu`
+   * null : la synchro de fond n'envoie aucun en-tête `Psu-*`, qui signalerait à tort l'utilisateur présent.
+   */
+  provider?: (settings: Settings, psu: PsuInfo | null) => BankProvider;
   now?: () => Date;
   intervalMs?: number;
   /** Désactive la tâche sans y toucher : recette, tests, worktrees qui pointent sur la vraie base. */
@@ -61,9 +61,14 @@ export function startBackgroundSync(deps: BankSchedulerDeps): { stop: () => void
       const db = holder.current();
       const settings = getSettings(db);
       if (!isBankConfigured(settings)) return;
-      const provider = makeProvider(settings, BACKGROUND_PSU);
+      const provider = makeProvider(settings, null);
       const current = now();
-      const result = await runSync(db, provider, { today: toISODate(current), now: current, onlyIfStaleMinutes: BACKGROUND_SYNC_STALE_MINUTES });
+      const result = await runSync(db, provider, {
+        today: toISODate(current),
+        now: current,
+        onlyIfStaleMinutes: BACKGROUND_SYNC_STALE_MINUTES,
+        claimBackgroundAttempt: true,
+      });
       deps.onResult?.(result);
     } catch (err) {
       deps.onError?.(err);

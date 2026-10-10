@@ -8,6 +8,7 @@ import type { Aspsp, BankProvider } from '../bank/provider';
 import type { Db } from '../db/client';
 import { BadRequestError } from '../errors';
 import { findAccountByBankNumber, getAccount, listAccounts } from '../repos/accounts';
+import { readSettingKey, writeSettingKey } from '../repos/settings';
 import {
   createConnection,
   deletePendingConnections,
@@ -32,8 +33,8 @@ export function isBankConfigured(s: Settings): boolean {
   return s.enableBankingAppId !== '' && s.enableBankingPrivateKey !== '';
 }
 
-/** Fournisseur par défaut (le vrai Enable Banking), partagé entre les routes et le planificateur de fond. */
-export const defaultBankProvider = (s: Settings, psu: PsuInfo): BankProvider => new EnableBankingClient({ appId: s.enableBankingAppId, privateKey: s.enableBankingPrivateKey, psu });
+/** Fournisseur par défaut (le vrai Enable Banking), partagé entre les routes et le planificateur de fond (`psu` null). */
+export const defaultBankProvider = (s: Settings, psu: PsuInfo | null): BankProvider => new EnableBankingClient({ appId: s.enableBankingAppId, privateKey: s.enableBankingPrivateKey, psu });
 
 const SYNC_FILE_NAME = 'Synchronisation La Banque Postale';
 const PARSER_ID = 'enablebanking';
@@ -293,11 +294,39 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
 
 let running: Promise<BankSyncRunResult> | null = null;
 
+/** Réglage interne : début de la dernière synchro de fond, tous serveurs confondus. */
+const BACKGROUND_ATTEMPT_KEY = 'bankBackgroundSyncAttemptAt';
+/** Une tentative de fond plus récente que ça est considérée en cours sur un autre serveur. */
+export const BACKGROUND_ATTEMPT_TTL_MINUTES = 10;
+
+/**
+ * Réserve la synchro de fond pour ce serveur : deux serveurs sur la même base (dev et recette, un worktree)
+ * ne doivent pas appeler la banque en même temps, chaque appel sans l'utilisateur présent consommant le quota
+ * DSP2. Lecture et écriture dans une transaction `IMMEDIATE` : un seul des deux obtient le verrou d'écriture
+ * et voit l'horodatage de l'autre. Faux si une tentative a démarré il y a moins de 10 minutes.
+ */
+export function claimBackgroundAttempt(db: Db, now: Date): boolean {
+  return db.transaction(
+    (tx) => {
+      const t = tx as unknown as Db;
+      const last = readSettingKey<string>(t, BACKGROUND_ATTEMPT_KEY);
+      if (last && now.getTime() - new Date(last).getTime() < BACKGROUND_ATTEMPT_TTL_MINUTES * 60_000) return false;
+      writeSettingKey(t, BACKGROUND_ATTEMPT_KEY, now.toISOString());
+      return true;
+    },
+    { behavior: 'immediate' },
+  );
+}
+
 /**
  * Synchronise toutes les connexions actives. Une seule exécution à la fois : un second appel
  * pendant qu'une synchro tourne reçoit le même résultat.
  */
-export function runSync(db: Db, provider: BankProvider, input: { today: ISODate; now: Date; onlyIfStaleMinutes?: number }): Promise<BankSyncRunResult> {
+export function runSync(
+  db: Db,
+  provider: BankProvider,
+  input: { today: ISODate; now: Date; onlyIfStaleMinutes?: number; /** Synchro de fond : voir `claimBackgroundAttempt`. */ claimBackgroundAttempt?: boolean },
+): Promise<BankSyncRunResult> {
   if (running) return running;
   running = (async () => {
     const active = listConnections(db).filter((c) => c.status === 'active' && c.sessionId !== null);
@@ -306,6 +335,8 @@ export function runSync(db: Db, provider: BankProvider, input: { today: ISODate;
       const latest = Math.max(...active.map((c) => (c.lastSyncAt ? new Date(c.lastSyncAt).getTime() : 0)));
       if (input.now.getTime() - latest < input.onlyIfStaleMinutes * 60_000) return { reason: 'fresh' as const, connections: [] };
     }
+    // Un autre serveur a commencé cette synchro : elle sera fraîche à son retour.
+    if (input.claimBackgroundAttempt && !claimBackgroundAttempt(db, input.now)) return { reason: 'fresh' as const, connections: [] };
     const connections: BankSyncConnectionResult[] = [];
     for (const c of active) connections.push(await syncConnection(db, provider, c, input.today, input.now));
     return { reason: 'ok' as const, connections };
