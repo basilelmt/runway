@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRuleInput, SortingRule, Transaction } from './schemas';
+import type { Account, AppliedReview, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRuleInput, SortingRule, Transaction } from './schemas';
 import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
@@ -106,6 +106,9 @@ export type FundingView = {
   sourceLabel: string;
 };
 
+/** Bilan du mois précédent à faire, pour la carte d'Accueil : visible du 1er à la fin du mois tant qu'il n'est pas validé. */
+export type PendingReview = { month: string; spent: Cents; overspentCount: number };
+
 export type Overview = {
   today: ISODate;
   toAllocate: Cents;
@@ -121,6 +124,46 @@ export type Overview = {
   latestFunding: FundingView | null;
   /** Enveloppes dépassées ou presque vides, les plus urgentes d'abord. */
   watch: WatchedEnvelope[];
+  /** Bilan du mois précédent restant à faire, ou null une fois validé ou hors de la fenêtre. */
+  pendingReview: PendingReview | null;
+};
+
+/** Chiffres du mois passé en revue : revenus, dépenses et épargne, sur les opérations confirmées. */
+export type ReviewMonthFigures = { income: Cents; spent: Cents; saved: Cents };
+
+/** Une ligne de la section Enveloppes du bilan : `gap` = dépensé - budget (positif = dépassement). */
+export type ReviewEnvelopeLine = { envelopeId: number; name: string; color: string; isSavings: boolean; budget: Cents; spent: Cents; gap: Cents };
+
+/** Proposition de nouveau complément, à partir de la médiane des dépenses courantes des 3 derniers mois. */
+export type ReviewProposal = {
+  envelopeId: number;
+  name: string;
+  currentExtra: Cents | null;
+  proposedExtra: Cents;
+  /** Dépenses courantes des mois disponibles, du plus ancien au plus récent (le mois passé en revue en dernier). */
+  monthsSpent: Cents[];
+};
+
+/** Budget du mois courant d'une enveloppe, pour le contrôle d'ensemble recalculé côté client à chaque proposition acceptée. */
+export type ReviewControlEnvelope = { envelopeId: number; monthlyCharges: Cents; monthlyBudget: Cents };
+
+export type ReviewControl = { envelopes: ReviewControlEnvelope[]; medianIncome: Cents };
+
+/** Solde positif à aujourd'hui d'une enveloppe hors épargne, qu'on peut verser dans l'épargne. */
+export type ReviewRemainder = { envelopeId: number; name: string; color: string; amount: Cents };
+
+export type ReviewStatus = { validated: boolean; reviewedAt: string | null; applied: AppliedReview | null };
+
+/** Bilan complet d'un mois passé (`GET /api/reviews/:month`), calculé par `core/review.ts`. */
+export type MonthReview = {
+  month: string;
+  figures: ReviewMonthFigures;
+  envelopes: ReviewEnvelopeLine[];
+  proposals: ReviewProposal[];
+  control: ReviewControl;
+  /** `null` pour un mois déjà validé, ou plus ancien que le mois précédent. */
+  remainders: ReviewRemainder[] | null;
+  status: ReviewStatus;
 };
 
 export type SpendingReport = {
