@@ -1,16 +1,26 @@
 import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm';
+import { merchantDisplayName } from '@core/merchants';
 import type { AdvanceView, PersonAdvancesSummary } from '@shared/api-types';
 import { addDays, type ISODate } from '@shared/dates';
 import type { Advance, AdvanceLineInput } from '@shared/schemas';
 import type { Db } from '../db/client';
-import { advances, envelopes, transactions } from '../db/schema';
+import { advances, envelopes, merchants, transactions } from '../db/schema';
 import { BadRequestError, NotFoundError } from '../errors';
 import { getTransaction } from './transactions';
 
-/** Un revenu sans enveloppe des `days` derniers jours, candidat à un rapprochement. */
-export type IncomeCandidate = { id: number; label: string; amount: number; date: ISODate };
+/**
+ * Un revenu sans enveloppe des `days` derniers jours, candidat à un rapprochement.
+ * `label` (libellé bancaire brut) sert au rapprochement par mot commun avec le nom de la personne ;
+ * `displayLabel` (nom du marchand s'il y en a un) est celui montré à l'écran.
+ */
+export type IncomeCandidate = { id: number; label: string; displayLabel: string; amount: number; date: ISODate };
 
 const openClause = and(isNull(advances.refundId), isNull(advances.settledAt))!;
+
+/** Nom affiché d'une opération jointe aux marchands : le marchand s'il y en a un, le libellé brut sinon. */
+function resolveLabel(row: { label: string; merchantKey: string | null; merchantName: string | null }): string {
+  return merchantDisplayName(row.merchantKey, row.merchantName, row.label) ?? row.label;
+}
 
 export function getAdvance(db: Db, id: number): Advance {
   const row = db.select().from(advances).where(eq(advances.id, id)).get();
@@ -98,8 +108,9 @@ export function listAdvanceViews(db: Db, status: 'open' | 'all', expenseId?: num
 
   const txIds = [...new Set(rows.flatMap((r) => [r.expenseId, r.refundId]).filter((id): id is number => id !== null))];
   const txRows = db
-    .select({ id: transactions.id, date: transactions.date, label: transactions.label, envelopeId: transactions.envelopeId })
+    .select({ id: transactions.id, date: transactions.date, label: transactions.label, envelopeId: transactions.envelopeId, merchantKey: transactions.merchantKey, merchantName: merchants.name })
     .from(transactions)
+    .leftJoin(merchants, eq(merchants.key, transactions.merchantKey))
     .where(inArray(transactions.id, txIds))
     .all();
   const txById = new Map(txRows.map((t) => [t.id, t]));
@@ -120,11 +131,11 @@ export function listAdvanceViews(db: Db, status: 'open' | 'all', expenseId?: num
         expense: {
           id: expense.id,
           date: expense.date,
-          label: expense.label,
+          label: resolveLabel(expense),
           envelopeId: expense.envelopeId,
           envelopeName: expense.envelopeId !== null ? envNameById.get(expense.envelopeId) ?? null : null,
         },
-        refund: refund ? { id: refund.id, date: refund.date, label: refund.label } : null,
+        refund: refund ? { id: refund.id, date: refund.date, label: resolveLabel(refund) } : null,
         settledAt: r.settledAt,
         createdAt: r.createdAt,
       };
@@ -153,20 +164,35 @@ export function listOpenAdvancesWithExpense(db: Db): { id: number; person: strin
   if (rows.length === 0) return [];
   const expenseIds = [...new Set(rows.map((r) => r.expenseId))];
   const txById = new Map(
-    db.select({ id: transactions.id, date: transactions.date, label: transactions.label }).from(transactions).where(inArray(transactions.id, expenseIds)).all().map((t) => [t.id, t]),
+    db
+      .select({ id: transactions.id, date: transactions.date, label: transactions.label, merchantKey: transactions.merchantKey, merchantName: merchants.name })
+      .from(transactions)
+      .leftJoin(merchants, eq(merchants.key, transactions.merchantKey))
+      .where(inArray(transactions.id, expenseIds))
+      .all()
+      .map((t) => [t.id, t]),
   );
   return rows.map((r) => {
     const expense = txById.get(r.expenseId)!;
-    return { id: r.id, person: r.person, amount: r.amount, expenseId: r.expenseId, expenseLabel: expense.label, expenseDate: expense.date };
+    return { id: r.id, person: r.person, amount: r.amount, expenseId: r.expenseId, expenseLabel: resolveLabel(expense), expenseDate: expense.date };
   });
 }
 
 /** Revenus confirmés sans enveloppe, des `windowDays` derniers jours : candidats à un rapprochement. */
 export function listUnsortedIncomeCandidates(db: Db, today: ISODate, windowDays: number): IncomeCandidate[] {
   return db
-    .select({ id: transactions.id, label: transactions.label, amount: transactions.amount, date: transactions.date })
+    .select({
+      id: transactions.id,
+      label: transactions.label,
+      amount: transactions.amount,
+      date: transactions.date,
+      merchantKey: transactions.merchantKey,
+      merchantName: merchants.name,
+    })
     .from(transactions)
+    .leftJoin(merchants, eq(merchants.key, transactions.merchantKey))
     .where(and(eq(transactions.kind, 'income'), eq(transactions.status, 'confirmed'), isNull(transactions.envelopeId), gte(transactions.date, addDays(today, -windowDays))))
     .orderBy(desc(transactions.date))
-    .all();
+    .all()
+    .map((r) => ({ id: r.id, label: r.label, displayLabel: resolveLabel(r), amount: r.amount, date: r.date }));
 }

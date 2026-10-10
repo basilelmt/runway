@@ -21,7 +21,7 @@ export function buildAdvanceSuggestions(db: Db, today: ISODate): AdvanceSuggesti
     const expenses = [...new Map(m.advanceIds.map((id) => advanceById.get(id)!).map((a) => [a.expenseId, { id: a.expenseId, label: a.expenseLabel, date: a.expenseDate }])).values()];
     return {
       incomeId: m.incomeId,
-      incomeLabel: income.label,
+      incomeLabel: income.displayLabel,
       incomeAmount: income.amount,
       incomeDate: income.date,
       person: m.person,

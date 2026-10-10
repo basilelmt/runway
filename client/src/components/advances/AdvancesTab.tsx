@@ -8,6 +8,7 @@ import { errorMessage } from '@/api/client';
 import { useAdvancePeople, useAdvances, useAdvanceSuggestions, useEnvelopes, useSettleAdvances, useTransactions, useUpdateTransaction } from '@/api/hooks';
 import { Amount, Button, EmptyState, ErrorState, GroupLabel, InlinePill, ListRow, ListRowSkeleton, SectionHeader, listRowDate, useToast } from '@/components/ui';
 import { formatDateCompact } from '@/lib/format';
+import { displayLabel } from '@/lib/merchants';
 import styles from './AdvancesTab.module.css';
 
 /** Nombre de mois de revenus sans enveloppe proposés au rangement manuel. */
@@ -180,11 +181,11 @@ function UnsortedIncomeSection({ incomes, envelopes }: { incomes: Transaction[];
             key={t.id}
             compact
             lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
-            title={t.label}
+            title={<span title={t.label}>{displayLabel(t)}</span>}
             trail={<Amount cents={t.amount} tone="neutral" />}
             actions={
               <InlinePill
-                aria-label={`Enveloppe pour ${t.label}`}
+                aria-label={`Enveloppe pour ${displayLabel(t)}`}
                 value={null}
                 placeholder="+ Enveloppe"
                 options={envelopes.map((env) => ({ value: env.id, label: env.name, color: env.color }))}

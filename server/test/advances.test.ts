@@ -122,4 +122,17 @@ describe('avances', () => {
     const suggestions = await t.call('GET', '/api/advances/suggestions');
     expect(suggestions.body).toHaveLength(0);
   });
+
+  it('GET /api/advances/suggestions : le rapprochement s’appuie sur le libellé bancaire, même renommé par un marchand', async () => {
+    const dep = await createExpense(82_50, 'Bowling', '2026-07-26', t.loisirs.id);
+    await t.call('PUT', `/api/transactions/${dep.id}/advances`, [{ person: 'Max', amount: 41_50 }]);
+    const income = await createIncome(41_50, 'VIREMENT INSTANTANE WERO DE MAX CEKANOWSKI', '2026-07-28');
+    // Renommer le marchand ne doit pas casser le rapprochement par mot commun (basé sur le libellé brut),
+    // et la proposition affiche bien le nom du marchand, pas le libellé bancaire brut.
+    await t.call('PUT', `/api/merchants/${encodeURIComponent(income.merchantKey)}`, { name: 'Copain Max' });
+
+    const suggestions = await t.call('GET', '/api/advances/suggestions');
+    expect(suggestions.body).toHaveLength(1);
+    expect(suggestions.body[0]).toMatchObject({ person: 'Max', incomeLabel: 'Copain Max' });
+  });
 });
