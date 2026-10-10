@@ -155,7 +155,7 @@ describe('second dossier', () => {
     const first = await service.runNow('manuelle');
     let state = await service.state();
     expect(state.lastLocalError).toBeNull();
-    expect(state.lastMirrorError).not.toBeNull();
+    expect(state.lastMirrorError).toBe(`le dossier ${mirrorDir} est introuvable (clé ou disque débranché ?)`);
     expect(state.backups.find((b) => b.name === first.name)?.inMirror).toBe(false);
 
     // La clé est "rebranchée".

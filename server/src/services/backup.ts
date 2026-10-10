@@ -23,6 +23,15 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** Erreur du second dossier en clair : le message brut de Node (« ENOENT: ... copyfile ... ») ne dit rien à l'écran. */
+export function mirrorMessage(err: unknown, mirrorDir: string): string {
+  const code = (err as NodeJS.ErrnoException | null)?.code;
+  if (code === 'ENOENT') return `le dossier ${mirrorDir} est introuvable (clé ou disque débranché ?)`;
+  if (code === 'EACCES' || code === 'EPERM' || code === 'EROFS') return `Runway n’a pas le droit d’écrire dans ${mirrorDir}`;
+  if (code === 'ENOSPC') return `plus de place dans ${mirrorDir}`;
+  return message(err);
+}
+
 /**
  * Une connexion en lecture seule sur un fichier en mode WAL laisse quand même des `-wal`/`-shm`, même sans
  * aucune écriture. Le `-shm` (index partagé, jamais de données uniques) est toujours supprimable. Le `-wal`
@@ -189,7 +198,7 @@ export async function performBackup(opts: { sqlite: Database.Database; dir: stri
         await catchUpMirror(opts.dir, opts.mirrorDir);
         await cleanupOldBackups(opts.mirrorDir, opts.date);
       } catch (err) {
-        mirrorError = message(err);
+        mirrorError = mirrorMessage(err, opts.mirrorDir);
       }
     }
   }
