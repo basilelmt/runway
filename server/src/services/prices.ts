@@ -5,6 +5,7 @@ import type { AssetSearchResult } from '@shared/api-types';
 import { addDays, compareISODate, toISODate, type ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
 import { priceTickers, prices } from '../db/schema';
+import { toDbHolder, type DbHolder } from '../db/holder';
 import { AppError } from '../errors';
 
 export type HttpFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -224,7 +225,13 @@ function storeChart(db: Db, ticker: string, data: ChartResult, requestedFrom: IS
   });
 }
 
-export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
+/**
+ * `db` accepte aussi un porteur de connexion : la base est relue à chaque usage (`holder.current()`) pour
+ * qu'une restauration à chaud n'y laisse pas une connexion fermée, sans perdre le cache en mémoire
+ * (tickers en pause après une panne, ajustements) qui vit tant que le processus tourne.
+ */
+export function createPrices(db: Db | DbHolder, deps: PricesDeps = {}): Prices {
+  const holder = toDbHolder(db);
   const fetchFn = deps.fetch ?? fetch;
   const now = deps.now ?? (() => new Date());
   /** Horodatage (ms) jusqu'auquel on n'appelle plus Yahoo pour un ticker, après une panne confirmée. */
@@ -235,6 +242,7 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
   const adjustments = new Map<string, { at: number; value: Adjustments }>();
 
   async function history(ticker: string, from: ISODate): Promise<TickerHistory | null> {
+    const db = holder.current();
     const existing = db.select().from(priceTickers).where(eq(priceTickers.ticker, ticker)).get();
     const fresh = existing ? now().getTime() - new Date(existing.refreshedAt).getTime() < REFRESH_MINUTES * 60_000 : false;
     if (existing && compareISODate(existing.historyFrom, from) <= 0 && fresh) {
@@ -254,21 +262,24 @@ export function createPrices(db: Db, deps: PricesDeps = {}): Prices {
     const blockedUntil = errorBackoff.get(ticker);
     const stillBlocked = blockedUntil !== undefined && now().getTime() < blockedUntil;
     const result = stillBlocked ? ('error' as const) : await fetchChart(fetchFn, ticker, start, to);
+    // Relue après le seul point d'attente : une restauration pendant l'appel réseau ne doit pas laisser
+    // écrire sur une connexion fermée.
+    const dbAfterFetch = holder.current();
 
     if (result === 'error') {
       // Seule une vraie panne ouvre la pause : un appel bloqué par la pause ne la prolonge pas.
       if (!stillBlocked) errorBackoff.set(ticker, now().getTime() + ERROR_BACKOFF_MINUTES * 60_000);
-      return readStored(db, ticker, null, true);
+      return readStored(dbAfterFetch, ticker, null, true);
     }
     if (result === 'unknown') {
       unknown.add(ticker);
-      return readStored(db, ticker, null, true);
+      return readStored(dbAfterFetch, ticker, null, true);
     }
 
     unknown.delete(ticker);
     errorBackoff.delete(ticker);
-    storeChart(db, ticker, result, from, now());
-    return readStored(db, ticker, from, false);
+    storeChart(dbAfterFetch, ticker, result, from, now());
+    return readStored(dbAfterFetch, ticker, from, false);
   }
 
   /** Convertit l'historique vers l'euro ; `fx` est l'historique de `EUR<devise>=X`, absent si la devise est déjà l'euro. */

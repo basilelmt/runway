@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { chart, fakeFetch } from './fixtures/yahoo';
 import { createApp } from '../src/app';
 import { migrationsFolder, openDb, type Db } from '../src/db/client';
 import { createDbHolder } from '../src/db/holder';
@@ -227,5 +228,50 @@ describe('route /api/backups', () => {
     const { app } = makeApp();
     const r = await call(app, 'POST', '/api/backups/..%2F..%2Fetc%2Fpasswd/restore');
     expect([400, 404]).toContain(r.status);
+  });
+});
+
+describe('autres services qui captent une base à la création', () => {
+  async function callJson(app: ReturnType<typeof createApp>, method: string, path: string, body?: unknown) {
+    const res = await app.request(path, {
+      method,
+      headers: body === undefined ? {} : { 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  }
+
+  it("une route Investir répond sur la nouvelle base après une restauration (createPrices lit le porteur à chaque usage)", async () => {
+    const db = openDb(dbPath);
+    const holder = createDbHolder(db);
+    const backupsDir = join(dir, 'backups');
+    const service = createBackupService({ holder, dbPath, dir: backupsDir });
+    const fetch = fakeFetch({ 'chart/SXR8.DE': chart('SXR8.DE', 'EUR', [['2026-10-01', 700]], { date: '2026-10-07', price: 710 }) });
+    const app = createApp({ db: holder, backupService: service, investDeps: { fetch, now: () => new Date('2026-10-07T10:00:00Z') } });
+
+    const created = await callJson(app, 'POST', '/api/invest/holdings', {
+      platform: 'trade_republic',
+      ticker: 'SXR8.DE',
+      name: 'S&P 500',
+      firstTrade: { side: 'buy', date: '2026-10-01', quantity: '1', amount: 700_00, fees: 0 },
+    });
+    expect(created.status).toBe(201);
+
+    const before = await callJson(app, 'GET', '/api/invest/portfolio');
+    expect(before.status).toBe(200);
+    expect(before.body.holdings).toHaveLength(1);
+
+    const backup = await callJson(app, 'POST', '/api/backups');
+    expect(backup.status).toBe(201);
+    const restore = await callJson(app, 'POST', `/api/backups/${backup.body.name}/restore`);
+    expect(restore.status).toBe(204);
+
+    // Avant le correctif, createPrices gardait la connexion d'avant la restauration : cet appel renvoyait 500.
+    const after = await callJson(app, 'GET', '/api/invest/portfolio');
+    expect(after.status).toBe(200);
+    expect(after.body.holdings).toHaveLength(1);
+
+    holder.current().$client.close();
   });
 });

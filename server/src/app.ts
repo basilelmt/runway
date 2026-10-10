@@ -52,7 +52,7 @@ export type AppOptions = {
 export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer, backupService }: AppOptions) {
   const app = new Hono<AppEnv>();
   const holder = toDbHolder(db);
-  const prices = createPrices(holder.current(), investDeps);
+  const prices = createPrices(holder, investDeps);
   const namer = merchantNamer ?? createMerchantNamer(holder, { exec });
   const backups = backupService ?? createBackupService({ holder, dbPath: holder.current().$client.name, dir: defaultBackupsDir(holder.current().$client.name) });
 
