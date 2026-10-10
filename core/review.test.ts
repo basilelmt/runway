@@ -47,6 +47,8 @@ describe('monthReview', () => {
     const result = monthReview(state, [], '2026-09', '2026-10-10');
     // 60 - 20 (Shopping) + 15 (à trier) = 55.
     expect(result.figures.spent).toBe(55_00);
+    // Déjà déduit du dépensé, le remboursement n'est pas compté une seconde fois en revenu.
+    expect(result.figures.income).toBe(0);
 
     const bigRefund: ReviewState = {
       accounts: [c],
@@ -304,6 +306,9 @@ describe('monthReview', () => {
       tx({ kind: 'income', amount: 2800_00, date: '2026-07-02' }),
       tx({ kind: 'income', amount: 2900_00, date: '2026-08-02' }),
       tx({ kind: 'income', amount: 2850_00, date: '2026-09-02' }),
+      // Remboursements rangés dans une enveloppe : déduits du dépensé, pas des revenus.
+      tx({ kind: 'income', amount: 500_00, envelopeId: restos.id, date: '2026-07-20' }),
+      tx({ kind: 'income', amount: 500_00, envelopeId: restos.id, date: '2026-08-20' }),
     ];
     const state: ReviewState = { accounts: [], envelopes: [restos], transactions, reviews: [] };
     const result = monthReview(state, [], '2026-09', '2026-10-10');

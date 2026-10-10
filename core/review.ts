@@ -60,12 +60,16 @@ function totalSpentInMonth(envelopes: State['envelopes'], transactions: State['t
   return total;
 }
 
+/**
+ * Revenus confirmés du mois, hors remboursements : un revenu rangé dans une enveloppe vient déjà en déduction
+ * du dépensé (`totalSpentInMonth`), le compter aussi ici le compterait deux fois.
+ */
 function totalIncomeInMonth(transactions: State['transactions'], month: string): Cents {
   const from = startOfMonth(`${month}-01`);
   const to = endOfMonth(`${month}-01`);
   let total = 0;
   for (const t of transactions) {
-    if (t.kind !== 'income' || t.status !== 'confirmed' || t.date < from || t.date > to) continue;
+    if (t.kind !== 'income' || t.status !== 'confirmed' || t.date < from || t.date > to || t.envelopeId != null) continue;
     total += t.amount;
   }
   return total;
