@@ -37,9 +37,13 @@ export const recurringRuleRoutes = new Hono<AppEnv>()
     return c.json(view(updated, c.get('today')));
   })
   .patch('/:id/active', validate('param', idParam), validate('json', activeSchema), (c) => {
-    return c.json(view(setRuleActive(c.get('db'), c.req.valid('param').id, c.req.valid('json').active), c.get('today')));
+    const updated = setRuleActive(c.get('db'), c.req.valid('param').id, c.req.valid('json').active);
+    // Une règle mise en pause ne couvre plus son marchand : le signal « nouveau prélèvement » peut revenir.
+    detectSignals(c.get('db'), c.get('today'));
+    return c.json(view(updated, c.get('today')));
   })
   .delete('/:id', validate('param', idParam), (c) => {
     deleteRule(c.get('db'), c.req.valid('param').id);
+    detectSignals(c.get('db'), c.get('today'));
     return c.body(null, 204);
   });

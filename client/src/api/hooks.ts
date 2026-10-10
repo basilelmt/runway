@@ -224,24 +224,26 @@ export function useDeleteTransaction(opts?: MutOpts<void, number>) {
 
 export const useRecurringRules = () => useQuery({ queryKey: keys.rules, queryFn: () => api.get<RecurringRuleView[]>('/api/recurring-rules') });
 
+// Le serveur relance la détection des signaux après toute modification de charge fixe (création,
+// montant, pause, suppression) : le client invalide aussi leur liste pour rester synchrone.
 export function useCreateRecurringRule(opts?: MutOpts<RecurringRuleView, RecurringRuleInput>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (input) => api.post<RecurringRuleView>('/api/recurring-rules', input), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: (input) => api.post<RecurringRuleView>('/api/recurring-rules', input), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 export function useUpdateRecurringRule(opts?: MutOpts<RecurringRuleView, { id: number } & RecurringRuleInput>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: ({ id, ...input }) => api.put<RecurringRuleView>(`/api/recurring-rules/${id}`, input), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: ({ id, ...input }) => api.put<RecurringRuleView>(`/api/recurring-rules/${id}`, input), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 export function useSetRuleActive(opts?: MutOpts<RecurringRuleView, { id: number; active: boolean }>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: ({ id, active }) => api.patch<RecurringRuleView>(`/api/recurring-rules/${id}/active`, { active }), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: ({ id, active }) => api.patch<RecurringRuleView>(`/api/recurring-rules/${id}/active`, { active }), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 export function useDeleteRecurringRule(opts?: MutOpts<void, number>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (id) => api.delete(`/api/recurring-rules/${id}`), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: (id) => api.delete(`/api/recurring-rules/${id}`), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 // Sorting rules and Claude
@@ -305,8 +307,8 @@ export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: F
 
 export function useCommitImport(opts?: MutOpts<ImportRecord, ImportCommitInput & { bankAccountNumber?: string | null }>) {
   const invalidate = useInvalidate();
-  // Le serveur lance le nommage des marchands après un import : on invalide son état pour que le suivi global se relance.
-  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts'], keys.merchantStatus); opts?.onSuccess?.(...a); } });
+  // Le serveur lance le nommage des marchands et relance la détection des signaux après un import.
+  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts'], keys.merchantStatus, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 // Marchands
@@ -419,8 +421,8 @@ export function useRunBankSync(opts?: MutOpts<BankSyncRunResult, number | undefi
     mutationKey: keys.bankSyncRun,
     mutationFn: (onlyIfStaleMinutes) => api.post<BankSyncRunResult>('/api/bank-sync/run', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}),
     onSuccess: (...a) => {
-      // Le serveur lance le nommage des marchands sur les nouvelles opérations : on invalide son état pour relancer le suivi global.
-      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts'], keys.merchantStatus);
+      // Le serveur lance le nommage des marchands et relance la détection des signaux sur les nouvelles opérations.
+      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts'], keys.merchantStatus, keys.signals);
       opts?.onSuccess?.(...a);
     },
   });
