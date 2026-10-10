@@ -1,12 +1,4 @@
-import {
-  detectConsentExpiring,
-  detectMissingCharges,
-  detectNewRecurring,
-  detectPriceChanges,
-  detectSyncErrors,
-  detectUnusualExpenses,
-  type DetectedSignal,
-} from '@core/signals';
+import { detectConsentExpiring, detectNewRecurring, detectPriceChanges, detectSyncErrors, detectUnusualExpenses, type DetectedSignal } from '@core/signals';
 import type { ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
 import { listConnections } from '../repos/bank';
@@ -25,10 +17,9 @@ export function detectSignals(db: Db, today: ISODate, now: Date = new Date()): v
   const connections = listConnections(db);
 
   const detected: DetectedSignal[] = [
-    ...detectUnusualExpenses(transactions, today),
+    ...detectUnusualExpenses(transactions, rules, today),
     ...detectNewRecurring(transactions, rules, today),
     ...detectPriceChanges(transactions, rules, today),
-    ...detectMissingCharges(transactions, today),
     ...detectConsentExpiring(connections, today),
     ...detectSyncErrors(connections, now),
   ];
