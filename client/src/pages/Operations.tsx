@@ -3,7 +3,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { Transaction } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useAccounts, useConfirmTransaction, useEnvelopes, useOverview, useTransactions } from '@/api/hooks';
+import { useAccounts, useAdvancePeople, useAdvances, useConfirmTransaction, useEnvelopes, useOverview, useTransactions } from '@/api/hooks';
+import { AdvancesTab } from '@/components/advances/AdvancesTab';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuickAdd } from '@/components/layout/quick-add-context';
 import { TransactionEditDialog } from '@/components/transactions/TransactionEditDialog';
@@ -15,13 +16,16 @@ import { Button, ButtonLink, EmptyState, ErrorState, GroupLabel, ListRowSkeleton
 import { plural, relativeDay } from '@/lib/format';
 import styles from './Operations.module.css';
 
-type View = 'toutes' | 'a-ranger';
+type View = 'toutes' | 'a-ranger' | 'avances';
 
 export function OperationsPage() {
   const [params, setParams] = useSearchParams();
   const overview = useOverview();
-  const view: View = params.get('vue') === 'a-ranger' ? 'a-ranger' : 'toutes';
+  const people = useAdvancePeople();
+  const raw = params.get('vue');
+  const view: View = raw === 'a-ranger' || raw === 'avances' ? raw : 'toutes';
   const unsorted = overview.data?.unsortedCount ?? 0;
+  const owing = people.data?.length ?? 0;
 
   return (
     <div className="page">
@@ -38,13 +42,14 @@ export function OperationsPage() {
         <Tabs<View>
           label="Vue des opérations"
           value={view}
-          onChange={(v) => setParams(v === 'a-ranger' ? { vue: 'a-ranger' } : {}, { replace: true })}
+          onChange={(v) => setParams(v === 'toutes' ? {} : { vue: v }, { replace: true })}
           items={[
             { value: 'toutes', label: 'Toutes' },
             { value: 'a-ranger', label: 'À ranger', count: unsorted },
+            { value: 'avances', label: 'Avances', count: owing },
           ]}
         />
-        {view === 'a-ranger' ? <UnsortedList /> : <AllTransactions />}
+        {view === 'a-ranger' ? <UnsortedList /> : view === 'avances' ? <AdvancesTab /> : <AllTransactions />}
       </div>
     </div>
   );
@@ -59,12 +64,14 @@ function AllTransactions() {
   const accounts = useAccounts(true);
   const envelopes = useEnvelopes(true);
   const transactions = useTransactions(toApiFilter(filters));
+  const openAdvances = useAdvances('open');
   const toast = useToast();
   const confirm = useConfirmTransaction({ onSuccess: () => toast.success('Opération confirmée'), onError: (e) => toast.error(errorMessage(e)) });
   const [editing, setEditing] = useState<Transaction | null>(null);
 
   const accountMap = useMemo(() => new Map((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
   const envelopeMap = useMemo(() => new Map((envelopes.data ?? []).map((e) => [e.id, e])), [envelopes.data]);
+  const advanceExpenseIds = useMemo(() => new Set((openAdvances.data ?? []).map((a) => a.expense.id)), [openAdvances.data]);
 
   // Les répartitions ne touchent aucun compte : elles n'apparaissent que quand on regarde une enveloppe.
   const visible = useMemo(() => (transactions.data ?? []).filter((t) => t.kind !== 'allocation' || filters.envelope !== undefined), [transactions.data, filters.envelope]);
@@ -134,6 +141,7 @@ function AllTransactions() {
                     onClick={() => setEditing(t)}
                     onConfirm={() => confirm.mutate(t.id)}
                     confirming={confirm.isPending && confirm.variables === t.id}
+                    hasOpenAdvance={advanceExpenseIds.has(t.id)}
                   />
                 ))}
               </ul>

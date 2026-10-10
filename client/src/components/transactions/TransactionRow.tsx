@@ -15,6 +15,8 @@ type TransactionRowProps = {
   onClick?: () => void;
   onConfirm?: () => void;
   confirming?: boolean;
+  /** Cette dépense a au moins une avance ouverte : porte la pastille « Avance ». */
+  hasOpenAdvance?: boolean;
 };
 
 const squash = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -26,7 +28,7 @@ function repeatsLabel(note: string, label: string): boolean {
   return n.startsWith(l.slice(0, 24)) || l.startsWith(n.slice(0, 24));
 }
 
-export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming }: TransactionRowProps) {
+export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming, hasOpenAdvance }: TransactionRowProps) {
   const amount = signedAmount(t, viewAccountId);
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
   const fromEnvelope = t.fromEnvelopeId != null ? envelopes.get(t.fromEnvelopeId) : undefined;
@@ -34,6 +36,8 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
   const planned = t.status === 'planned';
   const name = displayLabel(t, accounts, viewAccountId);
   const click: ListRowClick = onClick ? { onClick, clickLabel: `Modifier ${name}` } : {};
+  // Un revenu rangé dans une enveloppe est un remboursement : il affiche son enveloppe comme une dépense.
+  const isReimbursement = t.kind === 'income' && envelope != null;
 
   const where =
     // Le titre dit déjà « Virement vers/depuis » : pas la peine de répéter le même couple de comptes en dessous.
@@ -50,8 +54,9 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
       title={<span title={t.label}>{name}</span>}
       meta={
         <>
-          {t.kind !== 'expense' ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}
-          {t.kind === 'expense' ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null}
+          {t.kind !== 'expense' && !isReimbursement ? <Badge tone={t.kind === 'income' ? 'positive' : 'neutral'}>{KIND_LABELS[t.kind]}</Badge> : null}
+          {t.kind === 'expense' || isReimbursement ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null}
+          {t.kind === 'expense' && hasOpenAdvance ? <Badge tone="marking">Avance</Badge> : null}
           {planned ? <Badge tone="warning">Prévue</Badge> : null}
           {where ? <span className={styles.where}>{where}</span> : null}
           {t.note && !repeatsLabel(t.note, t.label) ? <span className={styles.note}>{t.note}</span> : null}
