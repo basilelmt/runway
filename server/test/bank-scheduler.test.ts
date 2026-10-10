@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 function configureBank() {
-  saveSettings(ctx.db, { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app', enableBankingPrivateKey: 'key' });
+  saveSettings(ctx.db, { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app', enableBankingPrivateKey: 'key', backupMirrorDir: '' });
 }
 
 function activeConnection() {
