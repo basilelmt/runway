@@ -156,6 +156,18 @@ describe('reports', () => {
     ]);
   });
 
+  it('un remboursement déduit les dépenses de son enveloppe, jamais sous zéro', async () => {
+    await t.call('POST', '/api/transactions', { kind: 'income', date: '2026-03-04', amount: 20_00, label: 'Avoir', accountId: t.courant.id, envelopeId: t.courses.id });
+    const { body } = await t.call('GET', '/api/reports/spending');
+    // Courses : 60 € de dépenses - 20 € remboursés = 40 €.
+    expect(body.byEnvelope.find((e: { name: string }) => e.name === 'Courses')).toMatchObject({ amount: 40_00 });
+    expect(body.total).toBe(55_00);
+
+    await t.call('POST', '/api/transactions', { kind: 'income', date: '2026-03-05', amount: 100_00, label: 'Gros avoir', accountId: t.courant.id, envelopeId: t.courses.id });
+    const after = await t.call('GET', '/api/reports/spending');
+    expect(after.body.byEnvelope.find((e: { name: string }) => e.name === 'Courses')).toBeUndefined();
+  });
+
   it('revenus et dépenses par mois', async () => {
     const { body } = await t.call('GET', '/api/reports/monthly?months=3');
     expect(body).toEqual([
