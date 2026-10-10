@@ -14,9 +14,15 @@ export const BACKUP_REASON_LABELS: Record<string, string> = {
   'avant-restauration': 'Avant une restauration',
 };
 
-/** Raison en clair ; une raison personnalisée (`db:backup -- "raison"`) s'affiche telle quelle. */
+/**
+ * Raison en clair ; une raison personnalisée (`db:backup -- "raison"`) a ses tirets remis en espaces
+ * et sa première lettre en majuscule (« avant-remise-a-zero » devient « Avant remise a zero »).
+ */
 export function reasonLabel(reason: string): string {
-  return BACKUP_REASON_LABELS[reason] ?? reason;
+  const known = BACKUP_REASON_LABELS[reason];
+  if (known) return known;
+  const spaced = reason.replace(/-/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function pad(n: number): string {

@@ -43,8 +43,8 @@ describe('raison en clair', () => {
     expect(reasonLabel('avant-restauration')).toBe('Avant une restauration');
   });
 
-  it('affiche une raison inconnue telle quelle', () => {
-    expect(reasonLabel('avant-remise-a-zero')).toBe('avant-remise-a-zero');
+  it('affiche une raison personnalisée lisible : tirets en espaces, première lettre en majuscule', () => {
+    expect(reasonLabel('avant-remise-a-zero')).toBe('Avant remise a zero');
   });
 });
 
