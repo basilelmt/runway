@@ -4,6 +4,7 @@ import type { MerchantStatus } from '@shared/api-types';
 import { merchantNamesResultSchema } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { transactions } from '../db/schema';
+import { toDbHolder, type DbHolder } from '../db/holder';
 import { ensureMerchants, listMerchantNames, listUnnamedKeys, merchantStats, sampleLabels, setClaudeNames } from '../repos/merchants';
 import { getSettings } from '../repos/settings';
 import { ClaudeError, execClaude, runClaude, type Exec } from './claude';
@@ -124,7 +125,8 @@ export type MerchantNamer = {
  * Nommeur en mémoire : une seule exécution à la fois, sans jamais bloquer l'appelant.
  * Une erreur est journalisée et gardée pour l'écran des Réglages, jusqu'au prochain succès.
  */
-export function createMerchantNamer(db: Db, deps: { exec?: Exec; log?: (message: string) => void } = {}): MerchantNamer {
+export function createMerchantNamer(db: Db | DbHolder, deps: { exec?: Exec; log?: (message: string) => void } = {}): MerchantNamer {
+  const holder = toDbHolder(db);
   const log = deps.log ?? ((message: string) => console.warn(message));
   let current: Promise<void> | null = null;
   let pending = false;
@@ -137,7 +139,7 @@ export function createMerchantNamer(db: Db, deps: { exec?: Exec; log?: (message:
     // (import, synchro bancaire) et entre en concurrence avec ses propres requêtes.
     current = new Promise<void>((resolve) => {
       setImmediate(() => {
-        nameMerchants(db, { exec: deps.exec })
+        nameMerchants(holder.current(), { exec: deps.exec })
           .then(() => {
             lastError = null;
           })
@@ -159,7 +161,7 @@ export function createMerchantNamer(db: Db, deps: { exec?: Exec; log?: (message:
       if (current) pending = true;
       else start();
     },
-    status: () => ({ ...merchantStats(db), running: current !== null, lastError }),
+    status: () => ({ ...merchantStats(holder.current()), running: current !== null, lastError }),
     idle: async () => {
       while (current) await current;
     },

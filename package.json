@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
+    "db:backup": "tsx server/scripts/db-backup.ts",
     "lint": "eslint .",
     "import:statements": "tsx server/scripts/import-statements.ts"
   },
