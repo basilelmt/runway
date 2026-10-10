@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { computeBalances } from '@core/balances';
-import { monthReview } from '@core/review';
+import { monthReview, versableRemainders } from '@core/review';
 import type { MonthReview } from '@shared/api-types';
 import { formatMonth, monthKey, type ISODate } from '@shared/dates';
 import type { AppliedReview, ReviewApply } from '@shared/schemas';
@@ -34,21 +33,22 @@ export function applyReview(db: Db, month: string, today: ISODate, input: Review
 
   const state = loadState(db, today);
   const envelopesById = new Map(state.envelopes.map((e) => [e.id, e]));
-  const balances = computeBalances(state, today);
+  // Plafond d'un versement : le reste du mois passé en revue encore présent aujourd'hui, pas le solde
+  // actuel (qui contient aussi le budget du mois courant et les provisions pour des charges à venir).
+  const ceilings = versableRemainders(state, month, today);
 
   for (const b of input.budgets) {
     if (!envelopesById.has(b.envelopeId)) throw new NotFoundError('Enveloppe introuvable');
   }
-  // Solde restant de chaque enveloppe source, décrémenté au fil des versements : plusieurs versements
-  // depuis la même enveloppe ne peuvent pas ensemble dépasser son solde actuel.
+  // Plusieurs versements depuis la même enveloppe ne peuvent pas ensemble dépasser ce plafond.
   const remaining = new Map<number, number>();
   for (const t of input.transfers) {
     const from = envelopesById.get(t.fromEnvelopeId);
     const to = envelopesById.get(t.toEnvelopeId);
     if (!from) throw new NotFoundError('Enveloppe source introuvable');
     if (!to || to.archived || !to.isSavings) throw new BadRequestError('Le versement doit aller vers une enveloppe d’épargne non archivée');
-    const left = remaining.get(from.id) ?? balances.envelopes[from.id] ?? 0;
-    if (t.amount > left) throw new BadRequestError(`Le versement dépasse le solde de ${from.name}`);
+    const left = remaining.get(from.id) ?? ceilings.get(from.id) ?? 0;
+    if (t.amount > left) throw new BadRequestError(`Le versement dépasse le reste versable de ${from.name}`);
     remaining.set(from.id, left - t.amount);
   }
 

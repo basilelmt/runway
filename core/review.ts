@@ -71,6 +71,27 @@ function lastThreeMonths(month: string): string[] {
 }
 
 /**
+ * Reste de `month` réellement versable, pour chaque enveloppe : ce qui en restait à la fin de ce mois-là
+ * (après le report de fin de mois, qui annule un éventuel négatif), et qui y est encore aujourd'hui.
+ * Le minimum des deux soldes : le solde d'aujourd'hui seul contient aussi ce qui a été reversé depuis
+ * (budget du mois courant, provisions pour des charges à venir), que verser viderait à tort.
+ */
+export function versableRemainders(state: Pick<State, 'accounts' | 'envelopes' | 'transactions'>, month: string, today: ISODate): Map<number, Cents> {
+  const cutoff = endOfMonth(`${month}-01`);
+  const untilCutoff = state.transactions.filter((t) => t.date <= cutoff);
+  // `asOf` au 1er du mois suivant, pas à `cutoff` lui-même : sans ça, le report de fin de mois (qui n'a
+  // lieu qu'en entrant dans le mois suivant) ne s'applique pas, et une enveloppe dépassée reste négative.
+  const nextMonthStart = startOfMonth(addMonths(cutoff, 1));
+  const endOfMonthBalances = computeBalances({ ...state, transactions: untilCutoff }, nextMonthStart).envelopes;
+  const todayBalances = computeBalances(state, today).envelopes;
+  const result = new Map<number, Cents>();
+  for (const e of state.envelopes) {
+    result.set(e.id, Math.max(0, Math.min(endOfMonthBalances[e.id] ?? 0, todayBalances[e.id] ?? 0)));
+  }
+  return result;
+}
+
+/**
  * Bilan du mois passé en revue : chiffres, enveloppes, propositions de complément, contrôle d'ensemble,
  * restes à verser et statut de validation. Fonction pure.
  *
@@ -143,10 +164,10 @@ export function monthReview(state: ReviewState, rules: RecurringRule[], month: s
   const previousMonth = monthKey(addMonths(`${monthKey(today)}-01`, -1));
   let remainders: ReviewRemainder[] | null = null;
   if (!record && month === previousMonth) {
-    const balances = computeBalances(state, today);
+    const ceilings = versableRemainders(state, month, today);
     remainders = envelopes
       .filter((e) => !e.archived && !e.isSavings)
-      .map((e) => ({ envelopeId: e.id, name: e.name, color: e.color, amount: balances.envelopes[e.id] ?? 0 }))
+      .map((e) => ({ envelopeId: e.id, name: e.name, color: e.color, amount: ceilings.get(e.id) ?? 0 }))
       .filter((r) => r.amount > 0);
   }
 

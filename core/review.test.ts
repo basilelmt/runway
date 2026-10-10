@@ -220,6 +220,53 @@ describe('monthReview', () => {
     expect(result.remainders).toEqual([]);
   });
 
+  it('restes : une enveloppe réalimentée en octobre dont le reste de septembre était nul ne propose rien', () => {
+    const c = courant();
+    const courses = envelope({ name: 'Courses', monthlyExtra: 300_00 });
+    const transactions = [
+      // Septembre : tout dépensé, rien ne reste à la fin du mois.
+      tx({ kind: 'allocation', amount: 300_00, envelopeId: courses.id, date: '2026-09-01' }),
+      tx({ kind: 'expense', amount: 300_00, accountId: c.id, envelopeId: courses.id, date: '2026-09-05' }),
+      // Octobre : budget du mois courant, à ne pas confondre avec un reste de septembre.
+      tx({ kind: 'allocation', amount: 300_00, envelopeId: courses.id, date: '2026-10-01' }),
+    ];
+    const state: ReviewState = { accounts: [c], envelopes: [courses], transactions, reviews: [] };
+    const result = monthReview(state, [], '2026-09', '2026-10-10');
+    expect(result.remainders).toEqual([]);
+  });
+
+  it('restes : un reste de septembre partiellement dépensé depuis compte le minimum des deux soldes', () => {
+    const c = courant();
+    const courses = envelope({ name: 'Courses', monthlyExtra: 300_00 });
+    const transactions = [
+      // Fin septembre : 200 € de reste.
+      tx({ kind: 'allocation', amount: 300_00, envelopeId: courses.id, date: '2026-09-01' }),
+      tx({ kind: 'expense', amount: 100_00, accountId: c.id, envelopeId: courses.id, date: '2026-09-05' }),
+      // Octobre : 50 € dépensés dessus, sans nouvelle répartition.
+      tx({ kind: 'expense', amount: 50_00, accountId: c.id, envelopeId: courses.id, date: '2026-10-03' }),
+    ];
+    const state: ReviewState = { accounts: [c], envelopes: [courses], transactions, reviews: [] };
+    const result = monthReview(state, [], '2026-09', '2026-10-10');
+    // Solde fin septembre 200 €, solde aujourd'hui 150 € : le minimum des deux, pas le solde actuel.
+    expect(result.remainders).toEqual([{ envelopeId: courses.id, name: 'Courses', color: courses.color, amount: 150_00 }]);
+  });
+
+  it('restes : le budget du mois courant versé en plus du reste de septembre ne gonfle pas le reste versable', () => {
+    const c = courant();
+    const courses = envelope({ name: 'Courses', monthlyExtra: 300_00 });
+    const transactions = [
+      // Fin septembre : 100 € de reste.
+      tx({ kind: 'allocation', amount: 300_00, envelopeId: courses.id, date: '2026-09-01' }),
+      tx({ kind: 'expense', amount: 200_00, accountId: c.id, envelopeId: courses.id, date: '2026-09-05' }),
+      // Octobre : 300 € de budget du mois en plus, jamais dépensés.
+      tx({ kind: 'allocation', amount: 300_00, envelopeId: courses.id, date: '2026-10-01' }),
+    ];
+    const state: ReviewState = { accounts: [c], envelopes: [courses], transactions, reviews: [] };
+    const result = monthReview(state, [], '2026-09', '2026-10-10');
+    // Solde aujourd'hui 400 €, mais seuls les 100 € de septembre sont versables.
+    expect(result.remainders).toEqual([{ envelopeId: courses.id, name: 'Courses', color: courses.color, amount: 100_00 }]);
+  });
+
   it('statut : non validé par défaut', () => {
     const state: ReviewState = { accounts: [], envelopes: [], transactions: [], reviews: [] };
     const result = monthReview(state, [], '2026-09', '2026-10-10');

@@ -67,6 +67,21 @@ describe('POST /api/reviews/:month', () => {
     expect(apply.status).toBe(400);
   });
 
+  it('un versement plafonné au reste de septembre, pas au solde actuel gonflé par le budget d’octobre', async () => {
+    const t = createTestApp('2026-10-10');
+    const bourse = (await t.call('POST', '/api/envelopes', { name: 'Bourse', color: '#4f8a5b', isSavings: true })).body;
+    // Fin septembre : 100 € de reste. Octobre ajoute 300 € de budget du mois, jamais dépensés : solde à aujourd'hui 400 €.
+    await t.call('POST', '/api/transactions', { kind: 'allocation', date: '2026-09-01', amount: 300_00, label: 'Budget', envelopeId: t.courses.id });
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-09-05', amount: 200_00, label: 'Carrefour', accountId: t.courant.id, envelopeId: t.courses.id });
+    await t.call('POST', '/api/transactions', { kind: 'allocation', date: '2026-10-01', amount: 300_00, label: 'Budget', envelopeId: t.courses.id });
+
+    const tooMuch = await t.call('POST', '/api/reviews/2026-09', { budgets: [], transfers: [{ fromEnvelopeId: t.courses.id, toEnvelopeId: bourse.id, amount: 200_00 }] });
+    expect(tooMuch.status).toBe(400);
+
+    const exact = await t.call('POST', '/api/reviews/2026-09', { budgets: [], transfers: [{ fromEnvelopeId: t.courses.id, toEnvelopeId: bourse.id, amount: 100_00 }] });
+    expect(exact.status).toBe(200);
+  });
+
   it('refuse un mois déjà validé (409)', async () => {
     const t = createTestApp('2026-10-10');
     await t.call('POST', '/api/reviews/2026-09', { budgets: [], transfers: [] });

@@ -203,12 +203,14 @@ function ProposalsSection({
 type Transfers = Record<number, number | null>;
 
 function RemaindersSection({
+  month,
   remainders,
   savings,
   transfers,
   onToggle,
   onChangeTarget,
 }: {
+  month: string;
   remainders: ReviewRemainder[];
   savings: { id: number; name: string; color: string }[];
   transfers: Transfers;
@@ -217,7 +219,7 @@ function RemaindersSection({
 }) {
   return (
     <section aria-labelledby="review-remainders-title">
-      <SectionHeader id="review-remainders-title" title="Restes" description="Ce qu’il reste aujourd’hui dans ces enveloppes." />
+      <SectionHeader id="review-remainders-title" title="Restes" description={`Ce qui restait fin ${formatMonth(month)} et que tu peux mettre de côté.`} />
       <ul className={styles.proposals}>
         {remainders.map((r) => {
           const verser = r.envelopeId in transfers;
@@ -306,6 +308,7 @@ function EditableReview({ month, review }: { month: string; review: MonthReview 
       ) : null}
       {review.remainders && review.remainders.length > 0 ? (
         <RemaindersSection
+          month={month}
           remainders={review.remainders}
           savings={savings}
           transfers={transfers}

@@ -60,9 +60,12 @@ Fonction pure `monthReview(state, rules, month, today)` dans `core/review.ts`, q
   - la proposition porte les dépenses de chaque mois, pour l'afficher (« 352 €, 325 €, 681 € »).
 - **Contrôle d'ensemble** : total des budgets du mois courant, avec les propositions acceptées, comparé au revenu médian des 3 mêmes mois.
   Le client le recalcule à chaque proposition acceptée ou modifiée, à partir des chiffres renvoyés.
-- **Restes** : pour chaque enveloppe non archivée et hors épargne, son solde positif à aujourd'hui.
-  Les restes sont lus au moment du bilan, pas à la fin du mois passé en revue : c'est l'argent qu'on peut réellement déplacer.
+- **Restes** : pour chaque enveloppe non archivée et hors épargne, son reste versable du mois passé en revue, qui n'apparaît que s'il est positif.
+  Reste versable = minimum entre son solde à la fin du mois passé en revue (après le report de fin de mois, qui annule un éventuel négatif) et son solde à aujourd'hui.
+  Le solde à aujourd'hui seul contiendrait aussi le budget du mois courant et les provisions pour des charges à venir, que verser viderait à tort.
+  Le solde à aujourd'hui seul borne aussi le reste : ce qui a été dépensé depuis sur ce reste ne peut plus être versé.
   Pour un mois passé déjà validé, ou plus ancien que le mois précédent, la section des restes n'est pas proposée.
+  Le versement, lors de la validation, est plafonné au même reste versable, pas au solde actuel.
 - **Statut** : validé ou non, avec la date de validation et ce qui a été appliqué.
 
 ## API
@@ -95,7 +98,7 @@ Fonction pure `monthReview(state, rules, month, today)` dans `core/review.ts`, q
      Une enveloppe sous son budget porte sa marge en clair (pas un nombre négatif), par exemple « 68,26 € de marge ».
   3. **Budgets à ajuster** : une ligne par proposition (« Restos : 352 €, 325 €, 681 € sur 3 mois. Proposé 360 € au lieu de 180 € »), avec un champ prérempli et le choix Accepter ou Ignorer (ignorée par défaut).
      La ligne de contrôle en pied de section : « Budgets 2 950 € pour un revenu médian de 2 876 € », en alerte quand le total dépasse le revenu.
-  4. **Restes** : une ligne par enveloppe avec un reste, choix Garder (par défaut) ou Verser, puis la liste des enveloppes d'épargne (présélection si une seule).
+  4. **Restes** : « Ce qui restait fin <mois> et que tu peux mettre de côté. », une ligne par enveloppe avec un reste, choix Garder (par défaut) ou Verser, puis la liste des enveloppes d'épargne (présélection si une seule).
   5. Bouton principal « Valider le bilan ».
      Le toast de succès propose « Annuler », qui appelle `DELETE`.
 - Un mois déjà validé affiche les chiffres, ce qui a été appliqué et le bouton « Annuler ce bilan ».
