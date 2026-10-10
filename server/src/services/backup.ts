@@ -33,12 +33,14 @@ export function mirrorMessage(err: unknown, mirrorDir: string): string {
 }
 
 /**
- * Une connexion en lecture seule sur un fichier en mode WAL laisse quand même des `-wal`/`-shm`, même sans
- * aucune écriture. Le `-shm` (index partagé, jamais de données uniques) est toujours supprimable. Le `-wal`
- * ne l'est que s'il est vide : un `-wal` qui contient de vraies écritures pas encore reportées (celui de la
- * base réelle, lue pour `hasPendingMigrations` avant de l'ouvrir pour de bon) ne doit jamais être touché.
+ * Ferme une connexion en lecture seule sur un fichier de sauvegarde (dossier des sauvegardes, second dossier,
+ * copie `.partial`) et supprime les `-wal`/`-shm` qu'elle a laissés : ouvrir un fichier en mode WAL en crée
+ * même sans écrire. Réservé aux fichiers de sauvegarde, que Runway est seul à ouvrir, le temps d'une lecture.
+ *
+ * Jamais sur la vraie base : supprimer le `-shm` d'une base ouverte par un autre processus (serveur de dev,
+ * script) casse le partage du WAL entre les deux, et des écritures se perdent sans la moindre erreur.
  */
-function closeAndCleanupSidecars(db: Database.Database | undefined, path: string): void {
+function closeBackupFile(db: Database.Database | undefined, path: string): void {
   db?.close();
   rmSync(`${path}-shm`, { force: true });
   const walPath = `${path}-wal`;
@@ -59,7 +61,7 @@ function verifyDb(path: string): boolean {
   } catch {
     return false;
   } finally {
-    closeAndCleanupSidecars(db, path);
+    closeBackupFile(db, path);
   }
 }
 
@@ -164,7 +166,10 @@ function appliedHashes(sqlite: Database.Database): string[] {
   return (sqlite.prepare('SELECT hash FROM __drizzle_migrations').all() as { hash: string }[]).map((r) => r.hash);
 }
 
-/** Vrai si au moins une migration du dossier n'est pas encore appliquée à ce fichier. */
+/**
+ * Vrai si au moins une migration du dossier n'est pas encore appliquée à ce fichier. Lit la vraie base, peut-être
+ * ouverte par un autre processus : lecture seule, et aucun nettoyage des `-wal`/`-shm` (les laisser est normal).
+ */
 export function hasPendingMigrations(dbPath: string, migrationsFolder = defaultMigrationsFolder): boolean {
   const known = migrationHashes(migrationsFolder);
   const sqlite = new Database(dbPath, { readonly: true });
@@ -172,18 +177,21 @@ export function hasPendingMigrations(dbPath: string, migrationsFolder = defaultM
     const applied = new Set(appliedHashes(sqlite));
     return [...known].some((h) => !applied.has(h));
   } finally {
-    closeAndCleanupSidecars(sqlite, dbPath);
+    sqlite.close();
   }
 }
 
-/** Refuse une sauvegarde dont `__drizzle_migrations` contient une migration inconnue de ce code (base plus récente). */
+/**
+ * Refuse une sauvegarde dont `__drizzle_migrations` contient une migration inconnue de ce code (base plus récente).
+ * `backupPath` est un fichier de sauvegarde, jamais la vraie base (voir `closeBackupFile`).
+ */
 export function isRestorable(backupPath: string, migrationsFolder = defaultMigrationsFolder): boolean {
   const known = migrationHashes(migrationsFolder);
   const sqlite = new Database(backupPath, { readonly: true });
   try {
     return appliedHashes(sqlite).every((h) => known.has(h));
   } finally {
-    closeAndCleanupSidecars(sqlite, backupPath);
+    closeBackupFile(sqlite, backupPath);
   }
 }
 
