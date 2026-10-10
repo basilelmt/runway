@@ -16,6 +16,8 @@ export function applyOperation(op: Operation, accounts: AccountMap, envelopes: E
       break;
     case 'income':
       if (op.accountId != null) accounts[op.accountId] = (accounts[op.accountId] ?? 0) + a;
+      // Un revenu rangé dans une enveloppe est un remboursement : il la crédite au lieu de grossir "À répartir".
+      if (op.envelopeId != null) envelopes[op.envelopeId] = (envelopes[op.envelopeId] ?? 0) + a;
       break;
     case 'transfer':
       if (op.accountId != null) accounts[op.accountId] = (accounts[op.accountId] ?? 0) - a;

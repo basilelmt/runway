@@ -32,6 +32,23 @@ describe('computeBalances', () => {
     expect(b.toAllocate).toBe(2000_00);
   });
 
+  it('un remboursement (revenu rangé dans une enveloppe) la crédite sans changer "À répartir"', () => {
+    const courant = account({ name: 'Courant', initialBalance: 100_00 });
+    const sorties = envelope({ name: 'Sorties' });
+    const b = computeBalances({
+      accounts: [courant],
+      envelopes: [sorties],
+      transactions: [
+        tx({ kind: 'expense', amount: 80_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-01' }),
+        tx({ kind: 'income', amount: 40_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-05' }),
+      ],
+    }, TODAY);
+    expect(b.accounts[courant.id]).toBe(60_00);
+    expect(b.envelopes[sorties.id]).toBe(-40_00);
+    // Le revenu va à l'enveloppe au lieu de "À répartir" : celui-ci ne bouge pas (100 au départ, toujours 100).
+    expect(b.toAllocate).toBe(100_00);
+  });
+
   it('un transfert déplace entre comptes sans toucher aux enveloppes', () => {
     const courant = account({ name: 'Courant', initialBalance: 500_00 });
     const livret = account({ name: 'Livret', onBudget: false });

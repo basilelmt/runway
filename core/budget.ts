@@ -25,7 +25,11 @@ export function monthActivity(transactions: Transaction[], date: ISODate): Month
       if (t.fromEnvelopeId != null) add(allocated, t.fromEnvelopeId, -t.amount);
     }
     if (t.kind === 'expense' && t.envelopeId != null) add(spent, t.envelopeId, t.amount);
+    // Un remboursement rangé dans une enveloppe vient en déduction de ses dépenses du mois.
+    if (t.kind === 'income' && t.envelopeId != null) add(spent, t.envelopeId, -t.amount);
   }
+  // Jamais négatif : un remboursement qui dépasse les dépenses du mois ramène juste le dépensé à zéro.
+  for (const [id, amount] of spent) if (amount < 0) spent.set(id, 0);
   return { allocated, spent };
 }
 
