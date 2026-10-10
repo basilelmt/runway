@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
-import { bankConnectionStatuses, fundingStatuses, merchantSources } from '@shared/schemas';
+import { bankConnectionStatuses, fundingStatuses, merchantSources, signalKinds } from '@shared/schemas';
 import { platforms, ideaAngleKeys } from '@shared/invest';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -144,6 +144,12 @@ export const bankConnections = sqliteTable('bank_connections', {
   validUntil: text('valid_until'),
   lastSyncAt: text('last_sync_at'),
   lastError: text('last_error'),
+  /** Échecs de synchro d'affilée, remis à 0 au premier succès ; sert le signal `sync_error`. */
+  consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+  /** Horodatage du premier échec de la série en cours ; null hors échec. */
+  firstFailureAt: text('first_failure_at'),
+  /** Dernière synchro réussie (distincte de `lastSyncAt`, qui avance même en échec). */
+  lastSuccessAt: text('last_success_at'),
   createdAt: text('created_at').notNull().default(now),
 });
 
@@ -167,6 +173,19 @@ export const bankAccounts = sqliteTable(
   },
   (t) => [index('bank_accounts_connection_idx').on(t.connectionId)],
 );
+
+export const signals = sqliteTable('signals', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  kind: text('kind', { enum: signalKinds }).notNull(),
+  /** Identité stable, pour ne jamais recréer un signal déjà écarté (ex. `unusual:<transaction_id>`). */
+  key: text('key').notNull().unique(),
+  createdAt: text('created_at').notNull().default(now),
+  /** JSON : ce qu'il faut pour afficher et agir sur le signal. */
+  payload: text('payload').notNull(),
+  dismissedAt: text('dismissed_at'),
+  /** Condition qui a produit le signal retombée (charge arrivée, règle mise à jour...). */
+  resolvedAt: text('resolved_at'),
+});
 
 export const holdings = sqliteTable(
   'holdings',

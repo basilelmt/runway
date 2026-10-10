@@ -284,6 +284,10 @@ export type Settings = z.infer<typeof settingsSchema>;
 export const bankConnectionStatuses = ['pending', 'authorized', 'active', 'expired', 'revoked'] as const;
 export type BankConnectionStatus = (typeof bankConnectionStatuses)[number];
 
+/** Les types de signaux, dans l'ordre où ils sont détectés. */
+export const signalKinds = ['unusual_expense', 'new_recurring', 'price_change', 'missing_charge', 'consent_expiring', 'sync_error'] as const;
+export type SignalKind = (typeof signalKinds)[number];
+
 export const bankStartSchema = z.object({ connectionId: idSchema.nullable().optional() });
 export type BankStartInput = z.infer<typeof bankStartSchema>;
 
