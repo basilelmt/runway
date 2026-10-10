@@ -413,3 +413,28 @@ export type MerchantStatus = { total: number; named: number; running: boolean; l
 
 /** Un marchand et le nombre de ses opérations (`GET /api/merchants/:key`). */
 export type MerchantDetail = { key: string; name: string; source: MerchantSource | null; transactionCount: number };
+
+/** Une sauvegarde listée (`GET /api/backups`). */
+export type BackupEntry = {
+  name: string;
+  /** Horodatage ISO, déduit du nom du fichier (ou de sa date de modification pour une ancienne copie manuelle). */
+  date: string;
+  /** Suffixe technique du nom (`demarrage`, `avant-migration`, `quotidienne`, `manuelle`, `avant-restauration`, ou une raison personnalisée). */
+  reason: string;
+  /** Raison en clair, pour l'affichage. */
+  reasonLabel: string;
+  size: number;
+  /** Présente aussi dans le second dossier. */
+  inMirror: boolean;
+};
+
+/** État des sauvegardes (`GET /api/backups`). */
+export type BackupsState = {
+  backups: BackupEntry[];
+  /** Horodatage ISO de la dernière sauvegarde locale réussie, ou `null` si aucune. */
+  lastSuccessAt: string | null;
+  lastLocalError: string | null;
+  lastMirrorError: string | null;
+  localDir: string;
+  mirrorDir: string | null;
+};
