@@ -121,8 +121,8 @@ function EnvelopeList({ month, envelopes }: { month: string; envelopes: MonthRev
             lead={<Dot color={e.color} />}
             title={e.name}
             meta={`${formatEuros(e.spent)} sur ${formatEuros(e.budget)}`}
-            trail={<Amount cents={e.gap} tone="neutral" className={e.gap > 0 ? styles.over : undefined} />}
-            trailSub={e.gap > 0 ? 'dépassement' : undefined}
+            trail={<Amount cents={Math.abs(e.gap)} tone="neutral" className={e.gap > 0 ? styles.over : e.gap < 0 ? styles.under : undefined} />}
+            trailSub={e.gap > 0 ? 'dépassement' : e.gap < 0 ? 'de marge' : undefined}
             actions={
               e.gap > 0 ? (
                 <Button

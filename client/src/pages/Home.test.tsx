@@ -123,7 +123,7 @@ describe('Accueil', () => {
   it('invite au bilan du mois précédent tant qu’il n’est pas validé', async () => {
     renderHome({ pendingReview: { month: '2026-09', spent: 3154_00, overspentCount: 2 } });
     const banner = await screen.findByRole('group', { name: 'Bilan du mois précédent' });
-    expect(banner).toHaveTextContent('Bilan de Septembre : 3 154,00 € dépensés, 2 enveloppes dépassées');
+    expect(banner).toHaveTextContent('Bilan de septembre : 3 154,00 € dépensés, 2 enveloppes dépassées');
     expect(screen.getByRole('link', { name: 'Faire le bilan' })).toHaveAttribute('href', '/analyse?vue=bilan&mois=2026-09');
   });
 

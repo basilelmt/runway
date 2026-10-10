@@ -30,8 +30,8 @@ const baseReview: MonthReview = {
   month: '2026-09',
   figures: { income: 2800_00, spent: 1200_00, saved: 300_00 },
   envelopes: [
-    { envelopeId: 1, name: 'Restos', color: '#c2703d', isSavings: false, budget: 180_00, spent: 300_00, gap: 120_00 },
-    { envelopeId: 2, name: 'Courses', color: '#4f8a5b', isSavings: false, budget: 400_00, spent: 200_00, gap: -200_00 },
+    { envelopeId: 1, name: 'Restos', color: '#c2703d', budget: 180_00, spent: 300_00, gap: 120_00 },
+    { envelopeId: 2, name: 'Courses', color: '#4f8a5b', budget: 400_00, spent: 200_00, gap: -200_00 },
   ],
   proposals: [{ envelopeId: 1, name: 'Restos', currentExtra: 180_00, proposedExtra: 360_00, monthsSpent: [352_00, 325_00, 681_00] }],
   control: {
@@ -85,6 +85,14 @@ describe('Review', () => {
     expect(await screen.findByText('1 200,00 €')).toBeInTheDocument();
     expect(screen.getByText('300,00 € sur 180,00 €')).toBeInTheDocument();
     expect(screen.getByText('dépassement')).toBeInTheDocument();
+  });
+
+  it('affiche la marge en clair pour une enveloppe sous son budget, sans nombre négatif', async () => {
+    renderReview();
+    await screen.findByText('Courses');
+    expect(screen.getByText('200,00 €')).toBeInTheDocument();
+    expect(screen.getByText('de marge')).toBeInTheDocument();
+    expect(screen.queryByText(/^-/)).not.toBeInTheDocument();
   });
 
   it('ouvre Demander avec la question préremplie sur une enveloppe dépassée', async () => {

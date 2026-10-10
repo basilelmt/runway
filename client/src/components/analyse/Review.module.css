@@ -21,6 +21,10 @@
   color: var(--negative);
 }
 
+.under {
+  color: var(--positive);
+}
+
 .proposals {
   display: flex;
   flex-direction: column;

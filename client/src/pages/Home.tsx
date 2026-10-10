@@ -32,7 +32,10 @@ import { plural } from '@/lib/format';
 import styles from './Home.module.css';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const monthName = (iso: string) => capitalize(new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
+/** En minuscule, comme tout mois dans une phrase en français (« bilan de septembre »). */
+const monthNameLower = (iso: string) => new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+/** En capitale initiale, pour un titre seul (« Octobre »). */
+const monthName = (iso: string) => capitalize(monthNameLower(iso));
 const longDay = (iso: string) =>
   capitalize(new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
 
@@ -99,7 +102,7 @@ function PendingReviewBanner({ pendingReview }: { pendingReview: NonNullable<Ove
         </ButtonLink>
       }
     >
-      Bilan de {monthName(`${pendingReview.month}-01`)} :{' '}
+      Bilan de {monthNameLower(`${pendingReview.month}-01`)} :{' '}
       {pendingReview.overspentCount > 0 ? (
         <>
           {formatEuros(pendingReview.spent)} dépensés, {plural(pendingReview.overspentCount, 'enveloppe dépassée', 'enveloppes dépassées')}
