@@ -10,6 +10,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .row {
@@ -32,45 +35,8 @@
   color: var(--ink-mute);
 }
 
-.remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--ink-mute);
-  cursor: pointer;
-  transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
-}
-
-.remove:hover {
-  background: var(--paper-sunken);
-  color: var(--ink);
-}
-
-.remove svg {
-  width: 16px;
-  height: 16px;
-}
-
 .add {
   align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  border: none;
-  background: none;
-  color: var(--marking-ink);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.add svg {
-  width: 14px;
-  height: 14px;
 }
 
 .mine {

@@ -4,7 +4,7 @@ import type { AdvanceView } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useAdvancePeople, useAdvancesForExpense, useReopenAdvance, useSetAdvances } from '@/api/hooks';
-import { Badge, FieldError, GroupLabel, Input, MoneyInput } from '@/components/ui';
+import { Badge, Button, FieldError, GroupLabel, Input, MoneyInput } from '@/components/ui';
 import styles from './AdvancesEditor.module.css';
 
 type Line = { person: string; amount: number | null };
@@ -77,9 +77,7 @@ export function AdvancesEditor({ expenseId, expenseAmount }: { expenseId: number
                 className={styles.person}
               />
               <MoneyInput aria-label="Montant qu’elle doit" value={line.amount} placeholder="0,00" onChange={(v) => update(i, { amount: v })} onBlur={() => commit(lines)} className={styles.amount} />
-              <button type="button" className={styles.remove} onClick={() => remove(i)} aria-label={`Retirer ${line.person || 'cette personne'}`}>
-                <Trash2 aria-hidden />
-              </button>
+              <Button variant="ghost" size="sm" icon={<Trash2 />} onClick={() => remove(i)} aria-label={`Retirer ${line.person || 'cette personne'}`} />
             </li>
           ))}
           {settled.map((a) => (
@@ -87,17 +85,15 @@ export function AdvancesEditor({ expenseId, expenseAmount }: { expenseId: number
               <span className={styles.person}>{a.person}</span>
               <span className={styles.amount}>{formatEuros(a.amount)}</span>
               <Badge tone="neutral">{a.refund ? 'Remboursée' : 'Soldée'}</Badge>
-              <button type="button" className={styles.remove} onClick={() => reopen.mutate(a.id)} aria-label={`Rouvrir l’avance de ${a.person}`} disabled={reopen.isPending}>
-                <RotateCcw aria-hidden />
-              </button>
+              <Button variant="ghost" size="sm" icon={<RotateCcw />} onClick={() => reopen.mutate(a.id)} aria-label={`Rouvrir l’avance de ${a.person}`} disabled={reopen.isPending} />
             </li>
           ))}
         </ul>
       ) : null}
 
-      <button type="button" className={styles.add} onClick={() => setLines((current) => [...current, { person: '', amount: null }])}>
-        <Plus aria-hidden /> Ajouter une personne
-      </button>
+      <Button variant="text" icon={<Plus />} className={styles.add} onClick={() => setLines((current) => [...current, { person: '', amount: null }])}>
+        Ajouter une personne
+      </Button>
 
       <p className={styles.mine}>
         Ta part : <strong className="num">{formatEuros(mine)}</strong> sur {formatEuros(expenseAmount)}

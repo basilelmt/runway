@@ -1,17 +1,17 @@
 import { ChevronDown, HandCoins, Link2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { AdvanceSuggestionView, AdvanceView, PersonAdvancesSummary } from '@shared/api-types';
-import { addMonths, formatDateLong, today } from '@shared/dates';
+import { formatDateLong } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import type { Transaction } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useAdvancePeople, useAdvances, useAdvanceSuggestions, useEnvelopes, useSettleAdvances, useTransactions, useUpdateTransaction } from '@/api/hooks';
-import { Amount, Button, EmptyState, ErrorState, GroupLabel, InlinePill, ListRow, ListRowSkeleton, SectionHeader, listRowDate, useToast } from '@/components/ui';
+import { useAdvancePeople, useAdvances, useAdvanceSuggestions, useEnvelopes, useSettleAdvances, useUnsortedIncomes, useUpdateTransaction } from '@/api/hooks';
+import { Amount, Button, EmptyState, ErrorState, InlinePill, ListRow, ListRowSkeleton, SectionHeader, listRowDate, useToast } from '@/components/ui';
 import { formatDateCompact } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import styles from './AdvancesTab.module.css';
 
-/** Nombre de mois de revenus sans enveloppe proposés au rangement manuel. */
+/** Nombre de mois de revenus sans enveloppe proposés au rangement manuel (voir aussi `buildUnsortedIncomes` côté serveur). */
 const UNSORTED_INCOME_MONTHS = 6;
 
 /** Vue « Avances » des Opérations : qui doit de l'argent, rapprochements proposés, remboursements passés à ranger. */
@@ -20,18 +20,26 @@ export function AdvancesTab() {
   const openAdvances = useAdvances('open');
   const suggestions = useAdvanceSuggestions();
   const envelopes = useEnvelopes();
-  const since = addMonths(today(), -UNSORTED_INCOME_MONTHS);
-  const incomes = useTransactions({ kind: 'income', status: 'confirmed', from: since, limit: 1000 });
+  const unsortedIncomes = useUnsortedIncomes();
 
-  const suggestedIds = useMemo(() => new Set((suggestions.data ?? []).map((s) => s.incomeId)), [suggestions.data]);
-  const unsortedIncomes = (incomes.data ?? []).filter((t) => t.envelopeId === null && !suggestedIds.has(t.id));
-
-  const loading = people.isPending || suggestions.isPending || incomes.isPending;
-  const error = people.error ?? suggestions.error ?? incomes.error;
-  const nothing = !loading && !error && people.data?.length === 0 && (suggestions.data ?? []).length === 0 && unsortedIncomes.length === 0;
+  const loading = people.isPending || suggestions.isPending || unsortedIncomes.isPending;
+  const error = people.error ?? suggestions.error ?? unsortedIncomes.error;
+  const nothing = !loading && !error && people.data?.length === 0 && (suggestions.data ?? []).length === 0 && (unsortedIncomes.data ?? []).length === 0;
 
   if (loading) return <ListRowSkeleton rows={3} meta={false} actions />;
-  if (error) return <ErrorState title="Impossible de charger les avances" description={errorMessage(error)} onRetry={() => { void people.refetch(); void suggestions.refetch(); void incomes.refetch(); }} />;
+  if (error) {
+    return (
+      <ErrorState
+        title="Impossible de charger les avances"
+        description={errorMessage(error)}
+        onRetry={() => {
+          void people.refetch();
+          void suggestions.refetch();
+          void unsortedIncomes.refetch();
+        }}
+      />
+    );
+  }
   if (nothing) {
     return (
       <EmptyState
@@ -46,7 +54,7 @@ export function AdvancesTab() {
     <div className={styles.wrap}>
       {people.data && people.data.length > 0 ? <PeopleSection people={people.data} openAdvances={openAdvances.data ?? []} /> : null}
       {suggestions.data && suggestions.data.length > 0 ? <SuggestionsSection suggestions={suggestions.data} /> : null}
-      {unsortedIncomes.length > 0 ? <UnsortedIncomeSection incomes={unsortedIncomes} envelopes={envelopes.data ?? []} /> : null}
+      {unsortedIncomes.data && unsortedIncomes.data.length > 0 ? <UnsortedIncomeSection incomes={unsortedIncomes.data} envelopes={envelopes.data ?? []} /> : null}
     </div>
   );
 }
@@ -173,8 +181,11 @@ function UnsortedIncomeSection({ incomes, envelopes }: { incomes: Transaction[];
 
   return (
     <section aria-labelledby="advances-unsorted-title">
-      <SectionHeader id="advances-unsorted-title" title={`Revenus des ${UNSORTED_INCOME_MONTHS} derniers mois sans enveloppe`} />
-      <GroupLabel as="p">Pour ranger vite un remboursement passé.</GroupLabel>
+      <SectionHeader
+        id="advances-unsorted-title"
+        title={`Revenus des ${UNSORTED_INCOME_MONTHS} derniers mois sans enveloppe`}
+        description="Pour ranger vite un remboursement passé."
+      />
       <ul className="ledger stagger">
         {incomes.map((t) => (
           <ListRow

@@ -87,6 +87,7 @@ export const keys = {
   advancesForExpense: (expenseId: number) => ['advances', 'expense', expenseId] as const,
   advancePeople: ['advances', 'people'] as const,
   advanceSuggestions: ['advances', 'suggestions'] as const,
+  unsortedIncomes: ['advances', 'unsorted-incomes'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction'], ['advances']];
@@ -242,6 +243,8 @@ export const useAdvancesForExpense = (expenseId: number | null) =>
 export const useAdvancePeople = () => useQuery({ queryKey: keys.advancePeople, queryFn: () => api.get<PersonAdvancesSummary[]>('/api/advances/people') });
 
 export const useAdvanceSuggestions = () => useQuery({ queryKey: keys.advanceSuggestions, queryFn: () => api.get<AdvanceSuggestionView[]>('/api/advances/suggestions') });
+
+export const useUnsortedIncomes = () => useQuery({ queryKey: keys.unsortedIncomes, queryFn: () => api.get<Transaction[]>('/api/advances/unsorted-incomes') });
 
 export function useSetAdvances(opts?: MutOpts<Advance[], { expenseId: number; lines: AdvanceLineInput[] }>) {
   const invalidate = useInvalidate();
