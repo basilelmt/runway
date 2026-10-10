@@ -1,10 +1,10 @@
 import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm';
 import { merchantDisplayName } from '@core/merchants';
 import type { AdvanceView, PersonAdvancesSummary } from '@shared/api-types';
-import { addDays, type ISODate } from '@shared/dates';
+import type { ISODate } from '@shared/dates';
 import type { Advance, AdvanceLineInput } from '@shared/schemas';
 import type { Db } from '../db/client';
-import { advances, envelopes, merchants, transactions } from '../db/schema';
+import { advances, envelopes, merchants, recurringRules, transactions } from '../db/schema';
 import { BadRequestError, NotFoundError } from '../errors';
 import { getTransaction } from './transactions';
 
@@ -143,22 +143,7 @@ export function listAdvanceViews(db: Db, status: 'open' | 'all', expenseId?: num
     .sort((a, b) => (a.expense.date < b.expense.date ? 1 : a.expense.date > b.expense.date ? -1 : b.id - a.id));
 }
 
-/** Par personne, total des avances ouvertes et date de la plus vieille, les plus anciennes d'abord. */
-export function listPersonSummaries(db: Db): PersonAdvancesSummary[] {
-  const rows = db.select().from(advances).where(openClause).all();
-  const byPerson = new Map<string, Advance[]>();
-  for (const r of rows) byPerson.set(r.person, [...(byPerson.get(r.person) ?? []), r]);
-  const summaries: PersonAdvancesSummary[] = [...byPerson.entries()].map(([person, list]) => ({
-    person,
-    totalOpen: list.reduce((s, a) => s + a.amount, 0),
-    oldestOpenDate: list.reduce((oldest, a) => (a.createdAt < oldest ? a.createdAt : oldest), list[0]!.createdAt),
-    openCount: list.length,
-  }));
-  summaries.sort((a, b) => (a.oldestOpenDate < b.oldestOpenDate ? -1 : 1));
-  return summaries;
-}
-
-/** Avances ouvertes jointes à leur dépense, pour les rapprochements proposés. */
+/** Avances ouvertes jointes à leur dépense, pour les rapprochements proposés et l'ancienneté par personne. */
 export function listOpenAdvancesWithExpense(db: Db): { id: number; person: string; amount: number; expenseId: number; expenseLabel: string; expenseDate: ISODate }[] {
   const rows = db.select().from(advances).where(openClause).all();
   if (rows.length === 0) return [];
@@ -178,21 +163,74 @@ export function listOpenAdvancesWithExpense(db: Db): { id: number; person: strin
   });
 }
 
-/** Revenus confirmés sans enveloppe, des `windowDays` derniers jours : candidats à un rapprochement. */
-export function listUnsortedIncomeCandidates(db: Db, today: ISODate, windowDays: number): IncomeCandidate[] {
+/**
+ * Par personne, total des avances ouvertes et date de la dépense la plus ancienne qui en porte une,
+ * les plus anciennes d'abord.
+ */
+export function listPersonSummaries(db: Db): PersonAdvancesSummary[] {
+  const rows = listOpenAdvancesWithExpense(db);
+  const byPerson = new Map<string, typeof rows>();
+  for (const r of rows) byPerson.set(r.person, [...(byPerson.get(r.person) ?? []), r]);
+  const summaries: PersonAdvancesSummary[] = [...byPerson.entries()].map(([person, list]) => ({
+    person,
+    totalOpen: list.reduce((s, a) => s + a.amount, 0),
+    oldestOpenDate: list.reduce((oldest, a) => (a.expenseDate < oldest ? a.expenseDate : oldest), list[0]!.expenseDate),
+    openCount: list.length,
+  }));
+  summaries.sort((a, b) => (a.oldestOpenDate < b.oldestOpenDate ? -1 : 1));
+  return summaries;
+}
+
+/**
+ * Revenus confirmés sans enveloppe, candidats à un rapprochement ou à un rangement manuel.
+ * Exclut le bruit des revenus récurrents (salaire...) : ceux liés à une règle, ceux dont le marchand
+ * est déjà vu sur une occurrence liée à une règle de revenu active, et ceux dont le montant est à moins
+ * de 10 % de celui d'une règle de revenu active (une règle créée après coup ne lie pas son historique).
+ * `from` borne la fenêtre pour le rangement manuel ; sans elle, tout l'historique (le rapprochement
+ * applique sa propre fenêtre, relative à chaque dépense).
+ */
+export function listUnsortedIncomeCandidates(db: Db, options: { from?: ISODate } = {}): IncomeCandidate[] {
+  const incomeRules = db
+    .select({ id: recurringRules.id, amount: recurringRules.amount })
+    .from(recurringRules)
+    .where(and(eq(recurringRules.kind, 'income'), eq(recurringRules.active, true)))
+    .all();
+  const ruleIds = incomeRules.map((r) => r.id);
+  const linkedMerchantKeys = new Set(
+    ruleIds.length
+      ? db
+          .select({ merchantKey: transactions.merchantKey })
+          .from(transactions)
+          .where(inArray(transactions.recurringRuleId, ruleIds))
+          .all()
+          .map((r) => r.merchantKey)
+          .filter((k): k is string => k !== null)
+      : [],
+  );
+
+  const where = [eq(transactions.kind, 'income'), eq(transactions.status, 'confirmed'), isNull(transactions.envelopeId)];
+  if (options.from !== undefined) where.push(gte(transactions.date, options.from));
+
   return db
     .select({
       id: transactions.id,
       label: transactions.label,
       amount: transactions.amount,
       date: transactions.date,
+      recurringRuleId: transactions.recurringRuleId,
       merchantKey: transactions.merchantKey,
       merchantName: merchants.name,
     })
     .from(transactions)
     .leftJoin(merchants, eq(merchants.key, transactions.merchantKey))
-    .where(and(eq(transactions.kind, 'income'), eq(transactions.status, 'confirmed'), isNull(transactions.envelopeId), gte(transactions.date, addDays(today, -windowDays))))
+    .where(and(...where))
     .orderBy(desc(transactions.date))
     .all()
+    .filter((r) => {
+      if (r.recurringRuleId !== null) return false;
+      if (r.merchantKey !== null && linkedMerchantKeys.has(r.merchantKey)) return false;
+      if (incomeRules.some((rule) => Math.abs(r.amount - rule.amount) * 10 <= rule.amount)) return false;
+      return true;
+    })
     .map((r) => ({ id: r.id, label: r.label, displayLabel: resolveLabel(r), amount: r.amount, date: r.date }));
 }

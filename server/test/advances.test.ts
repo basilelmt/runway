@@ -94,14 +94,15 @@ describe('avances', () => {
     expect(afterExpenseDeleted.body).toHaveLength(0);
   });
 
-  it('GET /api/advances/people : total ouvert et ancienneté par personne', async () => {
+  it('GET /api/advances/people : total ouvert et date de la dépense la plus ancienne (pas la date d’enregistrement de l’avance)', async () => {
     const dep1 = await createExpense(80_00, 'Bowling', '2026-07-01', t.loisirs.id);
     const dep2 = await createExpense(30_00, 'Ciné', '2026-07-15', t.loisirs.id);
+    // Les deux avances sont saisies aujourd'hui (2026-07-30 dans ce test), bien après les dépenses.
     await t.call('PUT', `/api/transactions/${dep1.id}/advances`, [{ person: 'Max', amount: 40_00 }]);
     await t.call('PUT', `/api/transactions/${dep2.id}/advances`, [{ person: 'Max', amount: 10_00 }]);
 
     const people = await t.call('GET', '/api/advances/people');
-    expect(people.body).toEqual([{ person: 'Max', totalOpen: 50_00, oldestOpenDate: expect.any(String), openCount: 2 }]);
+    expect(people.body).toEqual([{ person: 'Max', totalOpen: 50_00, oldestOpenDate: '2026-07-01', openCount: 2 }]);
   });
 
   it('GET /api/advances/suggestions : nom en commun et montant exact', async () => {
@@ -134,5 +135,49 @@ describe('avances', () => {
     const suggestions = await t.call('GET', '/api/advances/suggestions');
     expect(suggestions.body).toHaveLength(1);
     expect(suggestions.body[0]).toMatchObject({ person: 'Max', incomeLabel: 'Copain Max' });
+  });
+
+  it('GET /api/advances/suggestions : la fenêtre est relative à la dépense, pas à aujourd’hui', async () => {
+    t.setToday('2026-10-10');
+    const dep = await createExpense(82_50, 'Bowling', '2026-07-27', t.loisirs.id);
+    await t.call('PUT', `/api/transactions/${dep.id}/advances`, [{ person: 'Max', amount: 41_50 }]);
+    // Remboursement le jour même de la dépense, plus de 60 jours avant aujourd'hui : doit quand même être proposé.
+    await createIncome(41_50, 'VIREMENT INSTANTANE WERO DE MAX CEKANOWSKI bowling', '2026-07-27');
+
+    const suggestions = await t.call('GET', '/api/advances/suggestions');
+    expect(suggestions.body).toHaveLength(1);
+    expect(suggestions.body[0]).toMatchObject({ person: 'Max', amount: 41_50 });
+  });
+
+  it('GET /api/advances/unsorted-incomes : exclut un revenu couvert par une règle de revenu active, même sans recurring_rule_id', async () => {
+    t.setToday('2026-10-10');
+    // La règle n'a été créée qu'en octobre : les occurrences passées n'ont pas de recurring_rule_id.
+    await t.call('POST', '/api/recurring-rules', {
+      name: 'Salaire', kind: 'income', amount: 2450_00, label: 'VIREMENT SPORTEASY', accountId: t.courant.id,
+      frequency: 'monthly', dayOfMonth: 28, startDate: '2026-10-01',
+    });
+    await createIncome(2500_58, 'VIREMENT SPORTEASY SEPTEMBRE', '2026-09-29');
+    // Un revenu sans rapport ne doit pas être exclu.
+    await createIncome(50_00, 'VIREMENT DE MR LAMOTTE BASILE', '2026-09-28');
+
+    const unsorted = await t.call('GET', '/api/advances/unsorted-incomes');
+    expect(unsorted.body.map((i: any) => i.label)).toEqual(['VIREMENT DE MR LAMOTTE BASILE']);
+  });
+
+  it('GET /api/advances/unsorted-incomes : exclut un revenu au marchand d’une occurrence déjà liée à une règle, même hors ±10 % du montant', async () => {
+    t.setToday('2026-10-10');
+    // Matérialise une occurrence (prévue) liée à la règle, dès le premier appel : même marchand que l'historique.
+    await t.call('POST', '/api/recurring-rules', {
+      name: 'Salaire', kind: 'income', amount: 2450_00, label: 'VIREMENT SPORTEASY', accountId: t.courant.id,
+      frequency: 'monthly', dayOfMonth: 5, startDate: '2026-09-01',
+    });
+    const planned = await t.call('GET', '/api/transactions?status=planned');
+    expect(planned.body.some((x: any) => x.label === 'VIREMENT SPORTEASY' && x.recurringRuleId !== null)).toBe(true);
+
+    // Un montant très éloigné de la règle (donc hors ±10 %), même marchand : exclu par le marchand déjà lié.
+    await createIncome(1_00, 'VIREMENT SPORTEASY', '2026-08-05');
+
+    const unsorted = await t.call('GET', '/api/advances/unsorted-incomes');
+    expect(unsorted.body).toHaveLength(0);
   });
 });

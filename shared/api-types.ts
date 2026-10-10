@@ -425,7 +425,10 @@ export type AdvanceView = {
   createdAt: string;
 };
 
-/** Une personne qui doit de l'argent : total ouvert et ancienneté de la plus vieille avance (`GET /api/advances/people`). */
+/**
+ * Une personne qui doit de l'argent : total ouvert et date de la dépense la plus ancienne qui porte
+ * encore une avance ouverte (`GET /api/advances/people`).
+ */
 export type PersonAdvancesSummary = { person: string; totalOpen: Cents; oldestOpenDate: ISODate; openCount: number };
 
 /** Rapprochement proposé entre un revenu sans enveloppe et une ou plusieurs avances ouvertes de la même personne. */

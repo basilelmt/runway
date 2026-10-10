@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { advancesSettleSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import { listAdvanceViews, listPersonSummaries, reopenAdvance, settleAdvances } from '../repos/advances';
-import { buildAdvanceSuggestions } from '../services/advances';
+import { buildAdvanceSuggestions, buildUnsortedIncomes } from '../services/advances';
 import { validate } from '../validate';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
@@ -15,7 +15,8 @@ export const advanceRoutes = new Hono<AppEnv>()
     return c.json(listAdvanceViews(c.get('db'), status, expenseId));
   })
   .get('/people', (c) => c.json(listPersonSummaries(c.get('db'))))
-  .get('/suggestions', (c) => c.json(buildAdvanceSuggestions(c.get('db'), c.get('today'))))
+  .get('/suggestions', (c) => c.json(buildAdvanceSuggestions(c.get('db'))))
+  .get('/unsorted-incomes', (c) => c.json(buildUnsortedIncomes(c.get('db'), c.get('today'))))
   .post('/settle', validate('json', advancesSettleSchema), (c) => {
     const { advanceIds, refundId } = c.req.valid('json');
     return c.json(settleAdvances(c.get('db'), advanceIds, refundId));
