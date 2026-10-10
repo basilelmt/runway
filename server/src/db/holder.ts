@@ -7,14 +7,25 @@ import type { Db } from './client';
 export type DbHolder = {
   current(): Db;
   replace(db: Db): void;
+  /**
+   * Vrai pendant une restauration : l'API répond 503 et les tâches de fond (synchro bancaire, nommage des
+   * marchands) sautent leur tour, plutôt que d'écrire dans une base sur le point d'être remplacée.
+   */
+  isRestoring(): boolean;
+  setRestoring(value: boolean): void;
 };
 
 export function createDbHolder(db: Db): DbHolder {
   let current = db;
+  let restoring = false;
   return {
     current: () => current,
     replace: (next) => {
       current = next;
+    },
+    isRestoring: () => restoring,
+    setRestoring: (value) => {
+      restoring = value;
     },
   };
 }

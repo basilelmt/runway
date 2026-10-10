@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chart, fakeFetch } from './fixtures/yahoo';
@@ -354,5 +355,97 @@ describe('démarrage du serveur', () => {
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("Sauvegarde d'avant-migration impossible");
     expect(hasPendingMigrations(dbPath, migrationsFolder)).toBe(true);
+  });
+});
+
+describe('restauration qui échoue', () => {
+  function setup(overrides: Partial<Parameters<typeof createBackupService>[0]> = {}) {
+    const db = openDb(dbPath);
+    createAccount(db, { name: 'Avant', initialBalance: 100_00, onBudget: true });
+    const holder = createDbHolder(db);
+    let clock = new Date(2026, 0, 1, 8, 0, 0);
+    const now = () => {
+      clock = new Date(clock.getTime() + 1000);
+      return clock;
+    };
+    const service = createBackupService({ holder, dbPath, dir: join(dir, 'backups'), now, ...overrides });
+    return { holder, service };
+  }
+
+  async function prepare(service: ReturnType<typeof createBackupService>, holder: ReturnType<typeof createDbHolder>) {
+    const backup = await service.runNow('manuelle');
+    createAccount(holder.current(), { name: 'Après', initialBalance: 50_00, onBudget: true });
+    return backup;
+  }
+
+  function names(holder: ReturnType<typeof createDbHolder>): string[] {
+    return listAccounts(holder.current(), { includeArchived: true }).map((a) => a.name);
+  }
+
+  it('copie de la sauvegarde en échec : erreur claire, serveur toujours sur la base actuelle', async () => {
+    const { holder, service } = setup({ copyFile: () => Promise.reject(new Error('disque plein')) });
+    const backup = await prepare(service, holder);
+
+    await expect(service.restore(backup.name)).rejects.toMatchObject({ code: 'restore_failed', message: expect.stringContaining('disque plein') });
+    expect(names(holder)).toEqual(['Avant', 'Après']);
+    createAccount(holder.current(), { name: 'Encore', initialBalance: 1, onBudget: true });
+    expect(service.isRestoring()).toBe(false);
+    holder.current().$client.close();
+  });
+
+  it('remplacement du fichier en échec (connexion déjà fermée) : la base d’avant est rouverte', async () => {
+    const { holder, service } = setup({
+      renameFile: () => {
+        throw new Error('renommage refusé');
+      },
+    });
+    const backup = await prepare(service, holder);
+
+    await expect(service.restore(backup.name)).rejects.toMatchObject({ code: 'restore_failed', message: expect.stringContaining('resté sur la base d’avant') });
+    expect(holder.current().$client.open).toBe(true);
+    expect(names(holder)).toEqual(['Avant', 'Après']);
+    holder.current().$client.close();
+  });
+
+  it('ouverture de la base restaurée en échec : la sauvegarde avant-restauration est remise en place et rouverte', async () => {
+    let calls = 0;
+    const { holder, service } = setup({
+      openDb: (path) => {
+        calls++;
+        if (calls === 1) throw new Error('migration impossible');
+        return openDb(path);
+      },
+    });
+    const backup = await prepare(service, holder);
+
+    await expect(service.restore(backup.name)).rejects.toMatchObject({ code: 'restore_failed', message: expect.stringContaining('migration impossible') });
+    expect(holder.current().$client.open).toBe(true);
+    expect(names(holder)).toEqual(['Avant', 'Après']);
+    createAccount(holder.current(), { name: 'Encore', initialBalance: 1, onBudget: true });
+    expect(readdirSync(dir).filter((n) => n.endsWith('.restoring'))).toEqual([]);
+    holder.current().$client.close();
+  });
+
+  it('l’API répond 503 pendant la restauration', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const { holder, service } = setup({
+      copyFile: async (from, to) => {
+        await gate;
+        await copyFile(from, to);
+      },
+    });
+    const app = createApp({ db: holder, backupService: service });
+    const backup = await prepare(service, holder);
+
+    const restoring = service.restore(backup.name);
+    const during = await app.request('/api/accounts');
+    expect(during.status).toBe(503);
+    expect(await during.json()).toMatchObject({ error: 'Restauration en cours' });
+    release();
+    await restoring;
+    expect((await app.request('/api/accounts')).status).toBe(200);
+    expect(names(holder)).toEqual(['Avant']);
+    holder.current().$client.close();
   });
 });

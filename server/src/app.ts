@@ -65,6 +65,12 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
     await next();
   });
 
+  // Pendant une restauration, la base est remplacée sous le serveur : rien ne la lit ni ne l'écrit.
+  app.use('/api/*', async (c, next) => {
+    if (backups.isRestoring()) return c.json({ error: 'Restauration en cours', code: 'restoring' }, 503);
+    await next();
+  });
+
   // Toute lecture ou écriture part d'un état où les occurrences dues existent.
   app.use('/api/*', async (c, next) => {
     materializeDue(holder.current(), c.get('today'));

@@ -139,7 +139,9 @@ export function createMerchantNamer(db: Db | DbHolder, deps: { exec?: Exec; log?
     // (import, synchro bancaire) et entre en concurrence avec ses propres requêtes.
     current = new Promise<void>((resolve) => {
       setImmediate(() => {
-        nameMerchants(holder.current(), { exec: deps.exec })
+        // Restauration en cours : ce tour est sauté (la prochaine demande reprendra les marchands sans nom).
+        const run = holder.isRestoring() ? Promise.resolve() : nameMerchants(holder.current(), { exec: deps.exec });
+        run
           .then(() => {
             lastError = null;
           })

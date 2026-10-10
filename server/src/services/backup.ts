@@ -1,11 +1,11 @@
 import Database from 'better-sqlite3';
-import { existsSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, renameSync, rmSync, statSync } from 'node:fs';
 import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { backupsToDelete, formatBackupFilename, parseBackupFilename, reasonLabel, type RetentionEntry } from '@core/backups';
 import type { BackupEntry, BackupsState } from '@shared/api-types';
-import { migrationsFolder as defaultMigrationsFolder, openDb } from '../db/client';
+import { migrationsFolder as defaultMigrationsFolder, openDb, type Db } from '../db/client';
 import type { DbHolder } from '../db/holder';
 import { AppError, BadRequestError, ConflictError, NotFoundError } from '../errors';
 import { getSettings, saveSettings } from '../repos/settings';
@@ -287,8 +287,10 @@ export type BackupService = {
   state(): Promise<BackupsState>;
   /** Sauvegarde manuelle immédiate ; 409 si une sauvegarde ou une restauration tourne déjà. */
   runNow(reason: string): Promise<BackupEntry>;
-  /** Restaure une sauvegarde par son nom ; voir le plan dans la spec (sauvegarde préalable, bascule de connexion, réglage du second dossier). */
+  /** Restaure une sauvegarde par son nom (voir `restore` dans `createBackupService`) ; l'API répond 503 pendant ce temps. */
   restore(name: string): Promise<void>;
+  /** Vrai pendant une restauration. */
+  isRestoring(): boolean;
   /** Vérification horaire : sauvegarde si la dernière réussie date de plus de 24 h. N'échoue jamais (journalise seulement). */
   checkDaily(): Promise<void>;
   /** Lance la vérification horaire ; renvoie une fonction d'arrêt. */
@@ -303,6 +305,10 @@ export type BackupServiceDeps = {
   migrationsFolder?: string;
   now?: () => Date;
   log?: (message: string) => void;
+  /** Ouverture de la base après restauration, copie de la sauvegarde et renommage : injectables pour simuler un échec. */
+  openDb?: (path: string) => Db;
+  copyFile?: (from: string, to: string) => Promise<void>;
+  renameFile?: (from: string, to: string) => void;
 };
 
 export function createBackupService(deps: BackupServiceDeps): BackupService {
@@ -310,6 +316,9 @@ export function createBackupService(deps: BackupServiceDeps): BackupService {
   const migrationsFolder = deps.migrationsFolder ?? defaultMigrationsFolder;
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? ((m: string) => console.warn(m));
+  const openDbFn = deps.openDb ?? openDb;
+  const copyStaged = deps.copyFile ?? copyFile;
+  const renameFile = deps.renameFile ?? renameSync;
   let busy = false;
   let lastLocalError: string | null = null;
   let lastMirrorError: string | null = null;
@@ -370,10 +379,36 @@ export function createBackupService(deps: BackupServiceDeps): BackupService {
     }
   }
 
+  /**
+   * Remplace le fichier de base par `stagedPath`, connexion du serveur fermée. Tout est synchrone entre la
+   * fermeture et la bascule du porteur : aucune requête ni tâche de fond ne peut s'intercaler et trouver une
+   * connexion fermée.
+   */
+  function swapInto(stagedPath: string): void {
+    renameFile(stagedPath, deps.dbPath);
+    // Annexes de l'ancien fichier : la connexion fermée (dernière ouverte, voir `restore`) a reporté puis vidé le
+    // WAL ; un `-wal` resté là serait rejoué sur le nouveau fichier.
+    rmSync(`${deps.dbPath}-wal`, { force: true });
+    rmSync(`${deps.dbPath}-shm`, { force: true });
+  }
+
+  /**
+   * Restaure une sauvegarde. Suppose qu'aucun autre processus n'a la base ouverte (un second serveur, un script) :
+   * le fichier est remplacé sous lui et ses annexes `-wal`/`-shm` supprimées.
+   *
+   * 1. Copie la sauvegarde vers `<base>.restoring`, à côté de la base (même disque : le renommage est atomique).
+   * 2. Sauvegarde l'état actuel (`avant-restauration`), pour qu'une restauration se défasse toujours.
+   * 3. Ferme la connexion, renomme `<base>.restoring` sur la base, supprime les annexes, rouvre (migrations
+   *    comprises) et bascule le porteur.
+   * Un échec après la fermeture rouvre l'ancienne base (ou, si le fichier a déjà été remplacé, la sauvegarde
+   * `avant-restauration`) : le serveur ne reste jamais sur une connexion fermée.
+   */
   async function restore(name: string): Promise<void> {
     if (busy) throw new ConflictError('Une sauvegarde ou une restauration est déjà en cours');
     if (deps.dbPath === ':memory:') throw new BadRequestError('Restauration indisponible sur une base en mémoire');
     busy = true;
+    deps.holder.setRestoring(true);
+    const stagedPath = `${deps.dbPath}.restoring`;
     try {
       const entries = await listBackups(dir);
       const entry = entries.find((e) => e.name === name);
@@ -383,37 +418,57 @@ export function createBackupService(deps: BackupServiceDeps): BackupService {
         throw new AppError('Cette sauvegarde contient une migration inconnue de cette version de Runway', 409, 'unknown_migration');
       }
 
-      // Copie à part avant tout le reste : la sauvegarde "avant-restauration" de l'étape suivante a la même
-      // raison et peut tomber à la même seconde (restaurer, puis restaurer son "avant-restauration" aussitôt
-      // après) ; sans cette copie, elle écraserait le fichier qu'on est justement en train de restaurer.
-      const stagedPath = `${backupPath}.restoring`;
-      await copyFile(backupPath, stagedPath);
+      // Copie avant tout le reste : la sauvegarde "avant-restauration" de l'étape suivante a la même raison et peut
+      // tomber à la même seconde (restaurer, puis restaurer son "avant-restauration" aussitôt après) ; elle
+      // écraserait sinon le fichier qu'on est justement en train de restaurer.
       try {
-        // 1. Sauvegarde de l'état actuel, pour qu'une restauration se défasse toujours.
-        const current = deps.holder.current();
-        const mirrorDirBefore = getSettings(current).backupMirrorDir || null;
-        const before = await performBackup({ sqlite: current.$client, dir, reason: 'avant-restauration', date: now(), mirrorDir: mirrorDirBefore });
-        lastLocalError = before.localError;
-        lastMirrorError = before.mirrorError;
-        if (before.localError) throw new AppError(`Sauvegarde préalable impossible : ${before.localError}`, 500, 'backup_failed');
-
-        // 2. Ferme la connexion, remplace runway.db par une copie de la sauvegarde, supprime -wal et -shm.
-        current.$client.close();
-        await copyFile(stagedPath, deps.dbPath);
-        await rm(`${deps.dbPath}-wal`, { force: true });
-        await rm(`${deps.dbPath}-shm`, { force: true });
-
-        // 3. Rouvre la base (applique les migrations manquantes) et bascule le porteur de connexion.
-        const next = openDb(deps.dbPath);
-        deps.holder.replace(next);
-
-        // 4. Remet le réglage du second dossier d'avant la restauration.
-        saveSettings(next, { ...getSettings(next), backupMirrorDir: mirrorDirBefore ?? '' });
-      } finally {
-        await rm(stagedPath, { force: true });
+        await copyStaged(backupPath, stagedPath);
+      } catch (err) {
+        throw new AppError(`Restauration impossible, copie de la sauvegarde échouée : ${message(err)}`, 500, 'restore_failed');
       }
+      if (!verifyDb(stagedPath)) throw new AppError('Restauration impossible : la sauvegarde est illisible ou corrompue', 500, 'restore_failed');
+
+      const current = deps.holder.current();
+      const mirrorDirBefore = getSettings(current).backupMirrorDir || null;
+      const before = await performBackup({ sqlite: current.$client, dir, reason: 'avant-restauration', date: now(), mirrorDir: mirrorDirBefore });
+      lastLocalError = before.localError;
+      lastMirrorError = before.mirrorError;
+      if (before.localError) throw new AppError(`Sauvegarde préalable impossible : ${before.localError}`, 500, 'backup_failed');
+
+      // Reporte le WAL dans le fichier avant de fermer : rien ne doit rester dans des annexes qu'on va supprimer.
+      current.$client.pragma('wal_checkpoint(TRUNCATE)');
+      current.$client.close();
+      let replaced = false;
+      let next: Db;
+      try {
+        swapInto(stagedPath);
+        replaced = true;
+        next = openDbFn(deps.dbPath);
+      } catch (err) {
+        reopenAfterFailure(replaced, join(dir, before.name), stagedPath);
+        throw new AppError(`Restauration impossible : ${message(err)}. Runway est resté sur la base d’avant.`, 500, 'restore_failed');
+      }
+      deps.holder.replace(next);
+      // Remet le réglage du second dossier d'avant la restauration.
+      saveSettings(next, { ...getSettings(next), backupMirrorDir: mirrorDirBefore ?? '' });
     } finally {
+      rmSync(stagedPath, { force: true });
+      deps.holder.setRestoring(false);
       busy = false;
+    }
+  }
+
+  /** Rouvre la base d'avant la restauration ; si même ça échoue, le dit clairement (le serveur est à redémarrer). */
+  function reopenAfterFailure(replaced: boolean, beforePath: string, stagedPath: string): void {
+    try {
+      if (replaced) {
+        copyFileSync(beforePath, stagedPath);
+        swapInto(stagedPath);
+      }
+      deps.holder.replace(openDbFn(deps.dbPath));
+    } catch (err) {
+      log(`[sauvegardes] Base d'avant la restauration impossible à rouvrir : ${message(err)}`);
+      throw new AppError(`Restauration impossible, et la base d’avant n’a pas pu être rouverte (${message(err)}) : redémarre Runway`, 500, 'restore_failed');
     }
   }
 
@@ -422,5 +477,5 @@ export function createBackupService(deps: BackupServiceDeps): BackupService {
     return () => clearInterval(id);
   }
 
-  return { state, runNow, restore, checkDaily, startHourlyCheck };
+  return { state, runNow, restore, isRestoring: () => deps.holder.isRestoring(), checkDaily, startHourlyCheck };
 }

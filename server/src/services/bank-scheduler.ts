@@ -53,6 +53,8 @@ export function startBackgroundSync(deps: BankSchedulerDeps): { stop: () => void
   if (!enabled()) return { stop: () => {} };
 
   async function tick() {
+    // Restauration en cours : la base est sur le point d'être remplacée, ce tour est sauté.
+    if (holder.isRestoring()) return;
     try {
       // Relit le porteur à chaque tentative, pas une connexion figée au démarrage : une restauration ne doit
       // jamais écrire sur une connexion fermée.

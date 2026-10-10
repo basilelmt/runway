@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BankProvider } from '../src/bank/provider';
+import { createDbHolder } from '../src/db/holder';
 import { createConnection, updateConnection } from '../src/repos/bank';
 import { saveSettings } from '../src/repos/settings';
 import { startBackgroundSync } from '../src/services/bank-scheduler';
@@ -106,6 +107,20 @@ describe('startBackgroundSync', () => {
     const { stop } = startBackgroundSync({ db: ctx.db, provider: () => provider, now: () => new Date(), enabled: () => false });
     await vi.advanceTimersByTimeAsync(0);
     expect(provider.calls).toEqual([]);
+    stop();
+  });
+
+  it('saute son tour pendant une restauration', async () => {
+    configureBank();
+    activeConnection();
+    const holder = createDbHolder(ctx.db);
+    holder.setRestoring(true);
+    const { stop } = startBackgroundSync({ db: holder, provider: () => provider, now: () => new Date(), intervalMs: 1000 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(provider.calls).toEqual([]);
+    holder.setRestoring(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(provider.calls).toContain('getSession');
     stop();
   });
 });

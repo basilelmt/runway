@@ -142,7 +142,7 @@ export function BackupSettings() {
         onClose={() => setRestoring(null)}
         onConfirm={() => restoring && restore.mutate(restoring.name)}
         title={restoring ? `Restaurer la sauvegarde ${formatBackupMomentWithPreposition(restoring.date)} ?` : ''}
-        description="L’état actuel est sauvegardé avant."
+        description="L’état actuel est sauvegardé avant. Aucun autre Runway (second serveur, script) ne doit avoir la base ouverte."
         confirmLabel="Restaurer"
         tone="primary"
         loading={restore.isPending}
