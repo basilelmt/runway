@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createRule, updateRule } from '../src/repos/recurring-rules';
+import { createRule, deleteRule, setRuleActive, updateRule } from '../src/repos/recurring-rules';
 import { dismissSignal, listActiveSignals, listAllSignals } from '../src/repos/signals';
 import { createTransaction } from '../src/repos/transactions';
 import { detectSignals } from '../src/services/signals';
@@ -83,5 +83,57 @@ describe('detectSignals', () => {
     });
     detectSignals(ctx.db, TODAY, NOW);
     expect(listActiveSignals(ctx.db)).toEqual([]);
+  });
+
+  describe('une charge créée puis mise en pause ou supprimée', () => {
+    function maxRent() {
+      expense(986_00, '2026-08-01', { label: 'Max', envelopeId: ctx.courses.id });
+      expense(986_00, '2026-09-01', { label: 'Max', envelopeId: ctx.courses.id });
+      expense(986_00, '2026-10-01', { label: 'Max', envelopeId: ctx.courses.id });
+      detectSignals(ctx.db, TODAY, NOW);
+      expect(listActiveSignals(ctx.db).map((s) => s.kind)).toEqual(['new_recurring']);
+    }
+
+    function createMaxRule() {
+      const rule = createRule(ctx.db, {
+        name: 'Loyer Max', kind: 'expense', amount: 986_00, label: 'Loyer Max', accountId: ctx.courant.id, envelopeId: ctx.courses.id,
+        frequency: 'monthly', interval: 1, dayOfMonth: 1, startDate: '2026-10-01', active: true, triggersFunding: false, fundsNextMonth: false,
+      });
+      detectSignals(ctx.db, TODAY, NOW);
+      expect(listActiveSignals(ctx.db)).toEqual([]);
+      return rule;
+    }
+
+    it('mise en pause : le signal résolu revient, le même (pas de doublon)', () => {
+      maxRent();
+      const rule = createMaxRule();
+
+      setRuleActive(ctx.db, rule.id, false);
+      detectSignals(ctx.db, TODAY, new Date('2026-10-10T10:00:00.000Z'));
+      const [back] = listActiveSignals(ctx.db);
+      expect(back?.kind).toBe('new_recurring');
+      expect(back?.resolvedAt).toBeNull();
+      expect(listAllSignals(ctx.db)).toHaveLength(1);
+    });
+
+    it('suppression : le signal revient', () => {
+      maxRent();
+      const rule = createMaxRule();
+
+      deleteRule(ctx.db, rule.id);
+      detectSignals(ctx.db, TODAY, NOW);
+      expect(listActiveSignals(ctx.db).map((s) => s.kind)).toEqual(['new_recurring']);
+    });
+
+    it('écarté puis charge mise en pause : le signal ne revient jamais', () => {
+      maxRent();
+      const [signal] = listActiveSignals(ctx.db);
+      dismissSignal(ctx.db, signal!.id, NOW.toISOString());
+      const rule = createMaxRule();
+
+      setRuleActive(ctx.db, rule.id, false);
+      detectSignals(ctx.db, TODAY, NOW);
+      expect(listActiveSignals(ctx.db)).toEqual([]);
+    });
   });
 });

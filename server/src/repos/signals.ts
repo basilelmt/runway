@@ -26,13 +26,18 @@ export function countActiveSignals(db: Db): number {
   return listActiveSignals(db).length;
 }
 
-/** Toutes les lignes, écartées et résolues comprises : la détection s'en sert pour ne jamais recréer une clé connue. */
+/** Toutes les lignes, écartées et résolues comprises : la détection s'en sert pour ne jamais recréer une clé déjà en base. */
 export function listAllSignals(db: Db): SignalRow[] {
   return db.select().from(signals).all();
 }
 
 export function insertSignal(db: Db, input: { kind: SignalKind; key: string; payload: unknown; createdAt: string }): void {
   db.insert(signals).values({ kind: input.kind, key: input.key, payload: JSON.stringify(input.payload), createdAt: input.createdAt }).run();
+}
+
+/** Un signal résolu dont la condition revient repasse actif, avec le contenu de la nouvelle détection. */
+export function reactivateSignal(db: Db, id: number, payload: unknown): void {
+  db.update(signals).set({ resolvedAt: null, payload: JSON.stringify(payload) }).where(eq(signals.id, id)).run();
 }
 
 export function resolveSignal(db: Db, id: number, resolvedAt: string): void {
