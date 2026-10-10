@@ -22,13 +22,16 @@ export function signalPhrase(signal: AnySignal): string {
       return `${signal.payload.merchantName} revient tous les mois, autour de ${formatEuros(signal.payload.amount)}`;
     case 'price_change':
       return `${signal.payload.ruleName} passe de ${formatEuros(signal.payload.oldAmount)} à ${formatEuros(signal.payload.newAmount)}`;
-    case 'missing_charge':
-      return `${signal.payload.label} de ${formatEuros(signal.payload.amount)} prévu le ${formatDateShort(signal.payload.date)} n’est pas arrivé`;
     case 'consent_expiring':
       return `L’accès à ${signal.payload.aspspName} expire le ${formatDateShort(signal.payload.validUntil.slice(0, 10))}`;
     case 'sync_error':
-      return `La synchronisation ${signal.payload.aspspName} est en échec${signal.payload.lastError ? ` : ${signal.payload.lastError}` : ''}`;
+      return `La synchro ${signal.payload.aspspName} échoue depuis le ${formatDateShort(signal.payload.since.slice(0, 10))}`;
   }
+}
+
+/** Texte secondaire d'un signal, sous la phrase principale (le message d'erreur brut de la synchro, par exemple). */
+export function signalMeta(signal: AnySignal): string | null {
+  return signal.kind === 'sync_error' ? signal.payload.lastError : null;
 }
 
 /** Lien de l'action principale, pour les signaux dont l'action est une navigation plutôt qu'une mutation. */
@@ -36,8 +39,6 @@ export function signalHref(signal: AnySignal): string | null {
   switch (signal.kind) {
     case 'unusual_expense':
       return `/operations?q=${encodeURIComponent(signal.payload.merchantName)}&period=all`;
-    case 'missing_charge':
-      return '/operations?status=planned&period=all';
     case 'sync_error':
       return '/reglages/banque';
     default:

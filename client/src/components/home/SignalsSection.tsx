@@ -1,4 +1,4 @@
-import { AlertCircle, Banknote, Clock, Receipt, Repeat, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Banknote, Receipt, Repeat, ShieldAlert } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { AnySignal } from '@shared/api-types';
 import type { RecurringRule, RecurringRuleInput, SignalKind } from '@shared/schemas';
@@ -6,7 +6,7 @@ import { errorMessage } from '@/api/client';
 import { useCreateRecurringRule, useDismissSignal, useSignals, useStartBankConnection, useUpdateRecurringRule } from '@/api/hooks';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
 import { Button, ButtonLink, Dialog, Disclosure, ListRow, RowMenu, SectionHeader, useToast } from '@/components/ui';
-import { signalHref, signalPhrase } from '@/lib/signals';
+import { signalHref, signalMeta, signalPhrase } from '@/lib/signals';
 
 /** Au-delà, les signaux suivants sont repliés sous « Voir tout ». */
 const VISIBLE_COUNT = 5;
@@ -15,7 +15,6 @@ const ICONS: Record<SignalKind, ReactNode> = {
   unusual_expense: <Receipt aria-hidden />,
   new_recurring: <Repeat aria-hidden />,
   price_change: <Banknote aria-hidden />,
-  missing_charge: <Clock aria-hidden />,
   consent_expiring: <ShieldAlert aria-hidden />,
   sync_error: <AlertCircle aria-hidden />,
 };
@@ -99,7 +98,6 @@ function SignalRow({ signal }: { signal: AnySignal }) {
   const action: ReactNode = (() => {
     switch (signal.kind) {
       case 'unusual_expense':
-      case 'missing_charge':
       case 'sync_error':
         return href ? (
           <ButtonLink to={href} size="sm">
@@ -136,6 +134,7 @@ function SignalRow({ signal }: { signal: AnySignal }) {
       <ListRow
         lead={ICONS[signal.kind]}
         title={signalPhrase(signal)}
+        meta={signalMeta(signal)}
         trail={action}
         actions={
           <RowMenu label="Actions pour ce signal" items={[{ label: 'Écarter', onSelect: () => dismiss.mutate(signal.id) }]} />

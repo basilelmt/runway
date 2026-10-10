@@ -77,10 +77,10 @@ export function HomePage() {
         subtitle={daysLeft === 0 ? 'Dernier jour du mois' : `Encore ${plural(daysLeft, 'jour')} ce mois-ci`}
       />
 
-      <SignalsSection />
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
+      <SignalsSection />
       <AccountsStrip data={data} />
     </div>
   );
