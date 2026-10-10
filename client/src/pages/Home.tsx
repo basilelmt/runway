@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Check, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, ClipboardCheck, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Overview } from '@shared/api-types';
@@ -17,6 +17,7 @@ import {
   ErrorState,
   KeyFigure,
   ListRowSkeleton,
+  Notice,
   ProgressBar,
   SectionHeader,
   Skeleton,
@@ -32,7 +33,10 @@ import { plural } from '@/lib/format';
 import styles from './Home.module.css';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const monthName = (iso: string) => capitalize(new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
+/** En minuscule, comme tout mois dans une phrase en français (« bilan de septembre »). */
+const monthNameLower = (iso: string) => new Intl.DateTimeFormat('fr-FR', { month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+/** En capitale initiale, pour un titre seul (« Octobre »). */
+const monthName = (iso: string) => capitalize(monthNameLower(iso));
 const longDay = (iso: string) =>
   capitalize(new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)));
 
@@ -79,10 +83,36 @@ export function HomePage() {
 
       <BackupBanner />
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
+      {data.pendingReview ? <PendingReviewBanner pendingReview={data.pendingReview} /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
       <AccountsStrip data={data} />
     </div>
+  );
+}
+
+/** Invite au bilan du mois précédent, tant qu'il n'est pas validé : pas de bouton pour la masquer, elle disparaît seule. */
+function PendingReviewBanner({ pendingReview }: { pendingReview: NonNullable<Overview['pendingReview']> }) {
+  return (
+    <Notice
+      tone="marking"
+      icon={<ClipboardCheck />}
+      label="Bilan du mois précédent"
+      action={
+        <ButtonLink to={`/analyse?vue=bilan&mois=${pendingReview.month}`} size="sm" variant="primary">
+          Faire le bilan
+        </ButtonLink>
+      }
+    >
+      Bilan de {monthNameLower(`${pendingReview.month}-01`)} :{' '}
+      {pendingReview.overspentCount > 0 ? (
+        <>
+          {formatEuros(pendingReview.spent)} dépensés, {plural(pendingReview.overspentCount, 'enveloppe dépassée', 'enveloppes dépassées')}
+        </>
+      ) : (
+        <>{formatEuros(pendingReview.spent)} dépensés</>
+      )}
+    </Notice>
   );
 }
 

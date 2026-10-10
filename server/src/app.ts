@@ -14,6 +14,7 @@ import { investRoutes } from './routes/invest';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
 import { merchantRoutes } from './routes/merchants';
 import { recurringRuleRoutes } from './routes/recurring-rules';
+import { reviewRoutes } from './routes/reviews';
 import { settingsRoutes } from './routes/settings';
 import { sortingRoutes } from './routes/sorting';
 import { sortingRuleRoutes } from './routes/sorting-rules';
@@ -97,6 +98,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
   app.route('/api/ask', askRoutes({ stream: askStream, newSessionId: askSessionId }));
   app.route('/api/settings', settingsRoutes);
   app.route('/api/overview', overviewRoutes);
+  app.route('/api/reviews', reviewRoutes);
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
   app.route('/api/merchants', merchantRoutes(namer));

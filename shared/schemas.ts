@@ -195,6 +195,31 @@ export const fundingSchema = z.object({
 });
 export type Funding = z.infer<typeof fundingSchema>;
 
+/** `AAAA-MM`. */
+export const monthKeySchema = z.string().refine((s) => isValidISODate(`${s}-01`), { message: 'Mois invalide (attendu AAAA-MM)' });
+
+/** Ce qu'un bilan validé a appliqué, pour l'annulation et l'affichage d'un bilan déjà validé. */
+export const appliedReviewSchema = z.object({
+  budgets: z.array(z.object({ envelopeId: idSchema, before: centsSchema.nullable(), after: centsSchema.nullable() })),
+  allocationIds: z.array(idSchema),
+});
+export type AppliedReview = z.infer<typeof appliedReviewSchema>;
+
+/** Bilan validé d'un mois passé (table `month_reviews`). */
+export const monthReviewSchema = z.object({
+  month: monthKeySchema,
+  reviewedAt: z.string(),
+  applied: appliedReviewSchema,
+});
+export type MonthReviewRecord = z.infer<typeof monthReviewSchema>;
+
+/** Ce que `POST /api/reviews/:month` applique en une transaction. */
+export const reviewApplySchema = z.object({
+  budgets: z.array(z.object({ envelopeId: idSchema, monthlyExtra: positiveCentsSchema.nullable() })),
+  transfers: z.array(z.object({ fromEnvelopeId: idSchema, toEnvelopeId: idSchema, amount: positiveCentsSchema })),
+});
+export type ReviewApply = z.infer<typeof reviewApplySchema>;
+
 export const recurringRuleSchema = z.object({
   id: idSchema,
   name: z.string(),

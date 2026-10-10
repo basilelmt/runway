@@ -1,8 +1,11 @@
 import { createContext, useContext } from 'react';
 
+/** Action unique proposée dans un message, affichée tant qu'il reste visible (« Annuler »). */
+export type ToastAction = { label: string; onClick: () => void };
+
 export type ToastApi = {
-  toast: (message: string, tone?: 'neutral' | 'positive' | 'negative') => void;
-  success: (message: string) => void;
+  toast: (message: string, tone?: 'neutral' | 'positive' | 'negative', action?: ToastAction) => void;
+  success: (message: string, action?: ToastAction) => void;
   error: (message: string) => void;
 };
 

@@ -191,3 +191,24 @@ describe('migration 0011 (espaces compactés)', () => {
     db.close();
   });
 });
+
+describe('migration 0012 (bilan du mois)', () => {
+  it('ajoute la table month_reviews', () => {
+    const db = new Database(':memory:');
+    for (const tag of journalTags(11)) applyMigration(db, tag);
+
+    applyMigration(db, '0012_month_reviews');
+
+    const columns = (db.prepare("PRAGMA table_info('month_reviews')").all() as { name: string }[]).map((c) => c.name);
+    expect(columns).toEqual(['month', 'reviewed_at', 'applied']);
+
+    db.prepare(`INSERT INTO month_reviews (month, reviewed_at, applied) VALUES ('2026-09', '2026-10-02T08:00:00.000Z', '{"budgets":[],"allocationIds":[]}')`).run();
+    expect(db.prepare('SELECT * FROM month_reviews').get()).toEqual({
+      month: '2026-09',
+      reviewed_at: '2026-10-02T08:00:00.000Z',
+      applied: '{"budgets":[],"allocationIds":[]}',
+    });
+
+    db.close();
+  });
+});

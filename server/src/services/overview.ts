@@ -3,14 +3,24 @@ import { envelopesToWatch, monthActivity, remainingToFund, savedInMonth } from '
 import { forecast } from '@core/forecast';
 import { MATCH_TOLERANCE_DAYS } from '@core/matching';
 import { monthlyEquivalent } from '@core/recurrence';
-import type { Overview } from '@shared/api-types';
-import { addDays, endOfMonth, startOfMonth, type ISODate } from '@shared/dates';
+import { monthReview } from '@core/review';
+import type { Overview, PendingReview } from '@shared/api-types';
+import { addDays, addMonths, endOfMonth, monthKey, startOfMonth, type ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
 import { latestFundingView } from '../repos/fundings';
 import { lastImportForAccount } from '../repos/imports';
+import { getReview } from '../repos/reviews';
 import { getSettings } from '../repos/settings';
 import { countUnsorted } from '../repos/transactions';
 import { loadState } from './state';
+
+/** Bilan du mois précédent restant à faire, pour la carte d'Accueil. */
+function buildPendingReview(state: ReturnType<typeof loadState>, db: Db, today: ISODate): PendingReview | null {
+  const month = monthKey(addMonths(startOfMonth(today), -1));
+  if (getReview(db, month)) return null;
+  const review = monthReview({ ...state, reviews: [] }, state.rules, month, today);
+  return { month, spent: review.figures.spent, overspentCount: review.envelopes.filter((e) => e.gap > 0).length };
+}
 
 export function buildOverview(db: Db, today: ISODate): Overview {
   const state = loadState(db, today);
@@ -80,5 +90,6 @@ export function buildOverview(db: Db, today: ISODate): Overview {
       .sort((a, b) => (a.date < b.date ? -1 : 1)),
     latestFunding: latestFundingView(db),
     watch: envelopesToWatch(state.envelopes, balances.envelopes, state.rules, state.transactions, today),
+    pendingReview: buildPendingReview(state, db, today),
   };
 }
