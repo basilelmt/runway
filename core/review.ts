@@ -64,19 +64,6 @@ function totalIncomeInMonth(transactions: State['transactions'], month: string):
   return total;
 }
 
-/** Dépenses courantes (hors charge fixe) d'une enveloppe sur le mois de `month`. */
-function currentSpendInMonth(transactions: State['transactions'], envelopeId: number, month: string): Cents {
-  const from = startOfMonth(`${month}-01`);
-  const to = endOfMonth(`${month}-01`);
-  let total = 0;
-  for (const t of transactions) {
-    if (t.kind !== 'expense' || t.status !== 'confirmed' || t.envelopeId !== envelopeId || t.recurringRuleId != null) continue;
-    if (t.date < from || t.date > to) continue;
-    total += t.amount;
-  }
-  return total;
-}
-
 /** `month` et les deux mois précédents, du plus ancien au plus récent. */
 function lastThreeMonths(month: string): string[] {
   const start = `${month}-01`;
@@ -85,8 +72,14 @@ function lastThreeMonths(month: string): string[] {
 
 /**
  * Bilan du mois passé en revue : chiffres, enveloppes, propositions de complément, contrôle d'ensemble,
- * restes à verser et statut de validation. Fonction pure : `today` sert à calculer le budget courant
- * (section « Contrôle d'ensemble », un complément modifié vaut à partir d'aujourd'hui) et les restes.
+ * restes à verser et statut de validation. Fonction pure.
+ *
+ * Faute d'historique des budgets, le budget d'une enveloppe (section Enveloppes et Contrôle d'ensemble)
+ * est toujours celui d'aujourd'hui (`today`) : ses charges fixes actuelles, sans tenir compte de leur
+ * date de départ, plus son complément actuel. Une charge créée après coup (reprise d'un historique importé)
+ * compte donc aussi pour les mois déjà passés, au lieu d'un budget à zéro qu'elle n'aurait pas eu sur le moment.
+ * Les dépenses courantes utilisées pour les propositions suivent la même idée : dépensé du mois moins
+ * ces mêmes charges actuelles ramenées au mois, plutôt qu'un filtre sur l'origine de chaque opération.
  */
 export function monthReview(state: ReviewState, rules: RecurringRule[], month: string, today: ISODate): MonthReview {
   const { accounts, envelopes, transactions, reviews } = state;
@@ -97,14 +90,17 @@ export function monthReview(state: ReviewState, rules: RecurringRule[], month: s
     saved: savedInMonth(accounts, envelopes, transactions, `${month}-01`),
   };
 
-  // Enveloppes : budget du mois passé en revue (charges de l'époque, complément actuel faute d'historique).
-  const budgetedThen = withBudgets(envelopes, rules, `${month}-01`);
+  // Budget actuel de chaque enveloppe : partagé par les Enveloppes et le Contrôle d'ensemble.
+  const budgetedToday = withBudgets(envelopes, rules, today).filter((e) => !e.archived);
+  const budgetById = new Map(budgetedToday.map((e) => [e.id, e]));
+
+  // Hors épargne : une dépense qui y entre est de l'argent mis de côté, pas un budget qu'on dépasse ou sous lequel on respire.
   const { spent: spentMap } = monthActivity(transactions, `${month}-01`);
-  const envelopeLines: ReviewEnvelopeLine[] = budgetedThen
-    .filter((e) => !e.archived)
+  const envelopeLines: ReviewEnvelopeLine[] = budgetedToday
+    .filter((e) => !e.isSavings)
     .map((e) => {
       const spent = spentMap.get(e.id) ?? 0;
-      return { envelopeId: e.id, name: e.name, color: e.color, isSavings: e.isSavings, budget: e.monthlyBudget, spent, gap: spent - e.monthlyBudget };
+      return { envelopeId: e.id, name: e.name, color: e.color, budget: e.monthlyBudget, spent, gap: spent - e.monthlyBudget };
     })
     .filter((l) => l.budget > 0 || l.spent > 0)
     .sort((a, b) => {
@@ -119,11 +115,13 @@ export function monthReview(state: ReviewState, rules: RecurringRule[], month: s
   const months = lastThreeMonths(month);
   const firstDate = firstOperationDate(transactions);
   const validMonths = firstDate === null ? months : months.filter((m) => m >= monthKey(firstDate));
+  const spentByMonth = new Map(validMonths.map((m) => [m, monthActivity(transactions, `${m}-01`).spent]));
   const proposals: ReviewProposal[] = [];
   if (validMonths.length >= 2) {
     for (const e of envelopes) {
       if (e.archived || e.isSavings) continue;
-      const monthsSpent = validMonths.map((m) => currentSpendInMonth(transactions, e.id, m));
+      const charges = budgetById.get(e.id)?.monthlyCharges ?? 0;
+      const monthsSpent = validMonths.map((m) => Math.max(0, (spentByMonth.get(m)!.get(e.id) ?? 0) - charges));
       const proposedExtra = roundUpToTens(median(monthsSpent));
       const current = e.monthlyExtra ?? 0;
       const diff = Math.abs(proposedExtra - current);
@@ -135,7 +133,6 @@ export function monthReview(state: ReviewState, rules: RecurringRule[], month: s
   }
 
   // Contrôle d'ensemble : budget du mois courant (aujourd'hui), face au revenu médian des mêmes 3 mois.
-  const budgetedToday = withBudgets(envelopes, rules, today).filter((e) => !e.archived);
   const control: ReviewControl = {
     envelopes: budgetedToday.map((e) => ({ envelopeId: e.id, monthlyCharges: e.monthlyCharges, monthlyBudget: e.monthlyBudget })),
     medianIncome: median(validMonths.length > 0 ? validMonths.map((m) => totalIncomeInMonth(transactions, m)) : [0]),

@@ -131,8 +131,8 @@ export type Overview = {
 /** Chiffres du mois passé en revue : revenus, dépenses et épargne, sur les opérations confirmées. */
 export type ReviewMonthFigures = { income: Cents; spent: Cents; saved: Cents };
 
-/** Une ligne de la section Enveloppes du bilan : `gap` = dépensé - budget (positif = dépassement). */
-export type ReviewEnvelopeLine = { envelopeId: number; name: string; color: string; isSavings: boolean; budget: Cents; spent: Cents; gap: Cents };
+/** Une ligne de la section Enveloppes du bilan (hors épargne) : `gap` = dépensé - budget (positif = dépassement, négatif = marge). */
+export type ReviewEnvelopeLine = { envelopeId: number; name: string; color: string; budget: Cents; spent: Cents; gap: Cents };
 
 /** Proposition de nouveau complément, à partir de la médiane des dépenses courantes des 3 derniers mois. */
 export type ReviewProposal = {

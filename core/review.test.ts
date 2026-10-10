@@ -88,18 +88,51 @@ describe('monthReview', () => {
     expect(result.proposals).toEqual([{ envelopeId: restos.id, name: 'Restos', currentExtra: 100_00, proposedExtra: 600_00, monthsSpent: [500_00, 700_00] }]);
   });
 
-  it('exclut les dépenses issues d’une charge fixe du calcul de la proposition', () => {
+  it('exclut les charges fixes actuelles (pas seulement les opérations qui leur sont liées) du calcul de la proposition', () => {
     const logement = envelope({ name: 'Logement', monthlyExtra: 50_00 });
     const loyer = rule({ kind: 'expense', amount: 900_00, envelopeId: logement.id });
+    // Aucune des opérations n'est liée à la règle (reprise d'un historique importé, par exemple) :
+    // le filtre n'est plus sur l'origine de l'opération, mais sur le montant des charges actuelles.
     const transactions = expenses(logement.id, [
-      { month: '2026-07', amount: 900_00, recurringRuleId: loyer.id },
-      { month: '2026-08', amount: 900_00, recurringRuleId: loyer.id },
-      { month: '2026-09', amount: 900_00, recurringRuleId: loyer.id },
+      { month: '2026-07', amount: 900_00 },
+      { month: '2026-08', amount: 900_00 },
+      { month: '2026-09', amount: 900_00 },
     ]);
     const state: ReviewState = { accounts: [], envelopes: [logement], transactions, reviews: [] };
     const result = monthReview(state, [loyer], '2026-09', '2026-10-10');
     // Sans dépense courante, la médiane tombe à 0 : seules les charges fixes sont exclues du calcul.
     expect(result.proposals).toEqual([{ envelopeId: logement.id, name: 'Logement', currentExtra: 50_00, proposedExtra: 0, monthsSpent: [0, 0, 0] }]);
+  });
+
+  it('budget d’un mois passé : charges actuelles même si la règle a démarré après coup (reprise d’historique)', () => {
+    const logement = envelope({ name: 'Logement', monthlyExtra: null });
+    // La règle n'existait pas encore en septembre : sans historique des budgets, on retient quand même
+    // sa charge actuelle, plutôt qu'un budget à zéro que l'enveloppe n'a jamais eu sur le moment.
+    const loyer = rule({ kind: 'expense', amount: 986_00, envelopeId: logement.id, startDate: '2026-10-01' });
+    const transactions = expenses(logement.id, [
+      { month: '2026-07', amount: 986_00 },
+      { month: '2026-08', amount: 986_00 },
+      { month: '2026-09', amount: 986_00 },
+    ]);
+    const state: ReviewState = { accounts: [], envelopes: [logement], transactions, reviews: [] };
+    const result = monthReview(state, [loyer], '2026-09', '2026-10-10');
+    expect(result.envelopes).toEqual([{ envelopeId: logement.id, name: 'Logement', color: logement.color, budget: 986_00, spent: 986_00, gap: 0 }]);
+    // Dépensé = charges tous les mois : aucune dépense courante, donc aucune proposition.
+    expect(result.proposals).toEqual([]);
+  });
+
+  it('propositions : dépenses courantes = dépensé du mois moins les charges actuelles ramenées au mois', () => {
+    const transports = envelope({ name: 'Transports', monthlyExtra: 90_00 });
+    const navigo = rule({ kind: 'expense', amount: 40_00, envelopeId: transports.id, startDate: '2026-10-01' });
+    const transactions = expenses(transports.id, [
+      { month: '2026-07', amount: 200_00 },
+      { month: '2026-08', amount: 200_00 },
+      { month: '2026-09', amount: 200_00 },
+    ]);
+    const state: ReviewState = { accounts: [], envelopes: [transports], transactions, reviews: [] };
+    const result = monthReview(state, [navigo], '2026-09', '2026-10-10');
+    expect(result.envelopes[0]).toMatchObject({ budget: 130_00, spent: 200_00, gap: 70_00 });
+    expect(result.proposals).toEqual([{ envelopeId: transports.id, name: 'Transports', currentExtra: 90_00, proposedExtra: 160_00, monthsSpent: [160_00, 160_00, 160_00] }]);
   });
 
   it('exclut les enveloppes d’épargne et archivées des propositions', () => {
@@ -133,6 +166,14 @@ describe('monthReview', () => {
     const archivee = envelope({ name: 'Archivée', monthlyExtra: 50_00, archived: true });
     const transactions: ReturnType<typeof tx>[] = [];
     const state: ReviewState = { accounts: [], envelopes: [vide, archivee], transactions, reviews: [] };
+    const result = monthReview(state, [], '2026-09', '2026-10-10');
+    expect(result.envelopes).toEqual([]);
+  });
+
+  it('enveloppes : exclut l’épargne, qui n’a ni dépassement ni marge au sens budget', () => {
+    const bourse = envelope({ name: 'Bourse', isSavings: true, monthlyExtra: 100_00 });
+    const transactions = [tx({ kind: 'expense', amount: 50_00, envelopeId: bourse.id, date: '2026-09-05' })];
+    const state: ReviewState = { accounts: [], envelopes: [bourse], transactions, reviews: [] };
     const result = monthReview(state, [], '2026-09', '2026-10-10');
     expect(result.envelopes).toEqual([]);
   });
