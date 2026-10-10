@@ -278,6 +278,8 @@ export const settingsSchema = z.object({
   enableBankingAppId: z.string().trim().max(100).default(''),
   /** Clé privée PEM de l'application Enable Banking. */
   enableBankingPrivateKey: z.string().trim().max(10_000).default(''),
+  /** Chemin absolu d'un second dossier de sauvegardes (clé USB, NAS, dossier synchronisé). Vide = pas de second dossier. */
+  backupMirrorDir: z.string().trim().max(500).default(''),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 

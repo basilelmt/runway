@@ -4,6 +4,7 @@ import { settingsSchema } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { useSaveSettings, useSettings } from '@/api/hooks';
 import { Button, ErrorState, Field, Input, ListRow, ListRowSkeleton, SectionHeader, useToast } from '@/components/ui';
+import { BackupSettings } from './BackupSettings';
 import { MerchantSettings } from './MerchantSettings';
 import styles from './Settings.module.css';
 
@@ -85,12 +86,14 @@ export function GeneralSettings() {
 
       <MerchantSettings />
 
+      <BackupSettings />
+
       <section className={styles.section}>
         <SectionHeader
-          title="Sauvegarde"
+          title="Exports"
           description={
             <>
-              Toutes les données tiennent dans un fichier local, <code className="mono">data/runway.db</code>. Ces exports en sont une copie lisible.
+              Toutes les données tiennent dans un fichier local, <code className="mono">data/runway.db</code>, sauvegardé automatiquement (section Données ci-dessus). Ces exports en sont une copie lisible.
             </>
           }
         />

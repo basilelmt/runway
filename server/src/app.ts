@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { today } from '@shared/dates';
 import type { Db } from './db/client';
+import { toDbHolder, type DbHolder } from './db/holder';
 import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
 import { askRoutes } from './routes/ask';
+import { backupRoutes } from './routes/backups';
 import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
 import { envelopeRoutes } from './routes/envelopes';
 import { fundingRoutes } from './routes/fundings';
@@ -16,6 +18,7 @@ import { settingsRoutes } from './routes/settings';
 import { sortingRoutes } from './routes/sorting';
 import { sortingRuleRoutes } from './routes/sorting-rules';
 import { transactionRoutes } from './routes/transactions';
+import { createBackupService, defaultBackupsDir, type BackupService } from './services/backup';
 import type { Exec, StreamExec } from './services/claude';
 import type { ImportDeps } from './services/import';
 import { materializeDue } from './services/materialize';
@@ -25,7 +28,8 @@ import { createPrices, type PricesDeps } from './services/prices';
 export type AppEnv = { Variables: { db: Db; today: string } };
 
 export type AppOptions = {
-  db: Db;
+  /** `Db` figé (tests) ou porteur de connexion remplaçable (production, pour la restauration). */
+  db: Db | DbHolder;
   /** Date du jour injectable pour les tests. */
   now?: () => string;
   /** Exécuteur du binaire `claude`, injectable pour les tests. */
@@ -41,22 +45,26 @@ export type AppOptions = {
   investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void };
   /** Nommage des marchands par Claude en tâche de fond ; par défaut, un nommeur qui utilise `exec`. */
   merchantNamer?: MerchantNamer;
+  /** Sauvegardes et restauration ; par défaut, un service dont le dossier dérive du chemin de la base. */
+  backupService?: BackupService;
 };
 
-export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer }: AppOptions) {
+export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer, backupService }: AppOptions) {
   const app = new Hono<AppEnv>();
-  const prices = createPrices(db, investDeps);
-  const namer = merchantNamer ?? createMerchantNamer(db, { exec });
+  const holder = toDbHolder(db);
+  const prices = createPrices(holder, investDeps);
+  const namer = merchantNamer ?? createMerchantNamer(holder, { exec });
+  const backups = backupService ?? createBackupService({ holder, dbPath: holder.current().$client.name, dir: defaultBackupsDir(holder.current().$client.name) });
 
   app.use('*', async (c, next) => {
-    c.set('db', db);
+    c.set('db', holder.current());
     c.set('today', now());
     await next();
   });
 
   // Toute lecture ou écriture part d'un état où les occurrences dues existent.
   app.use('/api/*', async (c, next) => {
-    materializeDue(db, c.get('today'));
+    materializeDue(holder.current(), c.get('today'));
     await next();
   });
 
@@ -79,6 +87,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
 
   app.get('/api/health', (c) => c.json({ ok: true }));
   app.route('/api/accounts', accountRoutes);
+  app.route('/api/backups', backupRoutes(backups));
   app.route('/api/envelopes', envelopeRoutes);
   app.route('/api/fundings', fundingRoutes);
   app.route('/api/transactions', transactionRoutes);

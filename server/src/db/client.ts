@@ -8,7 +8,7 @@ import * as schema from './schema';
 
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
 
-const migrationsFolder = fileURLToPath(new URL('./migrations', import.meta.url));
+export const migrationsFolder = fileURLToPath(new URL('./migrations', import.meta.url));
 
 /** Ouvre (ou crée) la base, applique les migrations et renvoie le client Drizzle. */
 export function openDb(path: string): Db {
