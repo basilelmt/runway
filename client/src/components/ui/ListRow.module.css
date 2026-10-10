@@ -194,17 +194,44 @@
     justify-content: flex-end;
   }
 
-  /* Le seul bouton ⋯ d'un menu de ligne est assez étroit pour rester à côté du montant. */
-  .row:has(> .actions > [data-row-menu]):not(:has(.middle)) {
+  /* Le seul bouton ⋯ d'un menu de ligne est assez étroit pour rester à côté du montant.
+     Sauf si la fin de ligne porte elle-même un bouton ou un lien (action principale) : ce
+     n'est plus un simple montant, il lui faut sa propre ligne comme n'importe quelle action. */
+  .row:has(> .actions > [data-row-menu]):not(:has(.middle)):not(:has(.trail a)):not(:has(.trail button)) {
     flex-wrap: nowrap;
     --list-trail: 110px;
   }
 
-  .row:has(> .actions > [data-row-menu]):not(:has(.middle)) > .trail {
+  .row:has(> .actions > [data-row-menu]):not(:has(.middle)):not(:has(.trail a)):not(:has(.trail button)) > .trail {
     margin-left: 0;
   }
 
-  .row:has(> .actions > [data-row-menu]):not(:has(.middle)) > .actions {
+  .row:has(> .actions > [data-row-menu]):not(:has(.middle)):not(:has(.trail a)):not(:has(.trail button)) > .actions {
+    flex-basis: auto;
+  }
+
+  /* Action principale en bouton ou lien (pas un simple montant) : elle a besoin de largeur, donc
+     le titre garde toute la première ligne pour lui ; l'action et le menu de la ligne descendent
+     ensemble sur une deuxième ligne, alignés à droite. */
+  .row:has(.actions):not(:has(.middle)):has(.trail a),
+  .row:has(.actions):not(:has(.middle)):has(.trail button) {
+    flex-wrap: wrap;
+    row-gap: var(--s-2);
+  }
+
+  .row:has(.actions):not(:has(.middle)):has(.trail a) > .body,
+  .row:has(.actions):not(:has(.middle)):has(.trail button) > .body {
+    flex-basis: 100%;
+  }
+
+  .row:has(.actions):not(:has(.middle)):has(.trail a) > .trail,
+  .row:has(.actions):not(:has(.middle)):has(.trail button) > .trail {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .row:has(.actions):not(:has(.middle)):has(.trail a) > .actions,
+  .row:has(.actions):not(:has(.middle)):has(.trail button) > .actions {
     flex-basis: auto;
   }
 }
