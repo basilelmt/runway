@@ -25,7 +25,7 @@ export const PRICE_CHANGE_MIN_RATIO = 0.03;
 export const CONSENT_WARNING_DAYS = 14;
 
 export const SYNC_ERROR_MIN_FAILURES = 2;
-export const SYNC_ERROR_MAX_HOURS_WITHOUT_SUCCESS = 24;
+export const SYNC_ERROR_MAX_HOURS_SINCE_FIRST_FAILURE = 24;
 
 function inWindow(date: ISODate, today: ISODate): boolean {
   return compareISODate(date, addDays(today, -SIGNAL_WINDOW_DAYS)) >= 0 && compareISODate(date, today) <= 0;
@@ -204,21 +204,28 @@ export type SyncErrorConnectionInfo = {
   status: string;
   lastError: string | null;
   consecutiveFailures: number;
-  lastSuccessAt: string | null;
   firstFailureAt: string | null;
+  /** Dernière tentative, réussie ou non. */
+  lastSyncAt: string | null;
   createdAt: string;
 };
 
-/** Connexion active dont la dernière synchro échoue depuis 2 tentatives ou 24 h sans succès. */
+/**
+ * Connexion active dont la synchro échoue depuis 2 tentatives d'affilée, ou depuis plus de 24 h (premier échec de
+ * la série) : un échec isolé n'est souvent qu'un incident passager côté banque. La règle ne dépend pas de
+ * `lastSuccessAt`, absent des connexions antérieures à la migration 0013.
+ *
+ * La clé est stable d'un passage à l'autre (premier échec de la série, à défaut dernière tentative, jamais
+ * l'heure courante) : sans ça, le signal serait recréé à chaque détection et l'écarter ne tiendrait pas.
+ */
 export function detectSyncErrors(connections: SyncErrorConnectionInfo[], now: Date): DetectedSignal[] {
   const out: DetectedSignal[] = [];
   for (const c of connections) {
     if (c.status !== 'active' || c.lastError === null) continue;
-    const since = c.lastSuccessAt ?? c.createdAt;
-    const hoursSinceSuccess = (now.getTime() - new Date(since).getTime()) / 3_600_000;
-    if (c.consecutiveFailures < SYNC_ERROR_MIN_FAILURES && hoursSinceSuccess <= SYNC_ERROR_MAX_HOURS_WITHOUT_SUCCESS) continue;
-    const firstFailureAt = c.firstFailureAt ?? now.toISOString();
-    out.push({ kind: 'sync_error', key: `sync:${c.id}:${firstFailureAt}`, payload: { connectionId: c.id, aspspName: c.aspspName, since: firstFailureAt, lastError: c.lastError } });
+    const since = c.firstFailureAt ?? c.lastSyncAt ?? c.createdAt;
+    const hoursSinceFirstFailure = (now.getTime() - new Date(since).getTime()) / 3_600_000;
+    if (c.consecutiveFailures < SYNC_ERROR_MIN_FAILURES && hoursSinceFirstFailure < SYNC_ERROR_MAX_HOURS_SINCE_FIRST_FAILURE) continue;
+    out.push({ kind: 'sync_error', key: `sync:${c.id}:${since}`, payload: { connectionId: c.id, aspspName: c.aspspName, since, lastError: c.lastError } });
   }
   return out;
 }

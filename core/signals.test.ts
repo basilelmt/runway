@@ -247,14 +247,14 @@ describe('detectSyncErrors', () => {
     status: 'active',
     lastError: 'Réseau indisponible',
     consecutiveFailures: 0,
-    lastSuccessAt: null,
     firstFailureAt: null,
+    lastSyncAt: null,
     createdAt: '2026-10-01T00:00:00.000Z',
   };
   const now = new Date('2026-10-10T12:00:00.000Z');
 
   it('2 échecs consécutifs déclenchent le signal, avec la date du premier échec', () => {
-    const c = { ...base, consecutiveFailures: 2, lastSuccessAt: '2026-10-10T00:00:00.000Z', firstFailureAt: '2026-10-10T06:00:00.000Z' };
+    const c = { ...base, consecutiveFailures: 2, firstFailureAt: '2026-10-10T06:00:00.000Z', lastSyncAt: '2026-10-10T11:00:00.000Z' };
     expect(detectSyncErrors([c], now)).toEqual([
       {
         kind: 'sync_error',
@@ -264,13 +264,27 @@ describe('detectSyncErrors', () => {
     ]);
   });
 
-  it('1 seul échec récent (moins de 24 h sans succès) ne déclenche rien', () => {
-    const c = { ...base, consecutiveFailures: 1, lastSuccessAt: '2026-10-10T00:00:00.000Z', firstFailureAt: '2026-10-10T06:00:00.000Z' };
+  it('1 seul échec récent (premier échec il y a moins de 24 h) ne déclenche rien', () => {
+    const c = { ...base, consecutiveFailures: 1, firstFailureAt: '2026-10-10T06:00:00.000Z', lastSyncAt: '2026-10-10T06:00:00.000Z' };
     expect(detectSyncErrors([c], now)).toEqual([]);
   });
 
-  it('1 seul échec mais plus de 24 h sans synchro réussie déclenche le signal', () => {
-    const c = { ...base, consecutiveFailures: 1, lastSuccessAt: '2026-10-08T00:00:00.000Z', firstFailureAt: '2026-10-09T00:00:00.000Z' };
+  it('1 seul échec récent ne déclenche rien, même sans aucune synchro réussie connue (connexion antérieure à 0013)', () => {
+    // Connexion créée il y a 9 jours : l'ancienne règle comptait 24 h « sans succès » depuis la création.
+    const c = { ...base, consecutiveFailures: 1, firstFailureAt: '2026-10-10T06:00:00.000Z', lastSyncAt: '2026-10-10T06:00:00.000Z' };
+    expect(detectSyncErrors([c], now)).toEqual([]);
+  });
+
+  it('clé stable sans date de premier échec : la dernière tentative, jamais l’heure courante', () => {
+    const c = { ...base, consecutiveFailures: 2, firstFailureAt: null, lastSyncAt: '2026-10-10T06:00:00.000Z' };
+    const first = detectSyncErrors([c], now);
+    const later = detectSyncErrors([c], new Date('2026-10-10T12:30:00.000Z'));
+    expect(first.map((s) => s.key)).toEqual(['sync:1:2026-10-10T06:00:00.000Z']);
+    expect(later.map((s) => s.key)).toEqual(first.map((s) => s.key));
+  });
+
+  it('1 seul échec mais premier échec il y a plus de 24 h déclenche le signal', () => {
+    const c = { ...base, consecutiveFailures: 1, firstFailureAt: '2026-10-09T00:00:00.000Z', lastSyncAt: '2026-10-09T00:00:00.000Z' };
     expect(detectSyncErrors([c], now)).toEqual([
       {
         kind: 'sync_error',

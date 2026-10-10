@@ -232,6 +232,31 @@ describe('migration 0014 (avances)', () => {
   });
 });
 
+describe('migration 0015 (dernière synchro réussie des anciennes connexions)', () => {
+  it('reprend last_sync_at là où aucune erreur n’est en cours, sans toucher aux connexions en échec', () => {
+    const db = new Database(':memory:');
+    for (const tag of journalTags(14)) applyMigration(db, tag);
+    const insert = db.prepare(
+      `INSERT INTO bank_connections (aspsp_name, aspsp_country, state, status, last_sync_at, last_error, last_success_at) VALUES ('LBP', 'FR', ?, 'active', ?, ?, ?)`,
+    );
+    insert.run('ok', '2026-10-09T08:00:00.000Z', null, null);
+    insert.run('echec', '2026-10-10T06:57:41.267Z', 'Error interacting with ASPSP', null);
+    insert.run('jamais', null, null, null);
+    insert.run('deja', '2026-10-09T08:00:00.000Z', null, '2026-10-01T00:00:00.000Z');
+
+    applyMigration(db, '0015_sync_last_success');
+
+    const rows = db.prepare('SELECT state, last_success_at FROM bank_connections ORDER BY id').all();
+    expect(rows).toEqual([
+      { state: 'ok', last_success_at: '2026-10-09T08:00:00.000Z' },
+      { state: 'echec', last_success_at: null },
+      { state: 'jamais', last_success_at: null },
+      { state: 'deja', last_success_at: '2026-10-01T00:00:00.000Z' },
+    ]);
+    db.close();
+  });
+});
+
 describe('journal des migrations', () => {
   it('idx se suivent et when sont strictement croissants : sinon drizzle ignore silencieusement une migration', () => {
     const journal = JSON.parse(readFileSync(`${migrationsDir}/meta/_journal.json`, 'utf8')) as { entries: (JournalEntry & { when: number })[] };
