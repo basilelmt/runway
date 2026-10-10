@@ -8,6 +8,7 @@ import { errorMessage } from '@/api/client';
 import { useIsMutating } from '@tanstack/react-query';
 import { keys, useBankSync, useOverview } from '@/api/hooks';
 import { FundingBanner } from '@/components/budget/FundingBanner';
+import { SignalsSection } from '@/components/home/SignalsSection';
 import {
   Amount,
   Badge,
@@ -76,6 +77,7 @@ export function HomePage() {
         subtitle={daysLeft === 0 ? 'Dernier jour du mois' : `Encore ${plural(daysLeft, 'jour')} ce mois-ci`}
       />
 
+      <SignalsSection />
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />

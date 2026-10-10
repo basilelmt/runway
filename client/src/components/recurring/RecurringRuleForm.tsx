@@ -28,8 +28,13 @@ type Values = {
   fundsNextMonth: boolean;
 };
 
+/** Préremplissage pour une charge détectée (signal « nouveau prélèvement »), sans règle existante. */
+export type RecurringRuleDefaults = { name: string; label: string; amount: number; envelopeId: number | null; dayOfMonth: number };
+
 type Props = {
   initial?: RecurringRule;
+  /** Ignoré si `initial` est fourni : sert à préremplir une nouvelle règle plutôt qu'à en modifier une. */
+  defaults?: RecurringRuleDefaults;
   submitting?: boolean;
   serverError?: string | null;
   onSubmit: (input: RecurringRuleInput) => void;
@@ -40,20 +45,20 @@ const RULE_KINDS: RuleKind[] = ['expense', 'income', 'transfer'];
 const KIND_OPTIONS = RULE_KINDS.map((k) => ({ value: k, label: KIND_LABELS[k] }));
 const FREQUENCY_OPTIONS = (Object.keys(FREQUENCY_LABELS) as Frequency[]).map((f) => ({ value: f, label: FREQUENCY_LABELS[f] }));
 
-function initialValues(initial?: RecurringRule): Values {
+function initialValues(initial?: RecurringRule, defaults?: RecurringRuleDefaults): Values {
   const start = initial?.startDate ?? today();
   return {
-    name: initial?.name ?? '',
+    name: initial?.name ?? defaults?.name ?? '',
     kind: initial && initial.kind !== 'allocation' ? initial.kind : 'expense',
-    amount: initial?.amount ?? null,
-    label: initial?.label ?? '',
+    amount: initial?.amount ?? defaults?.amount ?? null,
+    label: initial?.label ?? defaults?.label ?? '',
     accountId: initial?.accountId ?? null,
     toAccountId: initial?.toAccountId ?? null,
-    envelopeId: initial?.envelopeId ?? null,
+    envelopeId: initial?.envelopeId ?? defaults?.envelopeId ?? null,
     fromEnvelopeId: initial?.fromEnvelopeId ?? null,
     frequency: initial?.frequency ?? 'monthly',
     interval: String(initial?.interval ?? 1),
-    dayOfMonth: String(initial?.dayOfMonth ?? Number(start.slice(8, 10))),
+    dayOfMonth: String(initial?.dayOfMonth ?? defaults?.dayOfMonth ?? Number(start.slice(8, 10))),
     startDate: start,
     endDate: initial?.endDate ?? null,
     triggersFunding: initial?.triggersFunding ?? false,
@@ -84,10 +89,10 @@ function toInput(v: Values, active: boolean): unknown {
 }
 
 /** Formulaire d'une règle récurrente : modèle d'opération plus fréquence. */
-export function RecurringRuleForm({ initial, submitting, serverError, onSubmit, onCancel }: Props) {
+export function RecurringRuleForm({ initial, defaults, submitting, serverError, onSubmit, onCancel }: Props) {
   const accounts = useAccounts();
   const envelopes = useEnvelopes();
-  const [values, setValues] = useState(() => initialValues(initial));
+  const [values, setValues] = useState(() => initialValues(initial, defaults));
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
   const formId = useId();
 

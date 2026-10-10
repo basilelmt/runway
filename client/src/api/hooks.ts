@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
+  AnySignal,
   BankAuthStart,
   BankConnectionView,
   BankSyncRunResult,
@@ -77,6 +78,7 @@ export const keys = {
   binanceSync: ['invest', 'binance', 'sync'] as const,
   merchant: (key: string) => ['merchants', 'detail', key] as const,
   merchantStatus: ['merchants', 'status'] as const,
+  signals: ['signals'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -431,6 +433,22 @@ export function useDisconnectBank(opts?: MutOpts<void, number>) {
     mutationFn: (id) => api.delete(`/api/bank-sync/connections/${id}`),
     onSuccess: (...a) => {
       invalidate(keys.bankSync);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+// Signaux
+
+export const useSignals = () => useQuery({ queryKey: keys.signals, queryFn: () => api.get<AnySignal[]>('/api/signals') });
+
+export function useDismissSignal(opts?: MutOpts<void, number>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (id) => api.post<void>(`/api/signals/${id}/dismiss`),
+    onSuccess: (...a) => {
+      invalidate(keys.signals);
       opts?.onSuccess?.(...a);
     },
   });

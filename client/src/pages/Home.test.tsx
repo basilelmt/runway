@@ -20,6 +20,7 @@ const base: Overview = {
   latePlanned: [],
   latestFunding: null,
   watch: [],
+  signalCount: 0,
 };
 
 let overview: Overview = base;
