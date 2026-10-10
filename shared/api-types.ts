@@ -270,9 +270,9 @@ export type SignalPayloadByKind = {
   unusual_expense: { transactionId: number; merchantName: string; amount: Cents; median: Cents | null; date: ISODate };
   new_recurring: { merchantKey: string; merchantName: string; amount: Cents; envelopeId: number | null; dayOfMonth: number };
   price_change: { ruleId: number; ruleName: string; oldAmount: Cents; newAmount: Cents; transactionId: number; rule: RecurringRule };
-  missing_charge: { transactionId: number; label: string; amount: Cents; date: ISODate; txKind: 'expense' | 'income' };
   consent_expiring: { connectionId: number; aspspName: string; validUntil: string };
-  sync_error: { connectionId: number; aspspName: string; lastError: string | null };
+  /** `since` : date du premier échec de la série en cours (ISO datetime), pour la phrase principale. */
+  sync_error: { connectionId: number; aspspName: string; since: string; lastError: string | null };
 };
 
 /** Un signal tel que renvoyé par l'API, avec sa charge typée selon son type. */

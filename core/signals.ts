@@ -9,18 +9,18 @@ export type DetectedSignal = { [K in SignalKind]: { kind: K; key: string; payloa
 export const SIGNAL_WINDOW_DAYS = 45;
 
 export const UNUSUAL_MIN_AMOUNT = 100_00;
-export const UNUSUAL_NEW_MERCHANT_MIN_AMOUNT = 150_00;
+export const UNUSUAL_NEW_MERCHANT_MIN_AMOUNT = 250_00;
 export const UNUSUAL_RATIO = 2.5;
 export const UNUSUAL_MIN_HISTORY = 3;
 
 export const NEW_RECURRING_MIN_GAP_DAYS = 25;
 export const NEW_RECURRING_MAX_GAP_DAYS = 35;
-export const NEW_RECURRING_AMOUNT_TOLERANCE = 0.1;
+/** Tolérance partagée par deux vérifications : la régularité d'un nouveau prélèvement entre lui, et la
+ * couverture d'une dépense par une règle active (même enveloppe, montant à ± cette tolérance). */
+export const AMOUNT_TOLERANCE = 0.1;
 
 export const PRICE_CHANGE_MIN_ABS = 1_00;
 export const PRICE_CHANGE_MIN_RATIO = 0.03;
-
-export const MISSING_CHARGE_GRACE_DAYS = 5;
 
 export const CONSENT_WARNING_DAYS = 14;
 
@@ -68,10 +68,23 @@ function mostFrequent<T>(values: T[]): T | null {
 }
 
 /**
- * Dépense confirmée très au-dessus de l'habitude du marchand : au moins 100 € et 2,5 fois la médiane de ses
- * 3 dépenses passées ou plus, ou au moins 150 € chez un marchand jamais vu (aucune dépense passée).
+ * Vrai si une règle de dépense active vise la même enveloppe à un montant proche (± `AMOUNT_TOLERANCE`).
+ * Les règles sont souvent créées après coup (les opérations passées n'ont alors pas de `recurringRuleId`)
+ * avec un nom qui ne reprend pas le libellé bancaire mot pour mot : le montant et l'enveloppe sont le
+ * critère le plus fiable pour reconnaître qu'une dépense est déjà attendue chaque mois.
  */
-export function detectUnusualExpenses(transactions: Transaction[], today: ISODate): DetectedSignal[] {
+function coveredByAmount(envelopeId: number | null, amount: number, activeExpenseRules: RecurringRule[]): boolean {
+  return envelopeId !== null && activeExpenseRules.some((r) => r.envelopeId === envelopeId && Math.abs(r.amount - amount) / r.amount <= AMOUNT_TOLERANCE);
+}
+
+/**
+ * Dépense confirmée très au-dessus de l'habitude du marchand : au moins 100 € et 2,5 fois la médiane de ses
+ * 3 dépenses passées ou plus, ou au moins 250 € chez un marchand jamais vu (aucune dépense passée).
+ * Une dépense issue d'une charge fixe (`recurringRuleId`), ou qu'une règle active couvre, n'est jamais
+ * inhabituelle : c'est justement ce qui est attendu chaque mois (loyer, prêt, assurance...).
+ */
+export function detectUnusualExpenses(transactions: Transaction[], rules: RecurringRule[], today: ISODate): DetectedSignal[] {
+  const activeExpenseRules = rules.filter((r) => r.active && r.kind === 'expense');
   const history = new Map<string, number[]>();
   const out: DetectedSignal[] = [];
   const expenses = transactions.filter((t) => t.kind === 'expense' && t.status === 'confirmed' && t.merchantKey !== null).sort(byDateThenId);
@@ -79,7 +92,8 @@ export function detectUnusualExpenses(transactions: Transaction[], today: ISODat
   for (const t of expenses) {
     const key = t.merchantKey!;
     const prior = history.get(key) ?? [];
-    if (inWindow(t.date, today)) {
+    const covered = t.recurringRuleId !== null || coveredByAmount(t.envelopeId, t.amount, activeExpenseRules);
+    if (inWindow(t.date, today) && !covered) {
       if (prior.length === 0) {
         if (t.amount >= UNUSUAL_NEW_MERCHANT_MIN_AMOUNT) {
           out.push({ kind: 'unusual_expense', key: `unusual:${t.id}`, payload: { transactionId: t.id, merchantName: t.merchantName ?? key, amount: t.amount, median: null, date: t.date } });
@@ -130,15 +144,12 @@ export function detectNewRecurring(transactions: Transaction[], rules: Recurring
 
     const amounts = last3.map((t) => t.amount);
     const med = median(amounts);
-    if (amounts.some((a) => Math.abs(a - med) / med > NEW_RECURRING_AMOUNT_TOLERANCE)) continue;
+    if (amounts.some((a) => Math.abs(a - med) / med > AMOUNT_TOLERANCE)) continue;
 
     const envelopeId = mostFrequent(last3.map((t) => t.envelopeId));
     // Couvert : une des 3 opérations tient déjà d'une règle, ou une règle active vise la même enveloppe à
-    // un montant proche (± 10 %), ou son libellé retombe sur la même clé marchand. Les règles sont souvent
-    // créées après coup (les opérations passées n'ont donc pas de recurringRuleId) avec un nom qui ne reprend
-    // pas le libellé bancaire mot pour mot : le montant et l'enveloppe sont le critère le plus fiable.
-    const coveredByAmount = envelopeId !== null && activeExpenseRules.some((r) => r.envelopeId === envelopeId && Math.abs(r.amount - med) / med <= NEW_RECURRING_AMOUNT_TOLERANCE);
-    const covered = last3.some((t) => t.recurringRuleId !== null) || coveredByAmount || coveredByLabel.has(key);
+    // un montant proche, ou son libellé retombe sur la même clé marchand (repli, voir `coveredByLabel` ci-dessus).
+    const covered = last3.some((t) => t.recurringRuleId !== null) || coveredByAmount(envelopeId, med, activeExpenseRules) || coveredByLabel.has(key);
     if (covered) continue;
 
     const dayOfMonth = Number(last3[2]!.date.slice(8, 10));
@@ -168,19 +179,6 @@ export function detectPriceChanges(transactions: Transaction[], rules: Recurring
       key: `price:${rule.id}:${t.amount}`,
       payload: { ruleId: rule.id, ruleName: rule.name, oldAmount: rule.amount, newAmount: t.amount, transactionId: t.id, rule },
     });
-  }
-  return out;
-}
-
-/** Occurrence prévue d'une charge (dépense ou revenu) dont la date est dépassée de plus de 5 jours. */
-export function detectMissingCharges(transactions: Transaction[], today: ISODate): DetectedSignal[] {
-  const out: DetectedSignal[] = [];
-  for (const t of transactions) {
-    if (t.status !== 'planned' || t.recurringRuleId === null) continue;
-    if (t.kind !== 'expense' && t.kind !== 'income') continue;
-    if (!inWindow(t.date, today)) continue;
-    if (daysBetween(t.date, today) <= MISSING_CHARGE_GRACE_DAYS) continue;
-    out.push({ kind: 'missing_charge', key: `missing:${t.id}`, payload: { transactionId: t.id, label: t.label, amount: t.amount, date: t.date, txKind: t.kind } });
   }
   return out;
 }
@@ -220,7 +218,7 @@ export function detectSyncErrors(connections: SyncErrorConnectionInfo[], now: Da
     const hoursSinceSuccess = (now.getTime() - new Date(since).getTime()) / 3_600_000;
     if (c.consecutiveFailures < SYNC_ERROR_MIN_FAILURES && hoursSinceSuccess <= SYNC_ERROR_MAX_HOURS_WITHOUT_SUCCESS) continue;
     const firstFailureAt = c.firstFailureAt ?? now.toISOString();
-    out.push({ kind: 'sync_error', key: `sync:${c.id}:${firstFailureAt}`, payload: { connectionId: c.id, aspspName: c.aspspName, lastError: c.lastError } });
+    out.push({ kind: 'sync_error', key: `sync:${c.id}:${firstFailureAt}`, payload: { connectionId: c.id, aspspName: c.aspspName, since: firstFailureAt, lastError: c.lastError } });
   }
   return out;
 }

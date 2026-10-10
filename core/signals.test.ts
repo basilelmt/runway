@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  detectConsentExpiring,
-  detectMissingCharges,
-  detectNewRecurring,
-  detectPriceChanges,
-  detectSyncErrors,
-  detectUnusualExpenses,
-  type SyncErrorConnectionInfo,
-} from './signals';
+import { detectConsentExpiring, detectNewRecurring, detectPriceChanges, detectSyncErrors, detectUnusualExpenses, type SyncErrorConnectionInfo } from './signals';
 import { resetIds, rule, tx } from './test-fixtures';
 
 const TODAY = '2026-10-10';
@@ -21,7 +13,7 @@ describe('detectUnusualExpenses', () => {
       tx({ kind: 'expense', amount: 38_00, date: '2026-09-20', merchantKey: 'FNAC', merchantName: 'Fnac' }),
     ];
     const unusual = tx({ kind: 'expense', amount: 100_00, date: '2026-10-05', merchantKey: 'FNAC', merchantName: 'Fnac' });
-    const signals = detectUnusualExpenses([...history, unusual], TODAY);
+    const signals = detectUnusualExpenses([...history, unusual], [], TODAY);
     expect(signals).toEqual([{ kind: 'unusual_expense', key: `unusual:${unusual.id}`, payload: { transactionId: unusual.id, merchantName: 'Fnac', amount: 100_00, median: 40_00, date: '2026-10-05' } }]);
   });
 
@@ -32,7 +24,7 @@ describe('detectUnusualExpenses', () => {
       tx({ kind: 'expense', amount: 42_00, date: '2026-09-10', merchantKey: 'FNAC' }),
     ];
     const candidate = tx({ kind: 'expense', amount: 200_00, date: '2026-10-05', merchantKey: 'FNAC' });
-    expect(detectUnusualExpenses([...history, candidate], TODAY)).toEqual([]);
+    expect(detectUnusualExpenses([...history, candidate], [], TODAY)).toEqual([]);
   });
 
   it('un montant pile au seuil (ratio 2,5 exact et 100 €) déclenche le signal', () => {
@@ -43,21 +35,21 @@ describe('detectUnusualExpenses', () => {
       tx({ kind: 'expense', amount: 40_00, date: '2026-09-20', merchantKey: 'FNAC' }),
     ];
     const candidate = tx({ kind: 'expense', amount: 100_00, date: '2026-10-05', merchantKey: 'FNAC' });
-    expect(detectUnusualExpenses([...history, candidate], TODAY)).toHaveLength(1);
+    expect(detectUnusualExpenses([...history, candidate], [], TODAY)).toHaveLength(1);
   });
 
-  it('150 € chez un marchand jamais vu déclenche le signal, sans médiane', () => {
+  it('250 € chez un marchand jamais vu déclenche le signal, sans médiane', () => {
     resetIds();
-    const first = tx({ kind: 'expense', amount: 150_00, date: '2026-10-01', merchantKey: 'NOUVEAU', merchantName: 'Nouveau' });
-    expect(detectUnusualExpenses([first], TODAY)).toEqual([
-      { kind: 'unusual_expense', key: `unusual:${first.id}`, payload: { transactionId: first.id, merchantName: 'Nouveau', amount: 150_00, median: null, date: '2026-10-01' } },
+    const first = tx({ kind: 'expense', amount: 250_00, date: '2026-10-01', merchantKey: 'NOUVEAU', merchantName: 'Nouveau' });
+    expect(detectUnusualExpenses([first], [], TODAY)).toEqual([
+      { kind: 'unusual_expense', key: `unusual:${first.id}`, payload: { transactionId: first.id, merchantName: 'Nouveau', amount: 250_00, median: null, date: '2026-10-01' } },
     ]);
   });
 
-  it('149,99 € chez un marchand jamais vu ne déclenche rien', () => {
+  it('249,99 € chez un marchand jamais vu ne déclenche rien', () => {
     resetIds();
-    const first = tx({ kind: 'expense', amount: 149_99, date: '2026-10-01', merchantKey: 'NOUVEAU' });
-    expect(detectUnusualExpenses([first], TODAY)).toEqual([]);
+    const first = tx({ kind: 'expense', amount: 249_99, date: '2026-10-01', merchantKey: 'NOUVEAU' });
+    expect(detectUnusualExpenses([first], [], TODAY)).toEqual([]);
   });
 
   it('ignore une dépense hors de la fenêtre de 45 jours, même si elle est inhabituelle', () => {
@@ -68,14 +60,38 @@ describe('detectUnusualExpenses', () => {
       tx({ kind: 'expense', amount: 40_00, date: '2026-01-10', merchantKey: 'FNAC' }),
     ];
     const old = tx({ kind: 'expense', amount: 200_00, date: '2026-01-15', merchantKey: 'FNAC' });
-    expect(detectUnusualExpenses([...history, old], TODAY)).toEqual([]);
+    expect(detectUnusualExpenses([...history, old], [], TODAY)).toEqual([]);
   });
 
   it('ignore les opérations prévues et sans marchand', () => {
     resetIds();
     const planned = tx({ kind: 'expense', amount: 300_00, date: '2026-10-01', merchantKey: 'FNAC', status: 'planned' });
     const noKey = tx({ kind: 'expense', amount: 300_00, date: '2026-10-01', merchantKey: null });
-    expect(detectUnusualExpenses([planned, noKey], TODAY)).toEqual([]);
+    expect(detectUnusualExpenses([planned, noKey], [], TODAY)).toEqual([]);
+  });
+
+  it('une dépense issue d’une charge fixe (recurringRuleId non nul) n’est jamais inhabituelle', () => {
+    // Occurrence matérialisée puis confirmée par le relevé : première fois que ce marchand est vu,
+    // montant largement au-dessus de 250 €, mais c'est le loyer attendu chaque mois.
+    resetIds();
+    const t = tx({ kind: 'expense', amount: 986_00, date: '2026-10-01', merchantKey: 'MAX CEKANOWSKI LOYER', recurringRuleId: 7 });
+    expect(detectUnusualExpenses([t], [], TODAY)).toEqual([]);
+  });
+
+  it('une dépense couverte par une règle active (même enveloppe, montant ± 10 %) n’est pas inhabituelle, même sans recurringRuleId', () => {
+    // Cas réel : virement permanent vers le loyer avant la création de la règle, donc sans recurringRuleId,
+    // mais déjà couvert par « Loyer Max » (même enveloppe, même montant) au moment de la détection.
+    resetIds();
+    const t = tx({ kind: 'expense', amount: 986_00, date: '2026-10-01', merchantKey: 'MAX CEKANOWSKI LOYER', envelopeId: 1 });
+    const r = rule({ kind: 'expense', amount: 986_00, label: 'Loyer Max', envelopeId: 1, active: true });
+    expect(detectUnusualExpenses([t], [r], TODAY)).toEqual([]);
+  });
+
+  it('une règle d’une autre enveloppe ou à un montant trop différent ne couvre pas', () => {
+    resetIds();
+    const t = tx({ kind: 'expense', amount: 986_00, date: '2026-10-01', merchantKey: 'MAX CEKANOWSKI LOYER', envelopeId: 1 });
+    const otherEnvelope = rule({ kind: 'expense', amount: 986_00, label: 'Autre', envelopeId: 2, active: true });
+    expect(detectUnusualExpenses([t], [otherEnvelope], TODAY)).toHaveLength(1);
   });
 });
 
@@ -193,29 +209,6 @@ describe('detectPriceChanges', () => {
   });
 });
 
-describe('detectMissingCharges', () => {
-  it('une prévue en retard de plus de 5 jours est signalée', () => {
-    resetIds();
-    const t = tx({ kind: 'expense', amount: 80000, date: '2026-10-01', status: 'planned', recurringRuleId: 3, label: 'Loyer' });
-    expect(detectMissingCharges([t], TODAY)).toEqual([
-      { kind: 'missing_charge', key: `missing:${t.id}`, payload: { transactionId: t.id, label: 'Loyer', amount: 80000, date: '2026-10-01', txKind: 'expense' } },
-    ]);
-  });
-
-  it('une prévue en retard de pile 5 jours n’est pas encore signalée', () => {
-    resetIds();
-    const t = tx({ kind: 'expense', amount: 80000, date: '2026-10-05', status: 'planned', recurringRuleId: 3 });
-    expect(detectMissingCharges([t], TODAY)).toEqual([]);
-  });
-
-  it('ignore les transferts et répartitions, et les opérations sans règle', () => {
-    resetIds();
-    const transfer = tx({ kind: 'transfer', amount: 1000, date: '2026-09-01', status: 'planned', recurringRuleId: 1 });
-    const noRule = tx({ kind: 'expense', amount: 1000, date: '2026-09-01', status: 'planned', recurringRuleId: null });
-    expect(detectMissingCharges([transfer, noRule], TODAY)).toEqual([]);
-  });
-});
-
 describe('detectConsentExpiring', () => {
   it('un consentement actif qui expire dans moins de 14 jours est signalé', () => {
     const connections = [{ id: 1, aspspName: 'La Banque Postale', status: 'active', validUntil: '2026-10-20T00:00:00.000Z' }];
@@ -248,10 +241,14 @@ describe('detectSyncErrors', () => {
   };
   const now = new Date('2026-10-10T12:00:00.000Z');
 
-  it('2 échecs consécutifs déclenchent le signal', () => {
+  it('2 échecs consécutifs déclenchent le signal, avec la date du premier échec', () => {
     const c = { ...base, consecutiveFailures: 2, lastSuccessAt: '2026-10-10T00:00:00.000Z', firstFailureAt: '2026-10-10T06:00:00.000Z' };
     expect(detectSyncErrors([c], now)).toEqual([
-      { kind: 'sync_error', key: `sync:1:2026-10-10T06:00:00.000Z`, payload: { connectionId: 1, aspspName: 'La Banque Postale', lastError: 'Réseau indisponible' } },
+      {
+        kind: 'sync_error',
+        key: `sync:1:2026-10-10T06:00:00.000Z`,
+        payload: { connectionId: 1, aspspName: 'La Banque Postale', since: '2026-10-10T06:00:00.000Z', lastError: 'Réseau indisponible' },
+      },
     ]);
   });
 
@@ -263,7 +260,11 @@ describe('detectSyncErrors', () => {
   it('1 seul échec mais plus de 24 h sans synchro réussie déclenche le signal', () => {
     const c = { ...base, consecutiveFailures: 1, lastSuccessAt: '2026-10-08T00:00:00.000Z', firstFailureAt: '2026-10-09T00:00:00.000Z' };
     expect(detectSyncErrors([c], now)).toEqual([
-      { kind: 'sync_error', key: `sync:1:2026-10-09T00:00:00.000Z`, payload: { connectionId: 1, aspspName: 'La Banque Postale', lastError: 'Réseau indisponible' } },
+      {
+        kind: 'sync_error',
+        key: `sync:1:2026-10-09T00:00:00.000Z`,
+        payload: { connectionId: 1, aspspName: 'La Banque Postale', since: '2026-10-09T00:00:00.000Z', lastError: 'Réseau indisponible' },
+      },
     ]);
   });
 
