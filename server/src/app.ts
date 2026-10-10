@@ -16,6 +16,7 @@ import { merchantRoutes } from './routes/merchants';
 import { recurringRuleRoutes } from './routes/recurring-rules';
 import { reviewRoutes } from './routes/reviews';
 import { settingsRoutes } from './routes/settings';
+import { signalRoutes } from './routes/signals';
 import { sortingRoutes } from './routes/sorting';
 import { sortingRuleRoutes } from './routes/sorting-rules';
 import { transactionRoutes } from './routes/transactions';
@@ -102,6 +103,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
   app.route('/api/merchants', merchantRoutes(namer));
+  app.route('/api/signals', signalRoutes);
   app.route('/api/imports', importRoutes(importDeps, { onCommitted: () => namer.request() }));
   app.route('/api/bank-sync', bankSyncRoutes({ ...bankDeps, onNewTransactions: () => namer.request() }));
   app.route('/api/invest', investRoutes({ prices, exec, ...investDeps }));

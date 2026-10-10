@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, AppliedReview, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRuleInput, SortingRule, Transaction } from './schemas';
+import type { Account, AppliedReview, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRule, RecurringRuleInput, SignalKind, SortingRule, Transaction } from './schemas';
 import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
@@ -124,6 +124,8 @@ export type Overview = {
   latestFunding: FundingView | null;
   /** Enveloppes dépassées ou presque vides, les plus urgentes d'abord. */
   watch: WatchedEnvelope[];
+  /** Signaux actifs (ni écartés, ni résolus). */
+  signalCount: number;
   /** Bilan du mois précédent restant à faire, ou null une fois validé ou hors de la fenêtre. */
   pendingReview: PendingReview | null;
 };
@@ -305,6 +307,30 @@ export type BankSyncRunResult = {
   reason: 'ok' | 'fresh' | 'not_configured' | 'no_connection';
   connections: BankSyncConnectionResult[];
 };
+
+/** Ce qu'il faut pour afficher et agir sur chaque type de signal. */
+export type SignalPayloadByKind = {
+  unusual_expense: { transactionId: number; merchantName: string; amount: Cents; median: Cents | null; date: ISODate };
+  new_recurring: { merchantKey: string; merchantName: string; amount: Cents; envelopeId: number | null; dayOfMonth: number };
+  price_change: { ruleId: number; ruleName: string; oldAmount: Cents; newAmount: Cents; transactionId: number; rule: RecurringRule };
+  consent_expiring: { connectionId: number; aspspName: string; validUntil: string };
+  /** `since` : date du premier échec de la série en cours (ISO datetime), pour la phrase principale. */
+  sync_error: { connectionId: number; aspspName: string; since: string; lastError: string | null };
+};
+
+/** Un signal tel que renvoyé par l'API, avec sa charge typée selon son type. */
+export type Signal<K extends SignalKind = SignalKind> = {
+  id: number;
+  kind: K;
+  key: string;
+  createdAt: string;
+  dismissedAt: string | null;
+  resolvedAt: string | null;
+  payload: SignalPayloadByKind[K];
+};
+
+/** Union distribuée : un `Signal<'unusual_expense'>` ou un `Signal<'new_recurring'>`, etc. */
+export type AnySignal = { [K in SignalKind]: Signal<K> }[SignalKind];
 
 export type { Account, Envelope, ImportRecord, SortingRule, Transaction };
 

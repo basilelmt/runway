@@ -48,25 +48,30 @@ Seules les opérations des 45 derniers jours peuvent déclencher un signal, pour
 
 ### Types (seuils à confirmer)
 
-- `unusual_expense` - **Dépense inhabituelle** : une dépense confirmée d'au moins 100 € qui vaut au moins 2,5 fois la médiane des dépenses de son marchand (au moins 3 dépenses passées), ou d'au moins 150 € chez un marchand jamais vu.
+- `unusual_expense` - **Dépense inhabituelle** : une dépense confirmée d'au moins 100 € qui vaut au moins 2,5 fois la médiane des dépenses de son marchand (au moins 3 dépenses passées), ou d'au moins 250 € chez un marchand jamais vu.
+  Seuil relevé de 150 € à 250 € après recette sur l'historique réel : à 150 €, trop d'achats ponctuels légitimes (location de voiture, premier loyer versé à un colocataire, première mensualité d'un prêt) sortaient en signal.
+  Jamais déclenché pour une dépense issue d'une charge fixe (`recurring_rule_id` non nul), ni pour une dépense qu'une règle active couvre (même enveloppe, montant à ± 10 %) : même logique de couverture que `new_recurring`, pour la même raison (une règle créée après coup ne porte jamais `recurring_rule_id` sur les opérations passées).
   Clé `unusual:<transaction_id>`.
   Action : ouvrir l'opération.
-- `new_recurring` - **Nouveau prélèvement régulier** : un marchand avec au moins 3 dépenses sur 3 mois consécutifs, à 25 à 35 jours d'écart, montants à ±10 % de leur médiane, sans règle récurrente qui le couvre (aucune de ces opérations n'a de `recurring_rule_id`).
+- `new_recurring` - **Nouveau prélèvement régulier** : un marchand avec au moins 3 dépenses sur 3 mois consécutifs, à 25 à 35 jours d'écart, montants à ±10 % de leur médiane, sans règle récurrente qui le couvre.
   Clé `recurring:<merchant_key>`.
   Action : « Créer la charge fixe », qui ouvre le dialogue de charge fixe prérempli (libellé, montant médian, enveloppe la plus fréquente, jour du mois, mensuelle).
+  Couvert : une des 3 opérations porte déjà un `recurring_rule_id`, ou une règle active vise la même enveloppe à un montant proche (± 10 %), ou le libellé de la règle retombe sur la même clé marchand.
+  Le nom d'une règle suit rarement le libellé bancaire mot pour mot, et une règle créée après coup ne porte jamais sur les opérations passées : s'appuyer sur le seul `recurring_rule_id` recréerait sans fin le signal d'un prélèvement pourtant déjà couvert.
+  Le repli par libellé reste utile quand l'enveloppe diffère ou que le montant a changé depuis la création de la règle.
 - `price_change` - **Montant d'une charge qui change** : une opération confirmée rapprochée d'une règle (`recurring_rule_id`) dont le montant diffère de celui de la règle d'au moins 1 € et 3 %.
   Clé `price:<rule_id>:<montant>`.
   Action : « Mettre à jour la charge » au nouveau montant, qui résout le signal.
-- `missing_charge` - **Charge pas arrivée** : une occurrence prévue (`status = 'planned'`) d'une règle de dépense ou de revenu dont la date est dépassée de plus de 5 jours.
-  Clé `missing:<transaction_id>`.
-  Résolu quand l'occurrence est confirmée ou supprimée.
-  Action : ouvrir l'opération prévue (pour la supprimer ou la rapprocher à la main).
 - `consent_expiring` - **Accès bancaire bientôt expiré** : `valid_until` à moins de 14 jours.
   Clé `consent:<connection_id>:<valid_until>`.
   Action : « Renouveler », qui lance `startConnection` avec l'identifiant de la connexion (parcours existant de Réglages > Banque).
 - `sync_error` - **Synchro en échec**, voir plus haut.
   Clé `sync:<connection_id>:<date du premier échec>`.
+  Phrase courte et complète sur la ligne principale (« La synchro La Banque Postale échoue depuis le 9 oct. »), le message d'erreur brut en texte secondaire, jamais dans le titre (il peut être long).
   Action : ouvrir Réglages > Banque.
+
+Pas de type `missing_charge` (charge prévue en retard) : retiré après recette, c'était un doublon de l'alerte « À faire » déjà existante sur les occurrences prévues en retard (`latePlanned`), qui pointe vers la même opération avec une action plus complète (confirmer ou supprimer).
+Un deuxième signal pour le même événement n'aurait rien ajouté.
 
 ## API
 

@@ -9,6 +9,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { keys, useBankSync, useOverview } from '@/api/hooks';
 import { FundingBanner } from '@/components/budget/FundingBanner';
 import { BackupBanner } from '@/components/dashboard/BackupBanner';
+import { SignalsSection } from '@/components/home/SignalsSection';
 import {
   Amount,
   Badge,
@@ -86,6 +87,7 @@ export function HomePage() {
       {data.pendingReview ? <PendingReviewBanner pendingReview={data.pendingReview} /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
+      <SignalsSection />
       <AccountsStrip data={data} />
     </div>
   );

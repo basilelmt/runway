@@ -311,6 +311,15 @@ export type Settings = z.infer<typeof settingsSchema>;
 export const bankConnectionStatuses = ['pending', 'authorized', 'active', 'expired', 'revoked'] as const;
 export type BankConnectionStatus = (typeof bankConnectionStatuses)[number];
 
+/**
+ * Les types de signaux, dans l'ordre où ils sont détectés.
+ * Pas de `missing_charge` : une occurrence prévue en retard est déjà signalée dans « À faire »
+ * (alerte existante sur `latePlanned`), avec une action plus complète (confirmer ou supprimer).
+ * Un deuxième signal pour le même événement n'aurait rien ajouté.
+ */
+export const signalKinds = ['unusual_expense', 'new_recurring', 'price_change', 'consent_expiring', 'sync_error'] as const;
+export type SignalKind = (typeof signalKinds)[number];
+
 export const bankStartSchema = z.object({ connectionId: idSchema.nullable().optional() });
 export type BankStartInput = z.infer<typeof bankStartSchema>;
 

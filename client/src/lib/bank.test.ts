@@ -23,13 +23,10 @@ describe('bankSyncTodo', () => {
     expect(bankSyncTodo(state({ status: 'revoked', lastSyncAt: '2026-01-01T00:00:00Z' }), now)).toBeNull();
   });
 
-  it('signale une synchro de plus d’un jour, avec sa cause', () => {
-    expect(bankSyncTodo(state({ lastSyncAt: '2026-10-03T09:00:00Z' }), now)).toEqual({ tone: 'alert', text: 'Pas de synchronisation bancaire depuis 3 jours' });
-    expect(bankSyncTodo(state({ lastSyncAt: '2026-10-05T09:00:00Z', lastError: 'Banque indisponible' }), now)).toEqual({
-      tone: 'alert',
-      text: 'Pas de synchronisation bancaire depuis 1 jour : Banque indisponible',
-    });
-    expect(bankSyncTodo(state({ lastSyncAt: null }), now)?.text).toBe('La synchronisation bancaire n’a encore jamais abouti');
+  it('ne dit plus rien d’un simple retard ou d’une erreur de synchro : c’est repris par le signal sync_error', () => {
+    expect(bankSyncTodo(state({ lastSyncAt: '2026-10-03T09:00:00Z' }), now)).toBeNull();
+    expect(bankSyncTodo(state({ lastSyncAt: '2026-10-05T09:00:00Z', lastError: 'Banque indisponible' }), now)).toBeNull();
+    expect(bankSyncTodo(state({ lastSyncAt: null }), now)).toBeNull();
   });
 
   it('signale un consentement expiré ou bientôt expiré', () => {
