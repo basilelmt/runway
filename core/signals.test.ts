@@ -93,6 +93,18 @@ describe('detectUnusualExpenses', () => {
     const otherEnvelope = rule({ kind: 'expense', amount: 986_00, label: 'Autre', envelopeId: 2, active: true });
     expect(detectUnusualExpenses([t], [otherEnvelope], TODAY)).toHaveLength(1);
   });
+
+  it('un revenu rangé dans une enveloppe (remboursement) n’est jamais traité comme une dépense', () => {
+    resetIds();
+    const history = [
+      tx({ kind: 'expense', amount: 40_00, date: '2026-09-01', merchantKey: 'UNIQLO', envelopeId: 5 }),
+      tx({ kind: 'expense', amount: 42_00, date: '2026-09-10', merchantKey: 'UNIQLO', envelopeId: 5 }),
+      tx({ kind: 'expense', amount: 38_00, date: '2026-09-20', merchantKey: 'UNIQLO', envelopeId: 5 }),
+    ];
+    // Un gros avoir Uniqlo rangé dans Shopping : même marchand, bien au-dessus de la médiane, mais c'est un revenu.
+    const refund = tx({ kind: 'income', amount: 300_00, date: '2026-10-05', merchantKey: 'UNIQLO', envelopeId: 5 });
+    expect(detectUnusualExpenses([...history, refund], [], TODAY)).toEqual([]);
+  });
 });
 
 describe('detectNewRecurring', () => {

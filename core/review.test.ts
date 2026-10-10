@@ -33,6 +33,31 @@ describe('monthReview', () => {
     expect(result.figures).toEqual({ income: 2500_00, spent: 300_00, saved: 150_00 });
   });
 
+  it('chiffres du mois : un remboursement rangé dans une enveloppe déduit le dépensé, jamais sous zéro', () => {
+    const c = courant();
+    const shopping = envelope({ name: 'Shopping' });
+    const transactions = [
+      tx({ kind: 'expense', amount: 60_00, accountId: c.id, envelopeId: shopping.id, date: '2026-09-05' }),
+      // Un avoir Uniqlo rangé dans Shopping : vient en déduction du dépensé de la même enveloppe.
+      tx({ kind: 'income', amount: 20_00, accountId: c.id, envelopeId: shopping.id, date: '2026-09-12' }),
+      // Dépense à trier, non affectée par le remboursement d'une autre enveloppe.
+      tx({ kind: 'expense', amount: 15_00, accountId: c.id, date: '2026-09-08' }),
+    ];
+    const state: ReviewState = { accounts: [c], envelopes: [shopping], transactions, reviews: [] };
+    const result = monthReview(state, [], '2026-09', '2026-10-10');
+    // 60 - 20 (Shopping) + 15 (à trier) = 55.
+    expect(result.figures.spent).toBe(55_00);
+
+    const bigRefund: ReviewState = {
+      accounts: [c],
+      envelopes: [shopping],
+      transactions: [...transactions, tx({ kind: 'income', amount: 100_00, accountId: c.id, envelopeId: shopping.id, date: '2026-09-20' })],
+      reviews: [],
+    };
+    // Shopping ne descend jamais sous zéro malgré un remboursement qui dépasse ses dépenses ; reste les 15 € à trier.
+    expect(monthReview(bigRefund, [], '2026-09', '2026-10-10').figures.spent).toBe(15_00);
+  });
+
   it('propositions : médiane des 3 mois, arrondie à la dizaine supérieure, affichées du plus ancien au plus récent', () => {
     const restos = envelope({ name: 'Restos', monthlyExtra: 180_00 });
     const transactions = expenses(restos.id, [

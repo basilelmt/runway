@@ -39,15 +39,22 @@ function firstOperationDate(transactions: State['transactions']): ISODate | null
   return transactions.reduce<ISODate | null>((min, t) => (min === null || t.date < min ? t.date : min), null);
 }
 
-/** Dépenses confirmées hors épargne, à trier comprises, du mois de `month` (`AAAA-MM`). */
+/**
+ * Dépenses confirmées hors épargne, à trier comprises, du mois de `month` (`AAAA-MM`), remboursements
+ * déduits enveloppe par enveloppe (jamais sous zéro, comme `monthActivity`) : un avoir rangé dans une
+ * enveloppe doit réduire le dépensé du bilan comme il réduit celui du Budget et de l'Analyse.
+ */
 function totalSpentInMonth(envelopes: State['envelopes'], transactions: State['transactions'], month: string): Cents {
-  const savings = new Set(envelopes.filter((e) => e.isSavings).map((e) => e.id));
   const from = startOfMonth(`${month}-01`);
   const to = endOfMonth(`${month}-01`);
+  const { spent: spentMap } = monthActivity(transactions, `${month}-01`);
   let total = 0;
+  for (const e of envelopes) {
+    if (e.isSavings) continue;
+    total += spentMap.get(e.id) ?? 0;
+  }
   for (const t of transactions) {
-    if (t.kind !== 'expense' || t.status !== 'confirmed' || t.date < from || t.date > to) continue;
-    if (t.envelopeId != null && savings.has(t.envelopeId)) continue;
+    if (t.kind !== 'expense' || t.status !== 'confirmed' || t.date < from || t.date > to || t.envelopeId != null) continue;
     total += t.amount;
   }
   return total;
