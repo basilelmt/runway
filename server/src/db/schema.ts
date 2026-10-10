@@ -127,6 +127,15 @@ export const sortingRules = sqliteTable('sorting_rules', {
   priority: integer('priority').notNull().default(0),
 });
 
+/** Bilan validé d'un mois passé : ce qui a été appliqué, pour permettre l'annulation. */
+export const monthReviews = sqliteTable('month_reviews', {
+  /** `YYYY-MM`, le mois passé en revue. */
+  month: text('month').primaryKey(),
+  reviewedAt: text('reviewed_at').notNull(),
+  /** JSON : `{ budgets: { envelopeId, before, after }[], allocationIds: number[] }`. */
+  applied: text('applied').notNull(),
+});
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
