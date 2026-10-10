@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Check, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, ClipboardCheck, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Overview } from '@shared/api-types';
@@ -16,6 +16,7 @@ import {
   ErrorState,
   KeyFigure,
   ListRowSkeleton,
+  Notice,
   ProgressBar,
   SectionHeader,
   Skeleton,
@@ -77,10 +78,36 @@ export function HomePage() {
       />
 
       {data.latestFunding ? <FundingBanner funding={data.latestFunding} budgetLink /> : null}
+      {data.pendingReview ? <PendingReviewBanner pendingReview={data.pendingReview} /> : null}
       <MonthHero data={data} />
       <TodoList data={data} />
       <AccountsStrip data={data} />
     </div>
+  );
+}
+
+/** Invite au bilan du mois précédent, tant qu'il n'est pas validé : pas de bouton pour la masquer, elle disparaît seule. */
+function PendingReviewBanner({ pendingReview }: { pendingReview: NonNullable<Overview['pendingReview']> }) {
+  return (
+    <Notice
+      tone="marking"
+      icon={<ClipboardCheck />}
+      label="Bilan du mois précédent"
+      action={
+        <ButtonLink to={`/analyse?vue=bilan&mois=${pendingReview.month}`} size="sm" variant="primary">
+          Faire le bilan
+        </ButtonLink>
+      }
+    >
+      Bilan de {monthName(`${pendingReview.month}-01`)} :{' '}
+      {pendingReview.overspentCount > 0 ? (
+        <>
+          {formatEuros(pendingReview.spent)} dépensés, {plural(pendingReview.overspentCount, 'enveloppe dépassée', 'enveloppes dépassées')}
+        </>
+      ) : (
+        <>{formatEuros(pendingReview.spent)} dépensés</>
+      )}
+    </Notice>
   );
 }
 

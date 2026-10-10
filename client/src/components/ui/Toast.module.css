@@ -36,6 +36,21 @@
   flex-shrink: 0;
 }
 
+.action {
+  flex-shrink: 0;
+  margin: calc(var(--s-3) * -1) calc(var(--s-3) * -1) calc(var(--s-3) * -1) 0;
+  padding: var(--s-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 /* Succès : fond encre, coche jaune qui se dessine */
 .positive .icon {
   color: var(--marking);

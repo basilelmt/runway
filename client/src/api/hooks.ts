@@ -17,6 +17,7 @@ import type {
   MerchantDetail,
   MerchantStatus,
   MonthlyReport,
+  MonthReview,
   NetWorthReport,
   Overview,
   PortfolioRange,
@@ -38,6 +39,7 @@ import type {
   ImportRecord,
   RecurringRule,
   RecurringRuleInput,
+  ReviewApply,
   Settings,
   SortingApply,
   SortingRule,
@@ -77,6 +79,7 @@ export const keys = {
   binanceSync: ['invest', 'binance', 'sync'] as const,
   merchant: (key: string) => ['merchants', 'detail', key] as const,
   merchantStatus: ['merchants', 'status'] as const,
+  review: (month: string) => ['reviews', month] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction']];
@@ -185,6 +188,34 @@ export function useDismissFunding(opts?: MutOpts<void, number>) {
 export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (ids) => api.put<Envelope[]>('/api/envelopes/reorder', { ids }), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });
+}
+
+// Bilan du mois
+
+export const useReview = (month: string) => useQuery({ queryKey: keys.review(month), queryFn: () => api.get<MonthReview>(`/api/reviews/${month}`) });
+
+export function useApplyReview(month: string, opts?: MutOpts<MonthReview, ReviewApply>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (input) => api.post<MonthReview>(`/api/reviews/${month}`, input),
+    onSuccess: (...a) => {
+      invalidate(keys.review(month), ['envelopes']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export function useCancelReview(month: string, opts?: MutOpts<{ skipped: { envelopeId: number; name: string }[] }, void>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: () => api.delete<{ skipped: { envelopeId: number; name: string }[] }>(`/api/reviews/${month}`),
+    onSuccess: (...a) => {
+      invalidate(keys.review(month), ['envelopes']);
+      opts?.onSuccess?.(...a);
+    },
+  });
 }
 
 // Transactions
