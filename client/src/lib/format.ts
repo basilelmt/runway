@@ -48,6 +48,50 @@ export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+const BACKUP_MOMENT_DAY = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' });
+const BACKUP_MOMENT_DAY_YEAR = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function hourMinute(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')} h ${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Moment d'une sauvegarde, en heure locale : « aujourd’hui à 8 h 00 », « hier à 23 h 13 », « le 8 octobre à 23 h 13 ». */
+export function formatBackupMoment(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  if (isSameLocalDay(d, now)) return `aujourd’hui à ${hourMinute(d)}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (isSameLocalDay(d, yesterday)) return `hier à ${hourMinute(d)}`;
+  return `le ${BACKUP_MOMENT_DAY.format(d)} à ${hourMinute(d)}`;
+}
+
+/** Comme `formatBackupMoment`, avec sa préposition : « d’aujourd’hui à 8 h 00 », « d’hier à 23 h 13 », « du 8 octobre à 23 h 13 ». */
+export function formatBackupMomentWithPreposition(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  if (isSameLocalDay(d, now)) return `d’aujourd’hui à ${hourMinute(d)}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (isSameLocalDay(d, yesterday)) return `d’hier à ${hourMinute(d)}`;
+  return `du ${BACKUP_MOMENT_DAY.format(d)} à ${hourMinute(d)}`;
+}
+
+/** Moment d'une sauvegarde pour une ligne de liste, toujours en date absolue : « 8 oct. 2026 à 23 h 13 ». */
+export function formatBackupMomentCompact(iso: string): string {
+  const d = new Date(iso);
+  return `${BACKUP_MOMENT_DAY_YEAR.format(d)} à ${hourMinute(d)}`;
+}
+
+/** Taille d'une sauvegarde, en Mo (toujours avec une décimale, même pour une petite base). */
+export function formatBackupSize(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`;
+}
+
 /**
  * Résumé d'une synchronisation bancaire pour un toast : « 3 opérations synchronisées, 2 rapprochées ».
  * Null quand rien n'a été créé ni rapproché.
