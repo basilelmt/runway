@@ -55,11 +55,16 @@ Solder des avances avec un revenu range ce revenu en remboursement dans l'envelo
 ## API
 
 - `GET /api/advances?status=open|all` : avances avec leur dépense (date, libellé, enveloppe) et leur remboursement.
-- `GET /api/advances/people` : par personne, total ouvert et ancienneté de la plus vieille avance ouverte.
+- `GET /api/advances/people` : par personne, total ouvert.
+  Ancienneté = date de la dépense la plus ancienne qui porte encore une avance ouverte, pas la date où l'avance a été saisie.
 - `PUT /api/transactions/:id/advances` : remplace les avances d'une dépense (`{ person, amount }[]`).
 - `POST /api/advances/settle` : `{ advanceIds, refundId | null }`, refundId nul = soldé sans remboursement.
 - `POST /api/advances/:id/reopen` : rouvre.
-- `GET /api/advances/suggestions` : rapprochements proposés (revenu sans enveloppe des 60 derniers jours + avances ouvertes), selon la règle des décisions.
+- `GET /api/advances/suggestions` : rapprochements proposés entre les revenus sans enveloppe et les avances ouvertes, selon la règle des décisions.
+  La fenêtre est relative à la date de la dépense, pas à aujourd'hui.
+  Un revenu daté de 7 jours avant la dépense à 60 jours après elle est candidat, quelle que soit la date du jour.
+- `GET /api/advances/unsorted-incomes` : revenus sans enveloppe des 6 derniers mois, pour le rangement manuel, hors ceux déjà couverts par un rapprochement proposé.
+  Exclut aussi le bruit des revenus récurrents (salaire, rente) : un revenu lié à une règle, ou dont le marchand ou le montant (à 10 % près) correspond à une règle de revenu active, n'y figure pas, même si cette règle a été créée après coup et ne lie pas son historique.
 - Le schéma de modification d'une opération accepte `envelopeId` sur un revenu.
 
 ## Interface
@@ -68,9 +73,10 @@ Solder des avances avec un revenu range ce revenu en remboursement dans l'envelo
   Champ personne avec autocomplétion sur les noms déjà saisis.
 - **Détail d'un revenu** : champ « Rembourse une dépense de » (enveloppe, vide par défaut) ; si des avances ouvertes correspondent, la proposition de rapprochement s'affiche au-dessus (« Max doit 41,50 € pour Bowling du 26 juillet, rapprocher ? »).
 - **Opérations** : nouvelle vue « Avances » à côté de « À ranger ».
-  En tête, une ligne par personne qui doit de l'argent (nom, total, depuis quand), dépliable sur ses avances.
+  En tête, une ligne par personne qui doit de l'argent (nom, total, depuis la dépense la plus ancienne encore ouverte), dépliable sur ses avances.
   Puis les rapprochements proposés, chacun avec « Rapprocher » et « Ignorer ».
   Puis les revenus des 6 derniers mois sans enveloppe, avec un sélecteur d'enveloppe en ligne, pour ranger vite les remboursements passés.
+  Les salaires et autres revenus récurrents n'y apparaissent pas (voir `GET /api/advances/unsorted-incomes`).
 - **Lignes d'opérations** : une dépense avec des avances ouvertes porte une pastille « Avance », un revenu rangé dans une enveloppe affiche l'enveloppe comme une dépense.
 - **Accueil** : rien de nouveau (les signaux pourront plus tard rappeler une avance ancienne).
 - Composants partagés : ligne de liste, `Field`, `Combobox` ou équivalent existant, pastilles, liste repliable.
