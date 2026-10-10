@@ -5,6 +5,7 @@ import type { AppEnv } from '../app';
 import { BadRequestError } from '../errors';
 import { listImports } from '../repos/imports';
 import { commitImport, previewImport, type ImportDeps } from '../services/import';
+import { detectSignals } from '../services/signals';
 import { validate } from '../validate';
 
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -50,6 +51,7 @@ export const importRoutes = (deps: ImportDeps = {}, hooks: { onCommitted?: () =>
   })
   .post('/commit', validate('json', commitSchema), (c) => {
     const record = commitImport(c.get('db'), c.req.valid('json'));
+    detectSignals(c.get('db'), c.get('today'));
     hooks.onCommitted?.();
     return c.json(record, 201);
   });

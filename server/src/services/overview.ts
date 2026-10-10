@@ -9,6 +9,7 @@ import type { Db } from '../db/client';
 import { latestFundingView } from '../repos/fundings';
 import { lastImportForAccount } from '../repos/imports';
 import { getSettings } from '../repos/settings';
+import { countActiveSignals } from '../repos/signals';
 import { countUnsorted } from '../repos/transactions';
 import { loadState } from './state';
 
@@ -80,5 +81,6 @@ export function buildOverview(db: Db, today: ISODate): Overview {
       .sort((a, b) => (a.date < b.date ? -1 : 1)),
     latestFunding: latestFundingView(db),
     watch: envelopesToWatch(state.envelopes, balances.envelopes, state.rules, state.transactions, today),
+    signalCount: countActiveSignals(db),
   };
 }

@@ -4,6 +4,7 @@ import { monthlyEquivalent, nextOccurrence } from '@core/recurrence';
 import { recurringRuleInputSchema, type RecurringRule } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import { createRule, deleteRule, getRule, listRules, setRuleActive, updateRule } from '../repos/recurring-rules';
+import { detectSignals } from '../services/signals';
 import { validate } from '../validate';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
@@ -21,13 +22,19 @@ export const recurringRuleRoutes = new Hono<AppEnv>()
     return c.json(listRules(c.get('db')).map((r) => view(r, today)));
   })
   .post('/', validate('json', recurringRuleInputSchema), (c) => {
-    return c.json(view(createRule(c.get('db'), c.req.valid('json')), c.get('today')), 201);
+    const created = createRule(c.get('db'), c.req.valid('json'));
+    // Une nouvelle charge fixe peut couvrir un marchand jusque-là signalé en « nouveau prélèvement ».
+    detectSignals(c.get('db'), c.get('today'));
+    return c.json(view(created, c.get('today')), 201);
   })
   .get('/:id', validate('param', idParam), (c) => {
     return c.json(view(getRule(c.get('db'), c.req.valid('param').id), c.get('today')));
   })
   .put('/:id', validate('param', idParam), validate('json', recurringRuleInputSchema), (c) => {
-    return c.json(view(updateRule(c.get('db'), c.req.valid('param').id, c.req.valid('json')), c.get('today')));
+    const updated = updateRule(c.get('db'), c.req.valid('param').id, c.req.valid('json'));
+    // Montant mis à jour : le signal de changement de prix qui le concerne se résout.
+    detectSignals(c.get('db'), c.get('today'));
+    return c.json(view(updated, c.get('today')));
   })
   .patch('/:id/active', validate('param', idParam), validate('json', activeSchema), (c) => {
     return c.json(view(setRuleActive(c.get('db'), c.req.valid('param').id, c.req.valid('json').active), c.get('today')));
