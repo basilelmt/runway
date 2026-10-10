@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import type { BankAccountView, BankAuthStart, BankConnectionView, BankSyncConnectionResult, BankSyncRunResult, BankSyncState, ImportPreviewRow } from '@shared/api-types';
 import { addDays, compareISODate, type ISODate } from '@shared/dates';
-import type { BankLinkInput } from '@shared/schemas';
+import type { BankLinkInput, Settings } from '@shared/schemas';
+import { EnableBankingClient, type PsuInfo } from '../bank/enable-banking';
 import { toSourceRow } from '../bank/mapping';
 import type { Aspsp, BankProvider } from '../bank/provider';
 import type { Db } from '../db/client';
@@ -26,6 +27,13 @@ import { buildPreview, commitImport, markClaimedCounterparts, type Sibling, type
 export const ASPSP: Aspsp = { name: 'La Banque Postale', country: 'FR' };
 /** Déclarée telle quelle dans l'application Enable Banking. Le navigateur ne la charge pas : l'utilisateur colle l'URL. */
 export const REDIRECT_URL = 'https://localhost:3000/bank-sync/callback';
+
+export function isBankConfigured(s: Settings): boolean {
+  return s.enableBankingAppId !== '' && s.enableBankingPrivateKey !== '';
+}
+
+/** Fournisseur par défaut (le vrai Enable Banking), partagé entre les routes et le planificateur de fond. */
+export const defaultBankProvider = (s: Settings, psu: PsuInfo): BankProvider => new EnableBankingClient({ appId: s.enableBankingAppId, privateKey: s.enableBankingPrivateKey, psu });
 
 const SYNC_FILE_NAME = 'Synchronisation La Banque Postale';
 const PARSER_ID = 'enablebanking';
@@ -204,7 +212,7 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
     const session = await provider.getSession(connection.sessionId!);
     const expired = session.status !== 'AUTHORIZED' || (session.validUntil !== null && new Date(session.validUntil).getTime() < now.getTime());
     if (expired) {
-      updateConnection(db, connection.id, { status: 'expired', lastError: null });
+      updateConnection(db, connection.id, { status: 'expired', lastError: null, consecutiveFailures: 0, firstFailureAt: null });
       result.status = 'expired';
       return result;
     }
@@ -270,7 +278,16 @@ async function syncConnection(db: Db, provider: BankProvider, connection: BankCo
     errors.push(causeOf(err));
   }
   result.error = errors.length > 0 ? errors.join(' ; ') : null;
-  updateConnection(db, connection.id, { lastSyncAt: now.toISOString(), lastError: result.error });
+  const nowIso = now.toISOString();
+  // `lastSyncAt` avance à chaque tentative (succès ou échec) ; `lastSuccessAt` ne bouge qu'en cas de succès,
+  // pour que le signal `sync_error` sache depuis combien de temps la synchro n'a pas abouti.
+  updateConnection(db, connection.id, {
+    lastSyncAt: nowIso,
+    lastError: result.error,
+    consecutiveFailures: result.error !== null ? connection.consecutiveFailures + 1 : 0,
+    firstFailureAt: result.error !== null ? (connection.firstFailureAt ?? nowIso) : null,
+    lastSuccessAt: result.error !== null ? connection.lastSuccessAt : nowIso,
+  });
   return result;
 }
 

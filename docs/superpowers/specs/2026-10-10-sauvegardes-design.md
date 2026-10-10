@@ -28,6 +28,7 @@ Aujourd'hui les seules sauvegardes sont des copies faites à la main dans `data/
 | `restauration` | Juste avant une restauration | `avant-restauration` |
 
 La sauvegarde de démarrage d'une base qui n'existe pas encore est sautée.
+Elle l'est aussi quand une sauvegarde du dossier a moins d'une heure et qu'aucune migration n'attend, car le serveur de dev redémarre à chaque modification de fichier.
 La commande `npm run db:backup` remplace les copies que les agents faisaient à la main avant de corriger des données (`runway-before-remise-a-zero-mensuelle-2026-10-08.db` et ses voisines).
 Elle lit `RUNWAY_DB` comme le serveur et fonctionne serveur allumé.
 

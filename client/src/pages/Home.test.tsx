@@ -20,6 +20,8 @@ const base: Overview = {
   latePlanned: [],
   latestFunding: null,
   watch: [],
+  signalCount: 0,
+  pendingReview: null,
 };
 
 let overview: Overview = base;
@@ -117,5 +119,18 @@ describe('Accueil', () => {
     expect(screen.queryByText('Budget dépassé de')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Enveloppes' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Voir les|Voir le budget/)).not.toBeInTheDocument();
+  });
+
+  it('invite au bilan du mois précédent tant qu’il n’est pas validé', async () => {
+    renderHome({ pendingReview: { month: '2026-09', spent: 3154_00, overspentCount: 2 } });
+    const banner = await screen.findByRole('group', { name: 'Bilan du mois précédent' });
+    expect(banner).toHaveTextContent('Bilan de septembre : 3 154,00 € dépensés, 2 enveloppes dépassées');
+    expect(screen.getByRole('link', { name: 'Faire le bilan' })).toHaveAttribute('href', '/analyse?vue=bilan&mois=2026-09');
+  });
+
+  it('n’affiche aucune carte de bilan une fois celui-ci validé', async () => {
+    renderHome({ pendingReview: null });
+    await screen.findByText('Mis de côté');
+    expect(screen.queryByText(/Bilan de/)).not.toBeInTheDocument();
   });
 });

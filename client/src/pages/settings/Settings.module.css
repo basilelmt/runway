@@ -10,6 +10,13 @@
   max-width: 480px;
 }
 
+/* Comme .form, mais sans plafond de largeur : un champ dont la valeur est un chemin peut être long. */
+.wideForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
 .short {
   max-width: 200px;
 }

@@ -195,6 +195,31 @@ export const fundingSchema = z.object({
 });
 export type Funding = z.infer<typeof fundingSchema>;
 
+/** `AAAA-MM`. */
+export const monthKeySchema = z.string().refine((s) => isValidISODate(`${s}-01`), { message: 'Mois invalide (attendu AAAA-MM)' });
+
+/** Ce qu'un bilan validé a appliqué, pour l'annulation et l'affichage d'un bilan déjà validé. */
+export const appliedReviewSchema = z.object({
+  budgets: z.array(z.object({ envelopeId: idSchema, before: centsSchema.nullable(), after: centsSchema.nullable() })),
+  allocationIds: z.array(idSchema),
+});
+export type AppliedReview = z.infer<typeof appliedReviewSchema>;
+
+/** Bilan validé d'un mois passé (table `month_reviews`). */
+export const monthReviewSchema = z.object({
+  month: monthKeySchema,
+  reviewedAt: z.string(),
+  applied: appliedReviewSchema,
+});
+export type MonthReviewRecord = z.infer<typeof monthReviewSchema>;
+
+/** Ce que `POST /api/reviews/:month` applique en une transaction. */
+export const reviewApplySchema = z.object({
+  budgets: z.array(z.object({ envelopeId: idSchema, monthlyExtra: positiveCentsSchema.nullable() })),
+  transfers: z.array(z.object({ fromEnvelopeId: idSchema, toEnvelopeId: idSchema, amount: positiveCentsSchema })),
+});
+export type ReviewApply = z.infer<typeof reviewApplySchema>;
+
 export const recurringRuleSchema = z.object({
   id: idSchema,
   name: z.string(),
@@ -310,11 +335,22 @@ export const settingsSchema = z.object({
   enableBankingAppId: z.string().trim().max(100).default(''),
   /** Clé privée PEM de l'application Enable Banking. */
   enableBankingPrivateKey: z.string().trim().max(10_000).default(''),
+  /** Chemin absolu d'un second dossier de sauvegardes (clé USB, NAS, dossier synchronisé). Vide = pas de second dossier. */
+  backupMirrorDir: z.string().trim().max(500).default(''),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
 export const bankConnectionStatuses = ['pending', 'authorized', 'active', 'expired', 'revoked'] as const;
 export type BankConnectionStatus = (typeof bankConnectionStatuses)[number];
+
+/**
+ * Les types de signaux, dans l'ordre où ils sont détectés.
+ * Pas de `missing_charge` : une occurrence prévue en retard est déjà signalée dans « À faire »
+ * (alerte existante sur `latePlanned`), avec une action plus complète (confirmer ou supprimer).
+ * Un deuxième signal pour le même événement n'aurait rien ajouté.
+ */
+export const signalKinds = ['unusual_expense', 'new_recurring', 'price_change', 'consent_expiring', 'sync_error'] as const;
+export type SignalKind = (typeof signalKinds)[number];
 
 export const bankStartSchema = z.object({ connectionId: idSchema.nullable().optional() });
 export type BankStartInput = z.infer<typeof bankStartSchema>;

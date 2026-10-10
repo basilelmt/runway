@@ -2,11 +2,12 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { bankCompleteSchema, bankLinkSchema, bankRunSchema, bankStartSchema, type Settings } from '@shared/schemas';
 import type { AppEnv } from '../app';
-import { EnableBankingClient, type PsuInfo } from '../bank/enable-banking';
+import type { PsuInfo } from '../bank/enable-banking';
 import { BankProviderError, type BankProvider } from '../bank/provider';
 import { AppError, BadRequestError } from '../errors';
 import { getSettings } from '../repos/settings';
-import { completeConnection, disconnect, getState, linkAccounts, runSync, startConnection } from '../services/bank-sync';
+import { completeConnection, defaultBankProvider, disconnect, getState, isBankConfigured, linkAccounts, runSync, startConnection } from '../services/bank-sync';
+import { detectSignals } from '../services/signals';
 import { validate } from '../validate';
 
 export type BankDeps = {
@@ -18,12 +19,6 @@ export type BankDeps = {
 };
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
-
-const defaultProvider: NonNullable<BankDeps['provider']> = (s, psu) => new EnableBankingClient({ appId: s.enableBankingAppId, privateKey: s.enableBankingPrivateKey, psu });
-
-function isConfigured(s: Settings): boolean {
-  return s.enableBankingAppId !== '' && s.enableBankingPrivateKey !== '';
-}
 
 function psuInfo(c: Context<AppEnv>): PsuInfo {
   const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
@@ -50,17 +45,17 @@ async function guard<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export const bankSyncRoutes = (deps: BankDeps = {}) => {
-  const makeProvider = deps.provider ?? defaultProvider;
+  const makeProvider = deps.provider ?? defaultBankProvider;
   const now = deps.now ?? (() => new Date());
 
   function provider(c: Context<AppEnv>): BankProvider {
     const settings = getSettings(c.get('db'));
-    if (!isConfigured(settings)) throw new BadRequestError('Identifiants Enable Banking manquants : renseigne-les dans Paramètres, section Banque');
+    if (!isBankConfigured(settings)) throw new BadRequestError('Identifiants Enable Banking manquants : renseigne-les dans Paramètres, section Banque');
     return makeProvider(settings, psuInfo(c));
   }
 
   return new Hono<AppEnv>()
-    .get('/', (c) => c.json(getState(c.get('db'), isConfigured(getSettings(c.get('db'))), c.get('today'))))
+    .get('/', (c) => c.json(getState(c.get('db'), isBankConfigured(getSettings(c.get('db'))), c.get('today'))))
     .post('/test', async (c) => c.json(await guard(() => provider(c).getApplication())))
     .post('/connections', validate('json', bankStartSchema), async (c) => {
       const { connectionId } = c.req.valid('json');
@@ -77,15 +72,17 @@ export const bankSyncRoutes = (deps: BankDeps = {}) => {
     })
     .post('/run', validate('json', bankRunSchema), async (c) => {
       const settings = getSettings(c.get('db'));
-      if (!isConfigured(settings)) return c.json({ reason: 'not_configured', connections: [] });
+      if (!isBankConfigured(settings)) return c.json({ reason: 'not_configured', connections: [] });
       const p = makeProvider(settings, psuInfo(c));
       const result = await runSync(c.get('db'), p, { today: c.get('today'), now: now(), onlyIfStaleMinutes: c.req.valid('json').onlyIfStaleMinutes });
       if (result.connections.some((r) => r.created > 0 || r.matched > 0)) deps.onNewTransactions?.();
+      // Nouvelles opérations, erreur ou consentement qui approche : les signaux reflètent l'état après synchro.
+      if (result.reason === 'ok') detectSignals(c.get('db'), c.get('today'), now());
       return c.json(result);
     })
     .delete('/connections/:id', validate('param', idParam), async (c) => {
       const settings = getSettings(c.get('db'));
-      const p = isConfigured(settings) ? makeProvider(settings, psuInfo(c)) : null;
+      const p = isBankConfigured(settings) ? makeProvider(settings, psuInfo(c)) : null;
       await disconnect(c.get('db'), p, c.req.valid('param').id);
       return c.body(null, 204);
     });

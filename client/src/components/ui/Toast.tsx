@@ -1,10 +1,10 @@
 import { AlertCircle, Check, Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { prefersReducedMotion } from '@/lib/motion';
-import { ToastContext, type ToastApi } from './toast-context';
+import { ToastContext, type ToastAction, type ToastApi } from './toast-context';
 import styles from './Toast.module.css';
 
-type Toast = { id: number; message: string; tone: 'neutral' | 'positive' | 'negative'; leaving: boolean };
+type Toast = { id: number; message: string; tone: 'neutral' | 'positive' | 'negative'; action?: ToastAction; leaving: boolean };
 
 /** Durée de la sortie, alignée sur `.leaving` dans le CSS. */
 const LEAVE_MS = 200;
@@ -15,11 +15,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
 
-  const toast = useCallback((message: string, tone: Toast['tone'] = 'neutral') => {
+  const toast = useCallback((message: string, tone: Toast['tone'] = 'neutral', action?: ToastAction) => {
     const id = nextId.current++;
-    const life = tone === 'negative' ? 6000 : 3500;
+    // Une action à cliquer (Annuler) laisse plus de temps.
+    const life = tone === 'negative' ? 6000 : action ? 6000 : 3500;
     // Pas plus de trois à la fois : les plus anciennes laissent la place.
-    setToasts((list) => [...list.slice(-2), { id, message, tone, leaving: false }]);
+    setToasts((list) => [...list.slice(-2), { id, message, tone, action, leaving: false }]);
     window.setTimeout(() => setToasts((list) => list.map((t) => (t.id === id ? { ...t, leaving: true } : t))), life);
     window.setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), life + (prefersReducedMotion() ? 0 : LEAVE_MS));
   }, []);
@@ -42,7 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [lastId]);
 
   const api = useMemo<ToastApi>(
-    () => ({ toast, success: (m) => toast(m, 'positive'), error: (m) => toast(m, 'negative') }),
+    () => ({ toast, success: (m, action) => toast(m, 'positive', action), error: (m) => toast(m, 'negative') }),
     [toast],
   );
 
@@ -56,6 +57,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div key={t.id} className={[styles.toast, styles[t.tone], t.leaving ? styles.leaving : ''].join(' ')}>
               <Icon className={styles.icon} aria-hidden />
               {t.message}
+              {t.action ? (
+                <button
+                  type="button"
+                  className={styles.action}
+                  onClick={() => {
+                    t.action!.onClick();
+                    setToasts((list) => list.filter((x) => x.id !== t.id));
+                  }}
+                >
+                  {t.action.label}
+                </button>
+              ) : null}
             </div>
           );
         })}

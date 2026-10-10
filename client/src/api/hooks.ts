@@ -3,6 +3,9 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseMutati
 import type {
   AdvanceSuggestionView,
   AdvanceView,
+  AnySignal,
+  BackupEntry,
+  BackupsState,
   BankAuthStart,
   BankConnectionView,
   BankSyncRunResult,
@@ -19,6 +22,7 @@ import type {
   MerchantDetail,
   MerchantStatus,
   MonthlyReport,
+  MonthReview,
   NetWorthReport,
   Overview,
   PersonAdvancesSummary,
@@ -44,6 +48,7 @@ import type {
   ImportRecord,
   RecurringRule,
   RecurringRuleInput,
+  ReviewApply,
   Settings,
   SortingApply,
   SortingRule,
@@ -88,6 +93,9 @@ export const keys = {
   advancePeople: ['advances', 'people'] as const,
   advanceSuggestions: ['advances', 'suggestions'] as const,
   unsortedIncomes: ['advances', 'unsorted-incomes'] as const,
+  signals: ['signals'] as const,
+  backups: ['backups'] as const,
+  review: (month: string) => ['reviews', month] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction'], ['advances']];
@@ -198,6 +206,34 @@ export function useReorderEnvelopes(opts?: MutOpts<Envelope[], number[]>) {
   return useMutation({ ...opts, mutationFn: (ids) => api.put<Envelope[]>('/api/envelopes/reorder', { ids }), onSuccess: (...a) => { invalidate(['envelopes']); opts?.onSuccess?.(...a); } });
 }
 
+// Bilan du mois
+
+export const useReview = (month: string) => useQuery({ queryKey: keys.review(month), queryFn: () => api.get<MonthReview>(`/api/reviews/${month}`) });
+
+export function useApplyReview(month: string, opts?: MutOpts<MonthReview, ReviewApply>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (input) => api.post<MonthReview>(`/api/reviews/${month}`, input),
+    onSuccess: (...a) => {
+      invalidate(keys.review(month), ['envelopes']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+export function useCancelReview(month: string, opts?: MutOpts<{ skipped: { envelopeId: number; name: string }[] }, void>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: () => api.delete<{ skipped: { envelopeId: number; name: string }[] }>(`/api/reviews/${month}`),
+    onSuccess: (...a) => {
+      invalidate(keys.review(month), ['envelopes']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
 // Transactions
 
 /** `keepPrevious` garde la liste précédente affichée pendant le chargement d'un autre filtre. */
@@ -269,24 +305,26 @@ export function useReopenAdvance(opts?: MutOpts<Advance, number>) {
 
 export const useRecurringRules = () => useQuery({ queryKey: keys.rules, queryFn: () => api.get<RecurringRuleView[]>('/api/recurring-rules') });
 
+// Le serveur relance la détection des signaux après toute modification de charge fixe (création,
+// montant, pause, suppression) : le client invalide aussi leur liste pour rester synchrone.
 export function useCreateRecurringRule(opts?: MutOpts<RecurringRuleView, RecurringRuleInput>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (input) => api.post<RecurringRuleView>('/api/recurring-rules', input), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: (input) => api.post<RecurringRuleView>('/api/recurring-rules', input), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 export function useUpdateRecurringRule(opts?: MutOpts<RecurringRuleView, { id: number } & RecurringRuleInput>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: ({ id, ...input }) => api.put<RecurringRuleView>(`/api/recurring-rules/${id}`, input), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: ({ id, ...input }) => api.put<RecurringRuleView>(`/api/recurring-rules/${id}`, input), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 export function useSetRuleActive(opts?: MutOpts<RecurringRuleView, { id: number; active: boolean }>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: ({ id, active }) => api.patch<RecurringRuleView>(`/api/recurring-rules/${id}/active`, { active }), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: ({ id, active }) => api.patch<RecurringRuleView>(`/api/recurring-rules/${id}/active`, { active }), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 export function useDeleteRecurringRule(opts?: MutOpts<void, number>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (id) => api.delete(`/api/recurring-rules/${id}`), onSuccess: (...a) => { invalidate(keys.rules); opts?.onSuccess?.(...a); } });
+  return useMutation({ ...opts, mutationFn: (id) => api.delete(`/api/recurring-rules/${id}`), onSuccess: (...a) => { invalidate(keys.rules, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 // Sorting rules and Claude
@@ -350,8 +388,8 @@ export function usePreviewImport(opts?: MutOpts<ImportPreviewWithFile, { file: F
 
 export function useCommitImport(opts?: MutOpts<ImportRecord, ImportCommitInput & { bankAccountNumber?: string | null }>) {
   const invalidate = useInvalidate();
-  // Le serveur lance le nommage des marchands après un import : on invalide son état pour que le suivi global se relance.
-  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts'], keys.merchantStatus); opts?.onSuccess?.(...a); } });
+  // Le serveur lance le nommage des marchands et relance la détection des signaux après un import.
+  return useMutation({ ...opts, mutationFn: (input) => api.post<ImportRecord>('/api/imports/commit', input), onSuccess: (...a) => { invalidate(keys.imports, ['accounts'], keys.merchantStatus, keys.signals); opts?.onSuccess?.(...a); } });
 }
 
 // Marchands
@@ -418,7 +456,21 @@ export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: ()
 
 export function useSaveSettings(opts?: MutOpts<Settings, Settings>) {
   const invalidate = useInvalidate();
-  return useMutation({ ...opts, mutationFn: (input) => api.put<Settings>('/api/settings', input), onSuccess: (...a) => { invalidate(keys.settings); opts?.onSuccess?.(...a); } });
+  // `backupMirrorDir` vit dans les réglages mais s'affiche dans l'état des sauvegardes : les deux se rafraîchissent ensemble.
+  return useMutation({ ...opts, mutationFn: (input) => api.put<Settings>('/api/settings', input), onSuccess: (...a) => { invalidate(keys.settings, keys.backups); opts?.onSuccess?.(...a); } });
+}
+
+// Sauvegardes
+
+export const useBackups = () => useQuery({ queryKey: keys.backups, queryFn: () => api.get<BackupsState>('/api/backups') });
+
+export function useRunBackup(opts?: MutOpts<BackupEntry, void>) {
+  const qc = useQueryClient();
+  return useMutation({ ...opts, mutationFn: () => api.post<BackupEntry>('/api/backups'), onSuccess: (...a) => { void qc.invalidateQueries({ queryKey: keys.backups }); opts?.onSuccess?.(...a); } });
+}
+
+export function useRestoreBackup(opts?: MutOpts<void, string>) {
+  return useMutation({ ...opts, mutationFn: (name) => api.post<void>(`/api/backups/${encodeURIComponent(name)}/restore`) });
 }
 
 // Synchronisation bancaire
@@ -464,8 +516,8 @@ export function useRunBankSync(opts?: MutOpts<BankSyncRunResult, number | undefi
     mutationKey: keys.bankSyncRun,
     mutationFn: (onlyIfStaleMinutes) => api.post<BankSyncRunResult>('/api/bank-sync/run', onlyIfStaleMinutes ? { onlyIfStaleMinutes } : {}),
     onSuccess: (...a) => {
-      // Le serveur lance le nommage des marchands sur les nouvelles opérations : on invalide son état pour relancer le suivi global.
-      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts'], keys.merchantStatus);
+      // Le serveur lance le nommage des marchands et relance la détection des signaux sur les nouvelles opérations.
+      if (a[0].reason === 'ok') invalidate(keys.bankSync, keys.imports, ['accounts'], keys.merchantStatus, keys.signals);
       opts?.onSuccess?.(...a);
     },
   });
@@ -478,6 +530,22 @@ export function useDisconnectBank(opts?: MutOpts<void, number>) {
     mutationFn: (id) => api.delete(`/api/bank-sync/connections/${id}`),
     onSuccess: (...a) => {
       invalidate(keys.bankSync);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+// Signaux
+
+export const useSignals = () => useQuery({ queryKey: keys.signals, queryFn: () => api.get<AnySignal[]>('/api/signals') });
+
+export function useDismissSignal(opts?: MutOpts<void, number>) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    ...opts,
+    mutationFn: (id) => api.post<void>(`/api/signals/${id}/dismiss`),
+    onSuccess: (...a) => {
+      invalidate(keys.signals);
       opts?.onSuccess?.(...a);
     },
   });
