@@ -3,6 +3,7 @@ import { today } from '@shared/dates';
 import type { Db } from './db/client';
 import { AppError } from './errors';
 import { accountRoutes } from './routes/accounts';
+import { advanceRoutes } from './routes/advances';
 import { askRoutes } from './routes/ask';
 import { bankSyncRoutes, type BankDeps } from './routes/bank-sync';
 import { envelopeRoutes } from './routes/envelopes';
@@ -79,6 +80,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
 
   app.get('/api/health', (c) => c.json({ ok: true }));
   app.route('/api/accounts', accountRoutes);
+  app.route('/api/advances', advanceRoutes);
   app.route('/api/envelopes', envelopeRoutes);
   app.route('/api/fundings', fundingRoutes);
   app.route('/api/transactions', transactionRoutes);

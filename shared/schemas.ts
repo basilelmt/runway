@@ -245,6 +245,38 @@ export const recurringRuleInputSchema = z
   });
 export type RecurringRuleInput = z.infer<typeof recurringRuleInputSchema>;
 
+/** Espaces superflus compactés, comme pour un libellé importé. */
+const compactSpaces = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+export const advanceSchema = z.object({
+  id: idSchema,
+  expenseId: idSchema,
+  person: z.string(),
+  amount: positiveCentsSchema,
+  refundId: idSchema.nullable(),
+  settledAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type Advance = z.infer<typeof advanceSchema>;
+
+/** Une ligne d'avance saisie : nom libre (espaces compactés) et montant. */
+export const advanceLineInputSchema = z.object({
+  person: z.string().trim().min(1, 'Nom requis').max(80).transform(compactSpaces),
+  amount: positiveCentsSchema,
+});
+export type AdvanceLineInput = z.infer<typeof advanceLineInputSchema>;
+
+/** Remplace toutes les avances d'une dépense ; la somme ne peut pas dépasser son montant (vérifié à l'écriture). */
+export const advancesReplaceSchema = z.array(advanceLineInputSchema).max(30, 'Trop de lignes');
+export type AdvancesReplace = z.infer<typeof advancesReplaceSchema>;
+
+/** Solde une ou plusieurs avances ouvertes ; `refundId` nul = soldée sans remboursement. */
+export const advancesSettleSchema = z.object({
+  advanceIds: z.array(idSchema).min(1, 'Aucune avance'),
+  refundId: idSchema.nullable(),
+});
+export type AdvancesSettle = z.infer<typeof advancesSettleSchema>;
+
 export const sortingRuleSchema = z.object({
   id: idSchema,
   pattern: z.string(),

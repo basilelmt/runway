@@ -167,6 +167,25 @@ describe('migration 0010 (marchands)', () => {
   });
 });
 
+describe('migration 0014 (avances)', () => {
+  it('ajoute la table advances, vide, référençant les opérations', () => {
+    const db = new Database(':memory:');
+    for (const tag of journalTags(11)) applyMigration(db, tag);
+    db.prepare(`INSERT INTO transactions (kind, date, amount, label) VALUES ('expense', '2026-07-26', 8250, 'Bowling')`).run();
+    const expenseId = (db.prepare('SELECT id FROM transactions').get() as { id: number }).id;
+
+    applyMigration(db, '0014_advances');
+
+    const columns = (db.prepare("PRAGMA table_info('advances')").all() as { name: string }[]).map((c) => c.name);
+    expect(columns).toEqual(['id', 'expense_id', 'person', 'amount', 'refund_id', 'settled_at', 'created_at']);
+
+    db.prepare(`INSERT INTO advances (expense_id, person, amount) VALUES (?, 'Max', 4150)`).run(expenseId);
+    expect(db.prepare('SELECT person, amount, refund_id, settled_at FROM advances').get()).toEqual({ person: 'Max', amount: 4150, refund_id: null, settled_at: null });
+
+    db.close();
+  });
+});
+
 describe('migration 0011 (espaces compactés)', () => {
   it('compacte les espaces multiples des libellés et notes existants, sans toucher la clé marchand', () => {
     const db = new Database(':memory:');

@@ -15,7 +15,8 @@ import { loadState } from './state';
  */
 export function autoFund(db: Db, transactionId: number): Funding | null {
   const source = getTransaction(db, transactionId);
-  if (source.kind !== 'income' || source.status !== 'confirmed' || source.recurringRuleId == null) return null;
+  // Un revenu rangé dans une enveloppe est un remboursement : il ne déclenche jamais la répartition automatique.
+  if (source.kind !== 'income' || source.status !== 'confirmed' || source.recurringRuleId == null || source.envelopeId != null) return null;
   const rule = getRule(db, source.recurringRuleId);
   if (!rule.triggersFunding || findFundingBySource(db, source.id)) return null;
 
