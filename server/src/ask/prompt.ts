@@ -1,21 +1,29 @@
-import type { BudgetedEnvelope } from '@shared/api-types';
+import type { Overview } from '@shared/api-types';
 import type { ISODate } from '@shared/dates';
 import { formatEuros } from '@shared/money';
-import type { Account } from '@shared/schemas';
 
-/** « (budget 130,00 € par mois : 40,00 € de charges fixes + 90,00 € de complément) », rien sans budget. */
-function describeBudget(e: BudgetedEnvelope): string {
-  if (e.monthlyBudget <= 0) return '';
-  return ` (budget ${formatEuros(e.monthlyBudget)} par mois : ${formatEuros(e.monthlyCharges)} de charges fixes + ${formatEuros(e.monthlyExtra ?? 0)} de complément)`;
+/** Ce que le prompt reprend de l'Accueil : les chiffres du mois que l'utilisateur voit. */
+export type AskOverview = {
+  toAllocate: Overview['toAllocate'];
+  unsortedCount: Overview['unsortedCount'];
+  accounts: Pick<Overview['accounts'][number], 'id' | 'name' | 'onBudget' | 'balance'>[];
+  envelopes: Pick<Overview['envelopes'][number], 'id' | 'name' | 'isSavings' | 'monthlyBudget' | 'monthlyCharges' | 'allocatedThisMonth' | 'spentThisMonth' | 'balance'>[];
+};
+
+function describeEnvelope(e: AskOverview['envelopes'][number]): string {
+  const charges = e.monthlyCharges > 0 ? ` (dont ${formatEuros(e.monthlyCharges)} de charges fixes)` : '';
+  return `- ${e.id} : ${e.name}, budget ${formatEuros(e.monthlyBudget)}${charges}, réparti ${formatEuros(e.allocatedThisMonth)}, dépensé ${formatEuros(e.spentThisMonth)}, disponible ${formatEuros(e.balance)}${e.isSavings ? ' [épargne]' : ''}`;
 }
 
-/** Prompt système de Demander : rôle, schéma de la base et ses pièges, forme de la réponse. */
-export function buildAskSystemPrompt({ today, envelopes, accounts }: { today: ISODate; envelopes: BudgetedEnvelope[]; accounts: Account[] }): string {
-  const envList = envelopes.map((e) => `- ${e.id} : ${e.name}${describeBudget(e)}${e.isSavings ? ' [épargne]' : ''}`).join('\n');
-  const accList = accounts.map((a) => `- ${a.id} : ${a.name}${a.onBudget ? '' : ' [hors budget]'}`).join('\n');
+/** Prompt système de Demander : rôle, chiffres du mois, schéma de la base et ses pièges, forme de la réponse. */
+export function buildAskSystemPrompt({ today, overview }: { today: ISODate; overview: AskOverview }): string {
+  const envList = overview.envelopes.map(describeEnvelope).join('\n');
+  const accList = overview.accounts.map((a) => `- ${a.id} : ${a.name}, ${formatEuros(a.balance)}${a.onBudget ? '' : ' [hors budget]'}`).join('\n');
   return `Tu es l'assistant de Runway, l'application de budget personnel de l'utilisateur. Tu le tutoies, en français, avec des phrases courtes et concrètes. Nous sommes le ${today}.
 
-Tu réponds à ses questions sur ses finances en interrogeant sa base SQLite avec l'outil query (lecture seule). Vérifie toujours les chiffres avec query avant de répondre ; n'invente jamais un montant. Si une requête échoue, corrige-la.
+Tu réponds à ses questions sur ses finances. Pour le budget, le dépensé ou le disponible d'une enveloppe ce mois-ci, pars du résumé du mois plus bas ; pour un autre mois, appelle l'outil month_summary (chiffres du Bilan de ce mois). Ce sont les chiffres que l'app affiche : ne les recalcule pas en SQL. Utilise l'outil query (SQL en lecture seule sur sa base SQLite) pour le détail : quelles opérations, quels commerçants, une période qui n'est pas un mois. N'invente jamais un montant ; si une requête échoue, corrige-la. Seules les tables décrites ci-dessous sont lisibles.
+
+Tu peux chercher sur le web avec WebSearch pour identifier un commerçant ou un libellé que tu ne connais pas, ou quand l'utilisateur le demande. Ne mets dans la recherche que le nom du commerçant ou le libellé nettoyé, jamais un montant ni une autre donnée personnelle.
 
 Schéma utile :
 - transactions(id, kind, date 'YYYY-MM-DD', amount, label, note, account_id, to_account_id, envelope_id, from_envelope_id, status, recurring_rule_id, merchant_key)
@@ -30,10 +38,14 @@ Schéma utile :
 - sorting_rules(id, pattern, envelope_id) : un libellé qui contient pattern va dans l'enveloppe.
 - merchants(key, name, source) : marchand d'une dépense ou d'un revenu, joint par transactions.merchant_key = merchants.key (merchant_key est NULL pour les virements et les répartitions). name est le nom lisible (« Monoprix »), NULL tant qu'il n'est pas nommé ; plusieurs clés peuvent porter le même nom. Quand l'utilisateur parle d'un commerçant ou demande où part son argent par enseigne, fais une jointure gauche sur merchants et regroupe par COALESCE(merchants.name, transactions.label) ; cherche un commerçant par merchants.name LIKE plutôt que dans label.
 
-Enveloppes actives :
+Le mois en cours, chiffres de l'app (ceux que l'utilisateur voit) :
+À répartir : ${formatEuros(overview.toAllocate)}
+Opérations à ranger : ${overview.unsortedCount}
+
+Enveloppes actives (id : nom, budget du mois, réparti ce mois, dépensé ce mois, disponible) :
 ${envList || '(aucune)'}
 
-Comptes :
+Comptes (id : nom, solde) :
 ${accList || '(aucun)'}
 
 Réponse :
@@ -91,4 +103,12 @@ export function stepText(sql: string): string {
   if (s.includes('envelopes')) return 'Je regarde tes enveloppes…';
   if (s.includes('accounts')) return 'Je regarde tes comptes…';
   return 'Je vérifie dans tes données…';
+}
+
+/** Phrase courte affichée pendant un appel d'outil, null pour un outil sans étape (réponse structurée). */
+export function toolStepText(name: string, input: { sql?: unknown } | undefined): string | null {
+  if (name === 'mcp__runway__query') return stepText(String(input?.sql ?? ''));
+  if (name === 'mcp__runway__month_summary') return 'Je regarde le bilan du mois…';
+  if (name === 'WebSearch') return 'Je cherche sur le web…';
+  return null;
 }

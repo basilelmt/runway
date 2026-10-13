@@ -102,12 +102,12 @@ describe('validateActions', () => {
 });
 
 describe('buildAskSystemPrompt', () => {
-  it('décrit le budget, les charges et le complément de chaque enveloppe', () => {
-    const transports = { id: 3, name: 'Transports', color: '#3f6fae', monthlyExtra: 90_00, sortOrder: 0, archived: false, isSavings: false, monthlyCharges: 40_00, monthlyBudget: 130_00 };
-    const divers = { ...transports, id: 4, name: 'Divers', monthlyExtra: null, monthlyCharges: 0, monthlyBudget: 0 };
-    const prompt = buildAskSystemPrompt({ today: '2026-10-08', envelopes: [transports, divers], accounts: [] });
-    expect(prompt).toContain('- 3 : Transports (budget 130,00 € par mois : 40,00 € de charges fixes + 90,00 € de complément)');
-    expect(prompt).toContain('- 4 : Divers\n');
+  it('décrit le budget, les charges et le schéma des enveloppes', () => {
+    const transports = { id: 3, name: 'Transports', isSavings: false, monthlyCharges: 40_00, monthlyBudget: 130_00, allocatedThisMonth: 0, spentThisMonth: 0, balance: 0 };
+    const divers = { ...transports, id: 4, name: 'Divers', monthlyCharges: 0, monthlyBudget: 0 };
+    const prompt = buildAskSystemPrompt({ today: '2026-10-08', overview: { toAllocate: 0, unsortedCount: 0, envelopes: [transports, divers], accounts: [] } });
+    expect(prompt).toContain('- 3 : Transports, budget 130,00 € (dont 40,00 € de charges fixes), réparti 0,00 €');
+    expect(prompt).toContain('- 4 : Divers, budget 0,00 €, réparti');
     expect(prompt).toContain('envelopes(id, name, monthly_extra en centimes');
     expect(prompt).not.toContain('monthly_target');
   });

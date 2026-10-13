@@ -7,11 +7,10 @@ import type { AskChart, AskStreamEvent } from '@shared/api-types';
 import type { ISODate } from '@shared/dates';
 import { askAnswerSchema, type AskRequest } from '@shared/schemas';
 import type { Db } from '../db/client';
-import { listAccounts } from '../repos/accounts';
 import { ClaudeError, claudeErrorFromResult, claudeNotInstalled, spawnClaudeStream, type StreamExec } from '../services/claude';
-import { listBudgetedEnvelopes } from '../services/state';
+import { buildOverview } from '../services/overview';
 import { validateActions } from './actions';
-import { answerJsonSchema, buildAskSystemPrompt, stepText } from './prompt';
+import { answerJsonSchema, buildAskSystemPrompt, toolStepText } from './prompt';
 import { openReadOnly, runReadOnlyQuery } from './query';
 
 export const ASK_TIMEOUT_MS = 120_000;
@@ -31,19 +30,19 @@ type ResultEvent = { is_error?: boolean; result?: string; structured_output?: un
 
 /**
  * Arguments de `claude -p` : contexte isolé (ni CLAUDE.md, ni skills, ni mémoire, prompt système de Runway),
- * aucun outil intégré, un seul outil MCP en lecture seule.
+ * la recherche web pour seul outil intégré, et les outils MCP de Runway en lecture seule.
  */
-export function askArgs(input: { question: string; sessionId: string | null; newSessionId: string; systemPrompt: string; dbPath: string; model?: string }): string[] {
-  const mcp = { mcpServers: { runway: { command: tsxBin, args: [mcpScript], env: { RUNWAY_DB: input.dbPath } } } };
+export function askArgs(input: { question: string; sessionId: string | null; newSessionId: string; systemPrompt: string; dbPath: string; today: ISODate; model?: string }): string[] {
+  const mcp = { mcpServers: { runway: { command: tsxBin, args: [mcpScript], env: { RUNWAY_DB: input.dbPath, RUNWAY_TODAY: input.today } } } };
   const args = [
     '-p',
     '--setting-sources', '',
     '--settings', JSON.stringify({ autoMemoryEnabled: false }),
     '--system-prompt', input.systemPrompt,
-    '--tools', '',
+    '--tools', 'WebSearch',
     '--mcp-config', JSON.stringify(mcp),
     '--strict-mcp-config',
-    '--allowedTools', 'mcp__runway__query',
+    '--allowedTools', 'mcp__runway__query mcp__runway__month_summary WebSearch',
     '--output-format', 'stream-json',
     '--verbose',
     '--json-schema', JSON.stringify(answerJsonSchema),
@@ -66,8 +65,9 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
       question: input.question,
       sessionId: input.sessionId,
       newSessionId,
-      systemPrompt: buildAskSystemPrompt({ today: input.today, envelopes: listBudgetedEnvelopes(db, input.today), accounts: listAccounts(db) }),
+      systemPrompt: buildAskSystemPrompt({ today: input.today, overview: buildOverview(db, input.today) }),
       dbPath: deps.dbPath,
+      today: input.today,
       model: deps.model,
     });
 
@@ -90,7 +90,8 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
         }
         if (event?.type === 'assistant') {
           for (const block of event.message?.content ?? []) {
-            if (block.type === 'tool_use' && block.name === 'mcp__runway__query') emit({ event: 'step', data: { text: stepText(String(block.input?.sql ?? '')) } });
+            const text = block.type === 'tool_use' && block.name ? toolStepText(block.name, block.input) : null;
+            if (text) emit({ event: 'step', data: { text } });
           }
         }
         if (event?.type === 'result') final = event as ResultEvent;

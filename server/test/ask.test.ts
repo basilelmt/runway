@@ -98,14 +98,34 @@ describe('POST /api/ask', () => {
     });
   });
 
+  it('affiche une étape pour le bilan du mois et la recherche web, aucune pour la réponse structurée', async () => {
+    const stream: StreamExec = async (_args, { onLine }) => {
+      onLine(line({ type: 'system', subtype: 'init', session_id: SESSION, mcp_servers: [{ name: 'runway', status: 'connected' }] }));
+      onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__runway__month_summary', input: { month: '2026-02' } }] } }));
+      onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'WebSearch', input: { query: "L'Échoppe Paris" } }] } }));
+      onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'StructuredOutput', input: {} }] } }));
+      onLine(line({ type: 'result', subtype: 'success', is_error: false, session_id: SESSION, structured_output: { answer: 'Ok', highlight: null, chart: null, actions: [] } }));
+      return { stderr: '', exitCode: 0 };
+    };
+    t = createTestApp('2026-03-12', { askStream: stream, askSessionId: () => SESSION });
+    const { events } = await ask('Q');
+    expect(events.filter((e) => e.event === 'step').map((e) => e.data.text)).toEqual(['Je regarde le bilan du mois…', 'Je cherche sur le web…']);
+  });
+
   it('lance claude isolé, puis reprend la session pour une suite', async () => {
     t = createTestApp('2026-03-12', { askStream: fakeStream({ answer: 'Ok', highlight: null, chart: null, actions: [] }, calls), askSessionId: () => SESSION });
     await ask('Première');
     await ask('Et ensuite ?', SESSION);
     const [first, second] = calls;
     expect(first).toEqual(
-      expect.arrayContaining(['-p', '--setting-sources', '', '--tools', '', '--strict-mcp-config', '--allowedTools', 'mcp__runway__query', '--output-format', 'stream-json', '--verbose', '--session-id', SESSION]),
+      expect.arrayContaining([
+        '-p', '--setting-sources', '', '--tools', 'WebSearch', '--strict-mcp-config',
+        '--allowedTools', 'mcp__runway__query mcp__runway__month_summary WebSearch',
+        '--output-format', 'stream-json', '--verbose', '--session-id', SESSION,
+      ]),
     );
+    const mcp = JSON.parse(first![first!.indexOf('--mcp-config') + 1]!);
+    expect(mcp.mcpServers.runway.env.RUNWAY_TODAY).toBe('2026-03-12');
     expect(first![first!.indexOf('--settings') + 1]).toBe('{"autoMemoryEnabled":false}');
     expect(first).toContain('--system-prompt');
     expect(first).not.toContain('--resume');
