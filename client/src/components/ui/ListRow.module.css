@@ -160,6 +160,12 @@
 
 /* Sur mobile, la progression passe sous le titre et le montant */
 @media (max-width: 767px) {
+  /* Une colonne de date étroite laisse la place au libellé ; une date avec l'année passe sur deux lignes */
+  .date {
+    width: 48px;
+    white-space: normal;
+  }
+
   .row:has(.middle) {
     flex-wrap: wrap;
     row-gap: var(--s-2);

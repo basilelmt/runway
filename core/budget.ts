@@ -115,6 +115,77 @@ export function savedInMonth(accounts: Account[], envelopes: Envelope[], transac
   return saved;
 }
 
+export type MonthSpending = {
+  /** Dépenses confirmées du mois, à trier comprises, hors enveloppes d'épargne, remboursements déduits. */
+  spent: Cents;
+  /** Les mêmes, sans celles générées par une charge fixe. */
+  variableSpent: Cents;
+  /** Cumul des dépenses courantes à la fin de chaque jour, du 1er à `today` inclus ; le dernier vaut `variableSpent`. */
+  variableDaily: Cents[];
+};
+
+/**
+ * Consommation du mois de `today` : toutes les dépenses confirmées (même à trier), hors enveloppes d'épargne, remboursements déduits.
+ * Dépenses courantes : les mêmes, sauf celles générées par une charge fixe (loyer, Navigo...).
+ * Un ticket de métro rangé dans Transports compte donc, le Navigo non.
+ * Un remboursement vient d'abord en déduction des dépenses courantes de son enveloppe, puis de ses charges fixes :
+ * c'est le quotidien (restos, sorties...) qui se rembourse, rarement un loyer.
+ */
+export function monthSpending(envelopes: Envelope[], transactions: Transaction[], today: ISODate): MonthSpending {
+  const savings = new Set(envelopes.filter((e) => e.isSavings).map((e) => e.id));
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  // Par date : une seule passe, avec des cumuls par enveloppe arrêtés à la fin de chaque jour.
+  const month = transactions
+    .filter((t) => t.status === 'confirmed' && t.date >= monthStart && t.date <= monthEnd)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  const fixedByEnvelope = new Map<number, number>();
+  const variableByEnvelope = new Map<number, number>();
+  const reimbursedByEnvelope = new Map<number, number>();
+  const add = (map: Map<number, number>, id: number, amount: number) => map.set(id, (map.get(id) ?? 0) + amount);
+  let unsortedSpent = 0;
+  const totals = () => {
+    let spent = unsortedSpent;
+    let variableSpent = unsortedSpent;
+    for (const e of envelopes) {
+      if (e.isSavings) continue;
+      const variable = variableByEnvelope.get(e.id) ?? 0;
+      const fixed = fixedByEnvelope.get(e.id) ?? 0;
+      const reimbursed = reimbursedByEnvelope.get(e.id) ?? 0;
+      const netVariable = Math.max(0, variable - reimbursed);
+      const netFixed = Math.max(0, fixed - Math.max(0, reimbursed - variable));
+      spent += netVariable + netFixed;
+      variableSpent += netVariable;
+    }
+    return { spent, variableSpent };
+  };
+
+  // Le cumul d'un jour applique la règle des remboursements à tout ce qui précède : un remboursement peut faire redescendre la courbe.
+  // Aujourd'hui compte jusqu'à la fin du mois, comme le total : une opération confirmée datée plus tard n'est pas perdue.
+  const variableDaily: Cents[] = [];
+  let i = 0;
+  for (let day = monthStart; ; day = addDays(day, 1)) {
+    const until = day < today ? day : monthEnd;
+    for (; i < month.length && month[i]!.date <= until; i++) {
+      const t = month[i]!;
+      if (t.kind === 'expense') {
+        if (t.envelopeId != null && savings.has(t.envelopeId)) continue;
+        if (t.envelopeId == null) unsortedSpent += t.amount;
+        else add(t.recurringRuleId == null ? variableByEnvelope : fixedByEnvelope, t.envelopeId, t.amount);
+      } else if (t.kind === 'income' && t.envelopeId != null) {
+        add(reimbursedByEnvelope, t.envelopeId, t.amount);
+      }
+    }
+    if (day >= today) {
+      const total = totals();
+      variableDaily.push(total.variableSpent);
+      return { ...total, variableDaily };
+    }
+    variableDaily.push(totals().variableSpent);
+  }
+}
+
 /** En dessous de 7 jours restants, une enveloppe presque vide n'est plus une surprise : le mois s'achève. */
 const LOW_MIN_DAYS_LEFT = 7;
 

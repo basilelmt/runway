@@ -504,19 +504,28 @@ table.spec code, .code { font-family: var(--font-mono); font-size: var(--text-xs
   <p class="doc-lead"><span class="code">KeyFigure</span> : un libellé, un montant xl, un contexte, une légende, et des stats à droite. Il remplace les 5 copies de l'Accueil, du Budget, de l'Analyse, d'Investir et de Demander, qui avaient chacune leur écart. <span class="code">StatGroup</span> remplace les 6 copies de « libellé + montant ».</p>
 
   <div class="specimen">
-    <div class="specimen-label">KeyFigure · Accueil</div>
+    <div class="specimen-label">KeyFigure · Accueil, avec la courbe du mois (13 octobre 2026, voir 2026-10-13-accueil-vivant-design.md)</div>
     <div class="kf">
       <div>
         <p class="eyebrow label">Dépensé ce mois-ci</p>
-        <div><span class="amt xl">1 243,17 €</span><span class="ctx">sur 2 401,00 € prévus</span></div>
-        <div class="pb md" style="margin-top:var(--s-5)"><i style="width:52%"></i></div>
-        <p class="caption"><b>7,80 €</b> sous le rythme du mois pour les dépenses courantes.</p>
+        <div><span class="amt xl">1 724,69 €</span><span class="ctx">sur 2 400,72 € prévus</span></div>
       </div>
       <dl class="stats vertical">
-        <div><dt>Marge restante</dt><dd><span class="amt lg">1 157,83 €</span></dd></div>
-        <div><dt>Mis de côté</dt><dd><span class="amt lg pos">20,00 €</span></dd></div>
+        <div><dt>Mis de côté</dt><dd><span class="amt lg pos">40,00 €</span></dd></div>
       </dl>
     </div>
+    <svg viewBox="0 0 1000 170" preserveAspectRatio="none" style="display:block;width:100%;height:170px;margin-top:var(--s-6)" aria-hidden="true">
+      <line x1="0" x2="1000" y1="10" y2="10" stroke="var(--rule)" vector-effect="non-scaling-stroke"/>
+      <line x1="0" y1="170" x2="1000" y2="10" stroke="var(--rule-strong)" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+      <path d="M 0 170 V 168 H 32 V 165 H 65 V 165 H 97 V 165 H 129 V 147 H 161 V 140 H 194 V 129 H 226 V 129 H 258 V 127 H 290 V 127 H 323 V 127 H 355 V 126 H 387 V 126 H 419 V 170 H 0 Z" fill="var(--chart-fill, rgb(20 32 28 / 0.06))"/>
+      <path d="M 0 170 V 168 H 32 V 165 H 65 V 165 H 97 V 165 H 129 V 147 H 161 V 140 H 194 V 129 H 226 V 129 H 258 V 127 H 290 V 127 H 323 V 127 H 355 V 126 H 387 V 126 H 419" fill="none" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <line x1="419" x2="419" y1="0" y2="170" stroke="var(--marking)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;margin-top:var(--s-3);font-size:var(--text-sm);color:var(--ink-soft)">
+      <span style="font-size:var(--text-xs);color:var(--ink-mute)">— Dépenses courantes &nbsp; ┄ Rythme prévu</span>
+      <span><b class="num" style="color:var(--positive)">122,19 €</b> sous le rythme <span style="color:var(--ink-mute)">· 228,60 € / 836,49 €</span></span>
+    </div>
+    <p class="caption" style="color:var(--ink-mute)">Courantes seules, en marches jusqu'à aujourd'hui (trait jaune, le seul jaune de l'écran), face à la diagonale du rythme. Pas de projection. Sans budget de courantes, pas de courbe.</p>
   </div>
   <div class="specimen">
     <div class="specimen-label">KeyFigure · Budget, valeur négative, avec action jaune</div>
@@ -703,6 +712,10 @@ table.spec code, .code { font-family: var(--font-mono); font-size: var(--text-xs
     <div class="specimen">
       <div class="specimen-label">EmptyState</div>
       <div class="empty"><div class="box"><svg class="ico" style="width:20px;height:20px"><use href="#i-inbox"/></svg></div><h3>Tout est rangé</h3><p>Les nouvelles opérations arriveront ici avec la prochaine synchronisation.</p></div>
+    </div>
+    <div class="specimen">
+      <div class="specimen-label">EmptyState inline · quand le vide est l'état normal (« À faire »)</div>
+      <div style="display:flex;align-items:center;gap:var(--s-3);min-height:44px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)"><span style="width:24px;height:24px;border-radius:999px;background:var(--paper-sunken);color:var(--positive);display:grid;place-items:center;font-size:12px">✓</span><span><b style="font-weight:500">Rien à faire</b> <span style="color:var(--ink-mute)">Tout est rangé et la piste est dégagée.</span></span></div>
     </div>
     <div class="specimen">
       <div class="specimen-label">ErrorState · échec de chargement, partout pareil</div>

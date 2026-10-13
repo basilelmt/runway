@@ -79,6 +79,13 @@
   text-decoration: line-through;
 }
 
+/* Pastille en trait, pour une série tracée en ligne : le composant donne l'épaisseur et le style du trait */
+.swatchLine {
+  display: inline-block;
+  width: 14px;
+  flex-shrink: 0;
+}
+
 .legendItem .swatch {
   width: 12px;
   height: 12px;

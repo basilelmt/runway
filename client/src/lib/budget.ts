@@ -11,12 +11,6 @@ export function budgetOverIncome(month: Pick<Overview['month'], 'income' | 'plan
   return month.income > 0 ? Math.max(0, month.planned - month.income) : 0;
 }
 
-/** Part du mois écoulée à `today` (1 le dernier jour). */
-export function monthProgress(today: string, monthEnd: string): number {
-  const day = Number(today.slice(8, 10));
-  const days = Number(monthEnd.slice(8, 10));
-  return day / days;
-}
 
 export type WatchTodo = { text: string; detail?: string; tone?: 'alert' };
 

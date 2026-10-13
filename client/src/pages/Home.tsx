@@ -1,26 +1,31 @@
 import { AlertTriangle, ArrowRight, Check, ClipboardCheck, Clock, Inbox, Landmark, RefreshCw, WalletCards } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Overview } from '@shared/api-types';
+import type { Transaction } from '@shared/schemas';
 import { daysBetween, formatDateShort } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import { errorMessage } from '@/api/client';
 import { useIsMutating } from '@tanstack/react-query';
-import { keys, useBankSync, useOverview } from '@/api/hooks';
+import { keys, useAccounts, useBankSync, useEnvelopes, useOverview, useTransactions } from '@/api/hooks';
 import { FundingBanner } from '@/components/budget/FundingBanner';
 import { BackupBanner } from '@/components/dashboard/BackupBanner';
+import { MonthPaceChart } from '@/components/home/MonthPaceChart';
 import { SignalsSection } from '@/components/home/SignalsSection';
+import { TransactionEditDialog } from '@/components/transactions/TransactionEditDialog';
+import { TransactionRow } from '@/components/transactions/TransactionRow';
 import {
   Amount,
-  Badge,
   ButtonLink,
   EmptyState,
   ErrorState,
   KeyFigure,
+  ListRow,
   ListRowSkeleton,
+  listRowDate,
   Notice,
-  ProgressBar,
   SectionHeader,
+  SectionLink,
   Skeleton,
   Stat,
   StatGroup,
@@ -29,8 +34,8 @@ import {
 } from '@/components/ui';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { bankSyncTodo } from '@/lib/bank';
-import { budgetOverIncome, monthProgress, watchTodo } from '@/lib/budget';
-import { plural } from '@/lib/format';
+import { budgetOverIncome, watchTodo } from '@/lib/budget';
+import { formatDateCompact, plural } from '@/lib/format';
 import styles from './Home.module.css';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -88,7 +93,10 @@ export function HomePage() {
       <MonthHero data={data} />
       <TodoList data={data} />
       <SignalsSection />
-      <AccountsStrip data={data} />
+      <div className={styles.columns}>
+        <RecentOperations />
+        <AccountsList data={data} />
+      </div>
     </div>
   );
 }
@@ -120,24 +128,17 @@ function PendingReviewBanner({ pendingReview }: { pendingReview: NonNullable<Ove
 
 function MonthHero({ data }: { data: Overview }) {
   const { spent, budget, saved, variable } = data.month;
-  const progress = monthProgress(data.today, data.month.end);
   // Le rythme ne vaut que pour les dépenses courantes : le loyer tombe en début de mois, pas au fil des jours.
-  const pace = Math.round(variable.budget * progress) - variable.spent;
+  const chart = budget > 0 && variable.budget > 0;
 
   return (
     <KeyFigure
       label="Dépensé ce mois-ci"
       figure={<Amount cents={spent} size="xl" tone="neutral" animate />}
       context={budget > 0 ? `sur ${formatEuros(budget)} prévus` : undefined}
+      chart={chart ? <MonthPaceChart daily={variable.daily} budget={variable.budget} monthStart={data.month.start} monthEnd={data.month.end} /> : undefined}
       caption={
-        budget > 0 ? (
-          variable.budget > 0 ? (
-            <>
-              <strong className={['num', pace < 0 ? styles.paceOver : styles.paceUnder].join(' ')}>{formatEuros(Math.abs(pace))}</strong> {pace >= 0 ? 'sous le' : 'au-dessus du'} rythme du
-              mois pour les dépenses courantes. Le trait marque aujourd’hui.
-            </>
-          ) : undefined
-        ) : (
+        budget > 0 ? undefined : (
           <>
             Aucun budget mensuel pour l’instant. <Link to="/budget">Fixe un budget à tes enveloppes</Link> pour suivre ton rythme.
           </>
@@ -150,32 +151,7 @@ function MonthHero({ data }: { data: Overview }) {
           </Stat>
         </StatGroup>
       }
-    >
-      {budget > 0 ? (
-        <>
-          <ProgressBar ratio={spent / budget} size="md" color="var(--ink)" label={`${formatEuros(spent)} dépensés sur un budget de ${formatEuros(budget)}`} />
-          {variable.budget > 0 ? (
-            <div className={styles.variable}>
-              <div className={styles.variableHead}>
-                <span>
-                  Dépenses courantes <span className={[styles.muted, styles.nowrap].join(' ')}>hors charges fixes</span>
-                </span>
-                <span className={['num', styles.nowrap].join(' ')}>
-                  {formatEuros(variable.spent)} <span className={styles.muted}>/ {formatEuros(variable.budget)}</span>
-                </span>
-              </div>
-              <ProgressBar
-                ratio={variable.spent / variable.budget}
-                color="var(--ink-soft)"
-                label={`Dépenses courantes : ${formatEuros(variable.spent)} sur ${formatEuros(variable.budget)}`}
-                marker={progress}
-                markerLabel="Aujourd’hui"
-              />
-            </div>
-          ) : null}
-        </>
-      ) : null}
-    </KeyFigure>
+    />
   );
 }
 
@@ -289,7 +265,7 @@ function TodoList({ data }: { data: Overview }) {
     <section aria-labelledby="todo-title">
       <SectionHeader id="todo-title" title="À faire" />
       {todos.length === 0 ? (
-        <EmptyState icon={<Check />} title="Rien à faire" description="Tout est rangé et la piste est dégagée." />
+        <EmptyState layout="inline" icon={<Check />} title="Rien à faire" description="Tout est rangé et la piste est dégagée." />
       ) : (
         <ul className={[styles.todos, 'stagger'].join(' ')}>
           {todos.map((t) => (
@@ -305,19 +281,63 @@ function TodoList({ data }: { data: Overview }) {
   );
 }
 
-function AccountsStrip({ data }: { data: Overview }) {
+const RECENT_COUNT = 5;
+
+/** Les dernières opérations passées sur les comptes, comme dans Opérations, pour sentir le mois sans quitter l'Accueil. */
+function RecentOperations() {
+  const transactions = useTransactions({ status: 'confirmed', excludeAllocations: true, limit: RECENT_COUNT });
+  const accounts = useAccounts(true);
+  const envelopes = useEnvelopes(true);
+  const [editing, setEditing] = useState<Transaction | null>(null);
+  const accountMap = useMemo(() => new Map((accounts.data ?? []).map((a) => [a.id, a])), [accounts.data]);
+  const envelopeMap = useMemo(() => new Map((envelopes.data ?? []).map((e) => [e.id, e])), [envelopes.data]);
+  const error = transactions.error ?? accounts.error ?? envelopes.error;
+  const list = transactions.data;
+
   return (
-    <section aria-labelledby="accounts-title" className={styles.accounts}>
+    <section aria-labelledby="recent-title">
+      <SectionHeader id="recent-title" title="Dernières opérations" aside={<SectionLink to="/operations">Tout voir</SectionLink>} />
+      {error ? (
+        <ErrorState title="Impossible de charger les opérations" description={errorMessage(error)} onRetry={() => void Promise.all([transactions.refetch(), accounts.refetch(), envelopes.refetch()])} />
+      ) : !list || !accounts.data || !envelopes.data ? (
+        <ListRowSkeleton rows={RECENT_COUNT} />
+      ) : list.length === 0 ? (
+        <EmptyState layout="inline" title="Aucune opération" description="Elles arriveront avec la synchro ou un import." />
+      ) : (
+        <ul className="ledger">
+          {list.map((t) => (
+            <TransactionRow
+              key={t.id}
+              transaction={t}
+              accounts={accountMap}
+              envelopes={envelopeMap}
+              onClick={() => setEditing(t)}
+              lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
+            />
+          ))}
+        </ul>
+      )}
+      <TransactionEditDialog transaction={editing} onClose={() => setEditing(null)} />
+    </section>
+  );
+}
+
+function AccountsList({ data }: { data: Overview }) {
+  return (
+    <section aria-labelledby="accounts-title">
       <SectionHeader id="accounts-title" title="Comptes" aside={<Total cents={data.netWorth} />} />
-      <ul className={styles.accountList}>
+      <ul className="ledger">
         {data.accounts.map((a) => (
-          <li key={a.id} className={styles.account}>
-            <span className={styles.accountName}>
-              {a.name}
-              {!a.onBudget ? <Badge>Épargne</Badge> : null}
-            </span>
-            <Amount cents={a.balance} size="lg" />
-          </li>
+          <ListRow
+            key={a.id}
+            title={
+              <>
+                {a.name}
+                {!a.onBudget ? <span className={styles.accountKind}>Épargne</span> : null}
+              </>
+            }
+            trail={<Amount cents={a.balance} />}
+          />
         ))}
       </ul>
     </section>

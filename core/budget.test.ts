@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { envelopesToWatch, monthActivity, planAutoFunding, remainingToFund, savedInMonth, withBudgets } from './budget';
+import { envelopesToWatch, monthActivity, monthSpending, planAutoFunding, remainingToFund, savedInMonth, withBudgets } from './budget';
 import { account, envelope, resetIds, rule, tx } from './test-fixtures';
 
 describe('budget', () => {
@@ -54,6 +54,37 @@ describe('budget', () => {
     expect(remainingToFund({ monthlyBudget: 400_00 }, 150_00)).toBe(250_00);
     expect(remainingToFund({ monthlyBudget: 400_00 }, 500_00)).toBe(0);
     expect(remainingToFund({ monthlyBudget: 0 }, 0)).toBe(0);
+  });
+
+  it('monthSpending : cumul jour par jour des dépenses courantes, un remboursement fait redescendre la courbe', () => {
+    const courant = account({ name: 'Courant' });
+    const sorties = envelope({ name: 'Sorties' });
+    const logement = envelope({ name: 'Logement' });
+    const epargne = envelope({ name: 'Épargne', isSavings: true });
+    const result = monthSpending(
+      [sorties, logement, epargne],
+      [
+        tx({ kind: 'expense', amount: 900_00, accountId: courant.id, envelopeId: logement.id, recurringRuleId: 1, date: '2026-03-01' }),
+        tx({ kind: 'expense', amount: 30_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-01' }),
+        tx({ kind: 'expense', amount: 10_00, accountId: courant.id, date: '2026-03-02' }),
+        tx({ kind: 'expense', amount: 100_00, accountId: courant.id, envelopeId: epargne.id, date: '2026-03-02' }),
+        tx({ kind: 'income', amount: 20_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-04' }),
+        tx({ kind: 'expense', amount: 5_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-03-04', status: 'planned' }),
+        tx({ kind: 'expense', amount: 99_00, accountId: courant.id, envelopeId: sorties.id, date: '2026-02-28' }),
+      ],
+      '2026-03-05',
+    );
+    expect(result.variableDaily).toEqual([30_00, 40_00, 40_00, 20_00, 20_00]);
+    expect(result.variableSpent).toBe(20_00);
+    expect(result.spent).toBe(920_00);
+  });
+
+  it('monthSpending : le dernier point compte jusqu’à la fin du mois, comme le total ; le 1er donne un seul point', () => {
+    const courant = account({ name: 'Courant' });
+    const courses = envelope({ name: 'Courses' });
+    const later = tx({ kind: 'expense', amount: 7_00, accountId: courant.id, envelopeId: courses.id, date: '2026-03-20' });
+    expect(monthSpending([courses], [later], '2026-03-03').variableDaily).toEqual([0, 0, 7_00]);
+    expect(monthSpending([courses], [], '2026-03-01').variableDaily).toEqual([0]);
   });
 
   it('savedInMonth : virements vers l’épargne, retraits déduits, dépenses des enveloppes d’épargne', () => {

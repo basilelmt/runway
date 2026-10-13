@@ -10,8 +10,10 @@ type KeyFigureProps = {
   caption?: ReactNode;
   /** Barres et détails entre le chiffre et la légende. */
   children?: ReactNode;
-  /** À droite : stats en colonne ou action. */
+  /** À droite : stats en colonne ou action, aligné sur le bas du chiffre quand il y a un graphique. */
   aside?: ReactNode;
+  /** Graphique sur toute la largeur, sous le chiffre et l'aside. */
+  chart?: ReactNode;
   /** `night` : le fond sombre d'Investir. */
   variant?: 'plain' | 'night';
   /** `compact` : chiffre en taille lg (réponses de Demander). */
@@ -23,7 +25,7 @@ type KeyFigureProps = {
 };
 
 /** Le chiffre clé d'un écran : un seul par écran, sans cadre sauf la nuit d'Investir. */
-export function KeyFigure({ label, figure, context, caption, children, aside, variant = 'plain', size = 'md', decoration, className }: KeyFigureProps) {
+export function KeyFigure({ label, figure, context, caption, children, aside, chart, variant = 'plain', size = 'md', decoration, className }: KeyFigureProps) {
   return (
     <section aria-label={label} className={[styles.figure, styles[variant], styles[size], className ?? ''].join(' ')}>
       {decoration ? (
@@ -43,6 +45,7 @@ export function KeyFigure({ label, figure, context, caption, children, aside, va
         {caption ? <p className={styles.caption}>{caption}</p> : null}
       </div>
       {aside ? <div className={styles.aside}>{aside}</div> : null}
+      {chart ? <div className={styles.chart}>{chart}</div> : null}
     </section>
   );
 }

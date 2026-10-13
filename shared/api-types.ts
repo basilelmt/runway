@@ -85,7 +85,12 @@ export type MonthSummary = {
    * Dépenses courantes : dépenses confirmées hors épargne qui ne viennent pas d'une règle récurrente,
    * face à la somme des compléments des enveloppes hors épargne.
    */
-  variable: { spent: Cents; budget: Cents };
+  variable: {
+    spent: Cents;
+    budget: Cents;
+    /** Cumul des dépenses courantes à la fin de chaque jour, du 1er à aujourd'hui inclus ; le dernier vaut `spent`. */
+    daily: Cents[];
+  };
   /** Mis de côté : virements nets vers l'épargne et dépenses des enveloppes d'épargne. */
   saved: Cents;
   /** Ce qu'il manque aux enveloppes pour atteindre leur budget du mois. */

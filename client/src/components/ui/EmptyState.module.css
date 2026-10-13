@@ -45,3 +45,45 @@
   background: var(--negative-soft);
   color: var(--negative);
 }
+
+/* Une ligne entre deux filets : l'état normal d'une liste de tâches, sans prendre la place d'un écran vide */
+.inline {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  gap: var(--s-3);
+  min-height: var(--row-h-compact);
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.inline .icon {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 0;
+  border-radius: var(--radius-pill);
+  color: var(--positive);
+}
+
+.inline .icon :global(svg) {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.25;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s-2);
+  font-size: var(--text-md);
+}
+
+.lineTitle {
+  font-weight: 500;
+}
+
+.inline .description {
+  max-width: none;
+}

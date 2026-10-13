@@ -1,0 +1,161 @@
+.chart {
+  margin: 0;
+  min-width: 0;
+}
+
+.plot {
+  position: relative;
+  height: 170px;
+  touch-action: pan-y;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.svg line,
+.svg path {
+  vector-effect: non-scaling-stroke;
+}
+
+.budget {
+  stroke: var(--rule);
+  stroke-width: var(--hairline);
+}
+
+.pace {
+  stroke: var(--rule-strong);
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 4;
+}
+
+.area {
+  fill: color-mix(in oklab, var(--ink) 6%, transparent);
+}
+
+.line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: var(--stroke-mark);
+  stroke-linejoin: round;
+}
+
+.today {
+  stroke: var(--marking);
+  stroke-width: var(--stroke-mark);
+}
+
+.cursor {
+  stroke: var(--rule-strong);
+  stroke-width: var(--hairline);
+}
+
+.budgetLabel {
+  position: absolute;
+  right: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+  pointer-events: none;
+}
+
+.dot,
+.paceDot {
+  position: absolute;
+  border-radius: var(--radius-pill);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  box-shadow: 0 0 0 var(--stroke-mark) var(--paper);
+}
+
+.paceDot {
+  width: 8px;
+  height: 8px;
+  background: var(--paper);
+  border: 1.5px solid var(--rule-strong);
+}
+
+.tip {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  margin-left: var(--s-3);
+  pointer-events: none;
+}
+
+.tipLeft {
+  margin-left: 0;
+  transform: translateX(calc(-100% - var(--s-3)));
+}
+
+.axis {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--s-2);
+  font-size: var(--text-xs);
+  color: var(--ink-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.axisToday {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Légende à gauche, écart au rythme à droite */
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  /* L'écart vertical vient de la légende partagée (marge haute) ; l'écart au rythme reprend le même retrait que ses entrées pour rester sur leur ligne */
+  gap: 0 var(--s-6);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+/* Mêmes traits que la courbe et la diagonale */
+.swatchSpent {
+  border-top: var(--stroke-mark) solid var(--ink);
+}
+
+.swatchPace {
+  border-top: 1.5px dashed var(--rule-strong);
+}
+
+.summary {
+  padding: var(--s-1) 0;
+}
+
+.under {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.over {
+  color: var(--negative);
+  font-weight: 600;
+}
+
+.ratio {
+  white-space: nowrap;
+  color: var(--ink-mute);
+}
+
+@media (max-width: 767px) {
+  .plot {
+    height: 120px;
+  }
+}

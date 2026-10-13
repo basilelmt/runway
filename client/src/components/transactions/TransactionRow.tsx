@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { Account, Envelope, Transaction } from '@shared/schemas';
 import { Amount, Badge, Button, EnvelopeTag, ListRow, type ListRowClick } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
@@ -17,6 +18,8 @@ type TransactionRowProps = {
   confirming?: boolean;
   /** Cette dépense a au moins une avance ouverte : porte la pastille « Avance ». */
   hasOpenAdvance?: boolean;
+  /** Début de ligne, hors d'une liste groupée par jour : la date (dernières opérations de l'Accueil). */
+  lead?: ReactNode;
 };
 
 const squash = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -28,7 +31,7 @@ function repeatsLabel(note: string, label: string): boolean {
   return n.startsWith(l.slice(0, 24)) || l.startsWith(n.slice(0, 24));
 }
 
-export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming, hasOpenAdvance }: TransactionRowProps) {
+export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming, hasOpenAdvance, lead }: TransactionRowProps) {
   const amount = signedAmount(t, viewAccountId);
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
   const fromEnvelope = t.fromEnvelopeId != null ? envelopes.get(t.fromEnvelopeId) : undefined;
@@ -51,6 +54,7 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
     <ListRow
       muted={planned}
       {...click}
+      lead={lead}
       title={<span title={t.label}>{name}</span>}
       meta={
         <>

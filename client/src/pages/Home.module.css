@@ -1,37 +1,5 @@
-.variable {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-  margin-top: var(--s-3);
-  padding-top: var(--s-4);
-  border-top: 1px solid var(--rule);
-}
-
-.variableHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--s-3);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
-.muted {
-  color: var(--ink-mute);
-}
-
 .nowrap {
   white-space: nowrap;
-}
-
-.paceUnder {
-  color: var(--positive);
-  font-weight: 600;
-}
-
-.paceOver {
-  color: var(--negative);
-  font-weight: 600;
 }
 
 .positive {
@@ -57,48 +25,23 @@
   font-weight: 400;
 }
 
-/* Comptes */
-.accountList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Dernières opérations et comptes */
+.columns {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  border-top: 1px solid var(--rule);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--s-10);
 }
 
-.account {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  padding: var(--s-4) var(--s-4) var(--s-4) 0;
+.accountKind {
+  margin-left: var(--s-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--ink-mute);
 }
 
-.account + .account {
-  padding-left: var(--s-4);
-  border-left: 1px solid var(--rule);
-}
-
-.accountName {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  color: var(--ink-soft);
-  font-size: var(--text-sm);
-}
-
-@media (max-width: 767px) {
-  .accountList {
-    grid-template-columns: 1fr;
-  }
-
-  .account,
-  .account + .account {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: var(--s-3) 0;
-    border-left: none;
-    border-bottom: 1px solid var(--rule);
+@media (max-width: 899px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

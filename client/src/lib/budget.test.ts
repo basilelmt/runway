@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { WatchedEnvelope } from '@shared/api-types';
 import { budgetNeedsAttention, budgetOverIncome, watchTodo } from './budget';
 
-const month = { start: '2026-10-01', end: '2026-10-31', spent: 0, budget: 0, variable: { spent: 0, budget: 0 }, saved: 0, toFund: 0, income: 0, planned: 0 };
+const month = { start: '2026-10-01', end: '2026-10-31', spent: 0, budget: 0, variable: { spent: 0, budget: 0, daily: [] }, saved: 0, toFund: 0, income: 0, planned: 0 };
 
 describe('budgetOverIncome', () => {
   it('mesure le dépassement du revenu par les enveloppes', () => {

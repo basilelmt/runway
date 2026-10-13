@@ -48,7 +48,8 @@ describe('GET /api/overview', () => {
     expect(courses).toMatchObject({ balance: 340_00, allocatedThisMonth: 400_00, spentThisMonth: 60_00, toFundThisMonth: 0 });
     // Dépenses du mois à trier comprises ; le virement vers le livret est mis de côté.
     // Loisirs porte la charge « Loyer » : 3 000 € de budget, encore à répartir.
-    expect(body.month).toEqual({ start: '2026-03-01', end: '2026-03-31', spent: 75_00, budget: 3000_00, variable: { spent: 75_00, budget: 0 }, saved: 500_00, toFund: 3000_00, income: 0, planned: 3000_00 });
+    expect(body.month).toEqual({ start: '2026-03-01', end: '2026-03-31', spent: 75_00, budget: 3000_00, variable: { spent: 75_00, budget: 0, daily: expect.any(Array) }, saved: 500_00, toFund: 3000_00, income: 0, planned: 3000_00 });
+    expect(body.month.variable.daily.at(-1)).toBe(75_00);
     expect(body.envelopes.find((e: any) => e.id === t.loisirs.id)).toMatchObject({ monthlyExtra: null, monthlyCharges: 3000_00, monthlyBudget: 3000_00, toFundThisMonth: 3000_00 });
     expect(body.unsortedCount).toBe(1);
     expect(body.latePlanned).toEqual([]);
