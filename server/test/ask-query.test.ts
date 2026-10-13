@@ -54,4 +54,25 @@ describe('runReadOnlyQuery', () => {
     expect(() => runReadOnlyQuery(ro, 'select 1; delete from transactions')).toThrow();
     expect(() => runReadOnlyQuery(ro, 'select nope from transactions')).toThrow(/no such column/);
   });
+
+  it('refuse les tables hors liste blanche, même cachées dans une sous-requête', () => {
+    for (const sql of [
+      'select * from settings',
+      'select key from settings',
+      'select (select count(*) from settings) as n',
+      'with s as materialized (select * from settings) select * from s',
+      'select * from transactions where id in (select id from bank_accounts)',
+      'select iban from bank_accounts',
+      'select session_id from bank_connections',
+    ]) {
+      expect(() => runReadOnlyQuery(ro, sql), sql).toThrow(/^Table non accessible : (settings|bank_accounts|bank_connections)$/);
+    }
+  });
+
+  it('permet les tables de la liste blanche, jointures et lectures par index comprises', () => {
+    expect(runReadOnlyQuery(ro, 'select count(*) as n from transactions t join accounts a on a.id = t.account_id').rows[0]).toEqual({ n: 250 });
+    expect(runReadOnlyQuery(ro, "select count(*) as n from transactions where date >= '2026-01-01'").rows[0]).toEqual({ n: 250 });
+    expect(runReadOnlyQuery(ro, "select count(*) as n from sqlite_schema where type = 'table'").rows[0]!.n).toBeGreaterThan(0);
+    expect(runReadOnlyQuery(ro, 'select count(*) as n from envelopes e left join merchants m on 1 = 0').truncated).toBe(false);
+  });
 });

@@ -6,7 +6,7 @@ import { createRunwayMcpServer } from '../src/ask/mcp';
 
 async function connect() {
   const db = new Database(':memory:');
-  db.exec('create table t (a integer); insert into t values (1), (2), (3);');
+  db.exec('create table transactions (a integer); insert into transactions values (1), (2), (3);');
   db.pragma('query_only = ON');
   const server = createRunwayMcpServer(db);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
@@ -23,14 +23,14 @@ describe('serveur MCP runway', () => {
     const client = await connect();
     const tools = await client.listTools();
     expect(tools.tools.map((t) => t.name)).toEqual(['query']);
-    const res = (await client.callTool({ name: 'query', arguments: { sql: 'select sum(a) as total from t' } })) as ToolResult;
+    const res = (await client.callTool({ name: 'query', arguments: { sql: 'select sum(a) as total from transactions' } })) as ToolResult;
     expect(res.isError).toBeFalsy();
     expect(JSON.parse(res.content[0]!.text)).toEqual({ rows: [{ total: 6 }], truncated: false });
   });
 
   it('renvoie les erreurs SQL comme résultat d’outil', async () => {
     const client = await connect();
-    const res = (await client.callTool({ name: 'query', arguments: { sql: 'delete from t' } })) as ToolResult;
+    const res = (await client.callTool({ name: 'query', arguments: { sql: 'delete from transactions' } })) as ToolResult;
     expect(res.isError).toBe(true);
     expect(res.content[0]!.text).toMatch(/^Erreur SQL/);
   });
