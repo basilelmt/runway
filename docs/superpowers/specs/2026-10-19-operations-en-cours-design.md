@@ -26,8 +26,7 @@ Libellé, date et montant peuvent d'ailleurs changer à la comptabilisation (pr�
 Une opération sans statut compte comme comptabilisée, comme aujourd'hui.
 Un seul appel garde la synchro à un accès par compte et par synchro : la synchro de fond toutes les 6 h reste dans les 4 accès DSP2 quotidiens.
 
-À vérifier au début de l'implémentation, avec l'accord de Basile : un appel sans filtre renvoie bien les deux statuts chez La Banque Postale.
-Si ce n'est pas le cas, repli sur deux appels (`BOOK` puis `PDNG`) en manuel seulement, et la synchro de fond ne rafraîchit pas les opérations en cours.
+Vérifié le 2026-10-19 : un appel sans filtre renvoie bien les deux statuts chez La Banque Postale (26 `BOOK` et 6 `PDNG` sur 14 jours).
 
 Les opérations en cours passent par `toSourceRow` comme les autres (date, libellé, montant signé) ; une ligne illisible est ignorée sans compter dans `skipped`.
 
