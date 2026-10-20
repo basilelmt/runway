@@ -5,7 +5,7 @@ import { merchantNamesResultSchema } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { transactions } from '../db/schema';
 import { toDbHolder, type DbHolder } from '../db/holder';
-import { ensureMerchants, listMerchantNames, listUnnamedKeys, merchantStats, sampleLabels, setClaudeNames } from '../repos/merchants';
+import { ensureMerchants, listKeysToProcess, listMerchantNames, merchantStats, sampleLabels, setClaudeResults } from '../repos/merchants';
 import { getSettings } from '../repos/settings';
 import { ClaudeError, execClaude, runClaude, type Exec } from './claude';
 
@@ -36,7 +36,6 @@ export function backfillMerchantKeys(db: Db): number {
 
 export const MERCHANT_BATCH_SIZE = 150;
 export const MERCHANT_EXAMPLES = 3;
-export const MERCHANT_NAME_MAX = 60;
 export const MERCHANT_TIMEOUT_MS = 300_000;
 
 /** Schéma de sortie imposé à Claude, écrit à la main comme celui du tri ; revalidé avec `merchantNamesResultSchema`. */
@@ -47,8 +46,8 @@ const merchantNamesJsonSchema = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { key: { type: 'string' }, name: { type: 'string' } },
-        required: ['key', 'name'],
+        properties: { key: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' } },
+        required: ['key', 'name', 'description'],
       },
     },
   },
@@ -60,7 +59,7 @@ export type MerchantPromptInput = { merchants: { key: string; examples: string[]
 export function buildMerchantPrompt(input: MerchantPromptInput): string {
   const known = input.knownNames.length ? input.knownNames.map((n) => `- ${n}`).join('\n') : '(aucun)';
   const list = input.merchants.map((m) => `- clé ${JSON.stringify(m.key)} ; exemples : ${m.examples.map((e) => JSON.stringify(e)).join(', ')}`).join('\n');
-  return `Tu donnes un nom lisible aux marchands d'un relevé bancaire français.
+  return `Tu donnes un nom lisible et une courte description aux marchands d'un relevé bancaire français.
 
 Chaque marchand est identifié par une clé tirée du libellé bancaire, avec quelques libellés bruts en exemple.
 
@@ -77,14 +76,20 @@ Consignes :
 - Pour un virement à une personne, le prénom et le rôle s'il est clair : « Léo (coloc) ».
 - Si le libellé est tronqué et que le marchand n'est pas reconnaissable, garde les mots lisibles en casse normale : « LE PAIN DE LA » devient « Le Pain de la ».
 - Réponds pour chaque clé, en recopiant la clé à l'identique dans "key".
+- Dans "description", une phrase courte qui dit ce qu'est ce marchand : « Chaîne de fast-food », « Éditeur de jeux vidéo (League of Legends) », « Boulangerie ».
+- Ajoute la ville ou le quartier si le libellé en donne un : « BK K0010 PARIS » donne « Chaîne de fast-food, Paris ».
+- Pour une personne : la relation si elle est claire, sinon « Virement à un particulier ».
+- 140 caractères au plus.
+- Si tu ne reconnais pas le marchand, laisse "description" vide : ne jamais deviner.
 - Réponds uniquement avec le JSON demandé.`;
 }
 
 /**
- * Nomme les marchands sans nom par lots de 150, les plus fréquents d'abord, jusqu'à épuisement.
- * Une clé déjà demandée dans ce run n'est jamais redemandée, même si Claude ne l'a pas nommée :
- * sinon une clé jamais nommée resterait en tête de liste et priverait les suivantes, moins fréquentes.
- * N'écrit que là où personne n'a nommé le marchand. Lève une `ClaudeError` si Claude échoue.
+ * Nomme et décrit les marchands à traiter (sans nom ou jamais décrits) par lots de 150, les plus fréquents d'abord, jusqu'à épuisement.
+ * Une clé déjà demandée dans ce run n'est jamais redemandée, même si Claude ne l'a rien répondu :
+ * sinon une clé jamais traitée resterait en tête de liste et priverait les suivantes, moins fréquentes.
+ * N'écrit le nom que là où personne ne l'a donné, et la description que là où elle n'est ni `web` ni `user`.
+ * Lève une `ClaudeError` si Claude échoue.
  */
 export async function nameMerchants(db: Db, deps: { exec?: Exec } = {}): Promise<number> {
   const exec = deps.exec ?? execClaude;
@@ -92,7 +97,7 @@ export async function nameMerchants(db: Db, deps: { exec?: Exec } = {}): Promise
   let total = 0;
   const tried = new Set<string>();
   for (;;) {
-    const keys = listUnnamedKeys(db, MERCHANT_BATCH_SIZE, tried);
+    const keys = listKeysToProcess(db, MERCHANT_BATCH_SIZE, tried);
     if (keys.length === 0) return total;
     for (const key of keys) tried.add(key);
     const prompt = buildMerchantPrompt({
@@ -106,10 +111,12 @@ export async function nameMerchants(db: Db, deps: { exec?: Exec } = {}): Promise
     const parsed = merchantNamesResultSchema.safeParse(await runClaude(args, MERCHANT_TIMEOUT_MS, exec));
     if (!parsed.success) throw new ClaudeError('Réponse de Claude invalide (format inattendu)', 'claude_invalid_output');
     const asked = new Set(keys);
-    const valid = parsed.data.names
-      .map(({ key, name }) => ({ key, name: name.trim() }))
-      .filter(({ key, name }) => asked.has(key) && name.length > 0 && name.length <= MERCHANT_NAME_MAX);
-    total += setClaudeNames(db, valid);
+    const results = parsed.data.names
+      .filter(({ key }) => asked.has(key))
+      .map(({ key, name, description }) => ({ key, name: name.trim(), description: description.trim() }));
+    // Une clé demandée mais absente de la réponse compte aussi comme essayée.
+    for (const key of keys) if (!results.some((r) => r.key === key)) results.push({ key, name: '', description: '' });
+    total += setClaudeResults(db, results, new Date().toISOString());
   }
 }
 

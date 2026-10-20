@@ -31,9 +31,9 @@ function askedKeys(args: string[]): string[] {
   return [...args.at(-1)!.matchAll(/clé "([^"]+)"/g)].map((m) => m[1]!);
 }
 
-/** Faux Claude qui nomme chaque clé demandée par une fonction du test. */
-function namingExec(nameOf: (key: string) => string) {
-  return vi.fn<Exec>(async (args) => ok({ names: askedKeys(args).map((key) => ({ key, name: nameOf(key) })) }));
+/** Faux Claude qui nomme et décrit chaque clé demandée par des fonctions du test. */
+function namingExec(nameOf: (key: string) => string, describe: (key: string) => string = () => '') {
+  return vi.fn<Exec>(async (args) => ok({ names: askedKeys(args).map((key) => ({ key, name: nameOf(key), description: describe(key) })) }));
 }
 
 function merchant(key: string) {
@@ -48,7 +48,7 @@ describe('nameMerchants', () => {
     expense('ACHAT CB BOULANGERIE DU COIN 03.10.26 CARTE NUMERO 123');
     expense('ACHAT CB BOULANGERIE DU COIN');
     expense('ACHAT CB LIBRAIRIE');
-    renameMerchant(ctx.db, 'LIBRAIRIE', { name: 'Librairie du Centre' }, '2026-03-12');
+    renameMerchant(ctx.db, 'LIBRAIRIE', { name: 'Librairie du Centre', description: 'Librairie' }, '2026-03-12');
     const exec = namingExec((key) => (key === 'CAFE DU PORT' ? 'Café du Port' : 'Boulangerie du Coin'));
 
     expect(await nameMerchants(ctx.db, { exec })).toBe(2);
@@ -145,6 +145,43 @@ describe('nameMerchants', () => {
   ])('erreur typée : %s', async (_name, result, code) => {
     expense('ACHAT CB CAFE DU PORT');
     await expect(nameMerchants(ctx.db, { exec: async () => result })).rejects.toMatchObject({ code });
+  });
+
+  it('décrit les marchands, y compris ceux déjà nommés, sans toucher aux noms ni aux descriptions web ou utilisateur', async () => {
+    expense('ACHAT CB CAFE DU PORT');
+    expense('ACHAT CB LIBRAIRIE');
+    expense('ACHAT CB BK K0010 PARIS');
+    expense('ACHAT CB INCONNU XZ');
+    renameMerchant(ctx.db, 'LIBRAIRIE', { name: 'Librairie du Centre' }, '2026-03-12');
+    renameMerchant(ctx.db, 'CAFE DU PORT', { name: 'Café du Port', description: 'Bar-tabac' }, '2026-03-12');
+    const exec = namingExec(
+      (key) => key,
+      (key) => ({ 'CAFE DU PORT': 'Café', LIBRAIRIE: 'Librairie', 'BK K PARIS': 'Chaîne de fast-food, Paris', 'INCONNU XZ': '' })[key] ?? '',
+    );
+
+    await nameMerchants(ctx.db, { exec });
+
+    const prompt = exec.mock.calls[0]![0].at(-1)!;
+    expect(prompt).toContain('ne jamais deviner');
+    // Café du Port a déjà nom et description utilisateur : rien à demander.
+    expect(askedKeys(exec.mock.calls[0]![0]).sort()).toEqual(['BK K PARIS', 'INCONNU XZ', 'LIBRAIRIE']);
+    expect(merchant('LIBRAIRIE')).toMatchObject({ name: 'Librairie du Centre', source: 'user', description: 'Librairie', descriptionSource: 'claude' });
+    expect(merchant('CAFE DU PORT')).toMatchObject({ description: 'Bar-tabac', descriptionSource: 'user' });
+    expect(merchant('BK K PARIS')).toMatchObject({ description: 'Chaîne de fast-food, Paris', descriptionSource: 'claude' });
+    expect(merchant('INCONNU XZ')).toMatchObject({ description: null, descriptionSource: null });
+    expect(merchant('INCONNU XZ')!.describedAt).not.toBeNull();
+
+    // Second tour : tout est essayé, plus rien à demander.
+    exec.mockClear();
+    await nameMerchants(ctx.db, { exec });
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it('une description trop longue est ignorée mais compte comme essayée', async () => {
+    expense('ACHAT CB CAFE DU PORT');
+    await nameMerchants(ctx.db, { exec: namingExec(() => 'Café du Port', () => 'x'.repeat(141)) });
+    expect(merchant('CAFE DU PORT')).toMatchObject({ description: null, descriptionSource: null });
+    expect(merchant('CAFE DU PORT')!.describedAt).not.toBeNull();
   });
 });
 

@@ -23,6 +23,7 @@ export type MerchantSource = (typeof merchantSources)[number];
 export const merchantDescriptionSources = ['claude', 'web', 'user'] as const;
 export type MerchantDescriptionSource = (typeof merchantDescriptionSources)[number];
 export const MERCHANT_DESCRIPTION_MAX = 140;
+export const MERCHANT_NAME_MAX = 60;
 export const frequencies = ['daily', 'weekly', 'monthly', 'yearly'] as const;
 export type Frequency = (typeof frequencies)[number];
 
@@ -403,7 +404,9 @@ export const merchantRenameSchema = z.object({
 export type MerchantRename = z.infer<typeof merchantRenameSchema>;
 
 /** Sortie brute du nommage des marchands par Claude, filtrée clé par clé ensuite. */
-export const merchantNamesResultSchema = z.object({ names: z.array(z.object({ key: z.string(), name: z.string() })) });
+export const merchantNamesResultSchema = z.object({
+  names: z.array(z.object({ key: z.string(), name: z.string(), description: z.string().default('') })),
+});
 
 /** Quantité décimale exacte, transportée en texte (« 0.04512 »). */
 export const decimalSchema = z

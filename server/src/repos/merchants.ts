@@ -1,8 +1,8 @@
-import { and, asc, desc, eq, isNotNull, isNull, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, notInArray, or, sql } from 'drizzle-orm';
 import { merchantFallbackName } from '@core/merchants';
 import type { MerchantDetail } from '@shared/api-types';
 import { addDays, type ISODate } from '@shared/dates';
-import type { MerchantRename } from '@shared/schemas';
+import { MERCHANT_DESCRIPTION_MAX, MERCHANT_NAME_MAX, type MerchantRename } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { merchants, transactions } from '../db/schema';
 import { NotFoundError } from '../errors';
@@ -22,10 +22,11 @@ export function ensureMerchants(db: Db, keys: Iterable<string | null>): void {
   }
 }
 
-/** Clés portées par au moins une opération et sans nom, les plus fréquentes d'abord, hors `exclude`. */
-export function listUnnamedKeys(db: Db, limit: number, exclude: Iterable<string> = []): string[] {
+/** Clés portées par au moins une opération, sans nom ou jamais décrites, les plus fréquentes d'abord, hors `exclude`. */
+export function listKeysToProcess(db: Db, limit: number, exclude: Iterable<string> = []): string[] {
   const excluded = [...exclude];
-  const where = excluded.length > 0 ? and(isNull(merchants.name), notInArray(merchants.key, excluded)) : isNull(merchants.name);
+  const todo = or(isNull(merchants.name), isNull(merchants.describedAt))!;
+  const where = excluded.length > 0 ? and(todo, notInArray(merchants.key, excluded)) : todo;
   return db
     .select({ key: merchants.key })
     .from(merchants)
@@ -61,17 +62,24 @@ export function listMerchantNames(db: Db): string[] {
     .map((r) => r.name!);
 }
 
-/** Écrit les noms de Claude là où personne n'a encore nommé le marchand ; renvoie le nombre de marchands nommés. */
-export function setClaudeNames(db: Db, names: { key: string; name: string }[]): number {
-  const updatedAt = new Date().toISOString();
+/**
+ * Écrit ce que Claude a répondu, sans jamais écraser ce qu'un humain ou le web a fourni :
+ * le nom seulement si personne ne l'a nommé, la description seulement si elle n'est ni `web` ni `user`.
+ * `described_at` est posé pour chaque clé, même sans description : elle ne sera pas redemandée.
+ * Renvoie le nombre de marchands nommés.
+ */
+export function setClaudeResults(db: Db, results: { key: string; name: string; description: string }[], describedAt: string): number {
   return db.transaction((tx) => {
     let named = 0;
-    for (const { key, name } of names) {
-      named += tx
-        .update(merchants)
-        .set({ name, source: 'claude', updatedAt })
-        .where(and(eq(merchants.key, key), isNull(merchants.source)))
-        .run().changes;
+    for (const { key, name, description } of results) {
+      if (name.length > 0 && name.length <= MERCHANT_NAME_MAX) {
+        named += tx.update(merchants).set({ name, source: 'claude', updatedAt: describedAt }).where(and(eq(merchants.key, key), isNull(merchants.source))).run().changes;
+      }
+      const ok = description.length > 0 && description.length <= MERCHANT_DESCRIPTION_MAX;
+      tx.update(merchants)
+        .set({ description: ok ? description : null, descriptionSource: ok ? 'claude' : null, describedAt, updatedAt: describedAt })
+        .where(and(eq(merchants.key, key), or(isNull(merchants.descriptionSource), eq(merchants.descriptionSource, 'claude'))))
+        .run();
     }
     return named;
   });
