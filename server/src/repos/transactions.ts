@@ -65,6 +65,7 @@ export function listTransactions(db: Db, filter: Partial<TransactionFilter> = {}
   if (filter.status) where.push(eq(transactions.status, filter.status));
   if (filter.kind) where.push(eq(transactions.kind, filter.kind));
   if (filter.unsorted) where.push(and(eq(transactions.kind, 'expense'), isNull(transactions.envelopeId))!);
+  if (filter.merchant) where.push(eq(transactions.merchantKey, filter.merchant));
   return selectTransactions(db)
     .where(where.length ? and(...where) : undefined)
     .orderBy(desc(transactions.date), desc(transactions.id))

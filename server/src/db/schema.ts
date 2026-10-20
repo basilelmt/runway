@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
-import { bankConnectionStatuses, fundingStatuses, merchantSources, signalKinds } from '@shared/schemas';
+import { bankConnectionStatuses, fundingStatuses, merchantDescriptionSources, merchantSources, signalKinds } from '@shared/schemas';
 import { platforms, ideaAngleKeys } from '@shared/invest';
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -115,6 +115,11 @@ export const merchants = sqliteTable('merchants', {
   /** Null tant que personne ne l'a nommé. */
   name: text('name'),
   source: text('source', { enum: merchantSources }),
+  /** Une phrase qui dit ce qu'est ce marchand ; nulle si personne ne l'a décrit ou si Claude ne l'a pas reconnu. */
+  description: text('description'),
+  descriptionSource: text('description_source', { enum: merchantDescriptionSources }),
+  /** Dernier essai de description (Claude, web ou utilisateur), même sans résultat. */
+  describedAt: text('described_at'),
   updatedAt: text('updated_at').notNull().default(now),
 });
 

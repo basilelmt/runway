@@ -19,6 +19,10 @@ export type TransactionStatus = (typeof transactionStatuses)[number];
 /** Qui a donné le nom d'un marchand : Claude, ou l'utilisateur (jamais écrasé). */
 export const merchantSources = ['claude', 'user'] as const;
 export type MerchantSource = (typeof merchantSources)[number];
+/** Qui a donné la description d'un marchand : Claude, une recherche web, ou l'utilisateur (jamais écrasée). */
+export const merchantDescriptionSources = ['claude', 'web', 'user'] as const;
+export type MerchantDescriptionSource = (typeof merchantDescriptionSources)[number];
+export const MERCHANT_DESCRIPTION_MAX = 140;
 export const frequencies = ['daily', 'weekly', 'monthly', 'yearly'] as const;
 export type Frequency = (typeof frequencies)[number];
 
@@ -177,6 +181,7 @@ export const transactionFilterSchema = z.object({
   status: z.enum(transactionStatuses).optional(),
   kind: z.enum(transactionKinds).optional(),
   unsorted: z.coerce.boolean().optional(),
+  merchant: z.string().min(1).max(200).optional(),
   limit: z.coerce.number().int().positive().max(1000).default(500),
 });
 export type TransactionFilter = z.infer<typeof transactionFilterSchema>;
@@ -390,7 +395,11 @@ export const sortingApplySchema = z.object({
 export type SortingApply = z.infer<typeof sortingApplySchema>;
 
 /** Renommage d'un marchand par l'utilisateur ; un nom vide le rend à Claude. */
-export const merchantRenameSchema = z.object({ name: z.string().trim().max(60, '60 caractères au plus') });
+export const merchantRenameSchema = z.object({
+  name: z.string().trim().max(60, '60 caractères au plus'),
+  /** Absente : description inchangée. Vide : rendue à Claude. */
+  description: z.string().trim().max(MERCHANT_DESCRIPTION_MAX, `${MERCHANT_DESCRIPTION_MAX} caractères au plus`).optional(),
+});
 export type MerchantRename = z.infer<typeof merchantRenameSchema>;
 
 /** Sortie brute du nommage des marchands par Claude, filtrée clé par clé ensuite. */

@@ -1,6 +1,6 @@
 import type { Cents } from './money';
 import type { ISODate } from './dates';
-import type { Account, AppliedReview, BankConnectionStatus, Envelope, ImportRecord, MerchantSource, RecurringRule, RecurringRuleInput, SignalKind, SortingRule, Transaction } from './schemas';
+import type { Account, AppliedReview, BankConnectionStatus, Envelope, ImportRecord, MerchantDescriptionSource, MerchantSource, RecurringRule, RecurringRuleInput, SignalKind, SortingRule, Transaction } from './schemas';
 import type { IdeaAngle, Platform } from './invest';
 
 export type Balances = {
@@ -485,8 +485,19 @@ export type AskStreamEvent =
 /** État du nommage des marchands par Claude (`GET /api/merchants/status`). */
 export type MerchantStatus = { total: number; named: number; running: boolean; lastError: string | null };
 
-/** Un marchand et le nombre de ses opérations (`GET /api/merchants/:key`). */
-export type MerchantDetail = { key: string; name: string; source: MerchantSource | null; transactionCount: number };
+/** Un marchand, sa description et son historique (`GET /api/merchants/:key`). */
+export type MerchantDetail = {
+  key: string;
+  name: string;
+  source: MerchantSource | null;
+  transactionCount: number;
+  description: string | null;
+  descriptionSource: MerchantDescriptionSource | null;
+  describedAt: string | null;
+  /** Revenus moins dépenses confirmés des 365 derniers jours. */
+  total12Months: Cents;
+  firstDate: ISODate | null;
+};
 
 /** Une avance avec sa dépense et son remboursement, pour l'affichage (`GET /api/advances`). */
 export type AdvanceView = {

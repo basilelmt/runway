@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, isNotNull, isNull, notInArray, sql } from 'drizzle-orm';
 import { merchantFallbackName } from '@core/merchants';
 import type { MerchantDetail } from '@shared/api-types';
+import { addDays, type ISODate } from '@shared/dates';
+import type { MerchantRename } from '@shared/schemas';
 import type { Db } from '../db/client';
 import { merchants, transactions } from '../db/schema';
 import { NotFoundError } from '../errors';
@@ -88,24 +90,52 @@ export function merchantStats(db: Db): { total: number; named: number } {
   return { total: row?.total ?? 0, named: row?.named ?? 0 };
 }
 
-export function getMerchant(db: Db, key: string): MerchantDetail {
-  const count = db.select({ n: sql<number>`count(*)` }).from(transactions).where(eq(transactions.merchantKey, key)).get()?.n ?? 0;
+export function getMerchant(db: Db, key: string, today: ISODate): MerchantDetail {
+  const since = addDays(today, -365);
+  const stats = db
+    .select({
+      n: sql<number>`count(*)`,
+      first: sql<string | null>`min(${transactions.date})`,
+      total: sql<number>`coalesce(sum(case when ${transactions.status} = 'confirmed' and ${transactions.date} > ${since} and ${transactions.date} <= ${today}
+        then case when ${transactions.kind} = 'income' then ${transactions.amount} else -${transactions.amount} end end), 0)`,
+    })
+    .from(transactions)
+    .where(eq(transactions.merchantKey, key))
+    .get();
+  const count = stats?.n ?? 0;
   const row = db.select().from(merchants).where(eq(merchants.key, key)).get();
   if (!row && count === 0) throw new NotFoundError('Marchand introuvable');
   const label = row?.name ? '' : sampleLabels(db, key, 1)[0] ?? '';
-  return { key, name: row?.name ?? merchantFallbackName(key, label), source: row?.source ?? null, transactionCount: count };
+  return {
+    key,
+    name: row?.name ?? merchantFallbackName(key, label),
+    source: row?.source ?? null,
+    transactionCount: count,
+    description: row?.description ?? null,
+    descriptionSource: row?.descriptionSource ?? null,
+    describedAt: row?.describedAt ?? null,
+    total12Months: stats?.total ?? 0,
+    firstDate: stats?.first ?? null,
+  };
 }
 
-/** Nom choisi par l'utilisateur (source `user`, jamais écrasé par Claude) ; un nom vide remet le marchand à nommer par Claude. */
-export function renameMerchant(db: Db, key: string, name: string): MerchantDetail {
-  getMerchant(db, key);
+/**
+ * Nom choisi par l'utilisateur (source `user`, jamais écrasé par Claude) ; un nom vide remet le marchand à nommer par Claude.
+ * Une description non vide devient `user` ; vide, elle est rendue au passage de fond ; absente, elle ne change pas.
+ */
+export function renameMerchant(db: Db, key: string, input: MerchantRename, today: ISODate): MerchantDetail {
+  getMerchant(db, key, today);
   const updatedAt = new Date().toISOString();
-  const values = name === '' ? { name: null, source: null, updatedAt } : { name, source: 'user' as const, updatedAt };
-  db.insert(merchants)
-    .values({ key, ...values })
-    .onConflictDoUpdate({ target: merchants.key, set: values })
-    .run();
-  return getMerchant(db, key);
+  const naming = input.name === '' ? { name: null, source: null } : { name: input.name, source: 'user' as const };
+  const describing =
+    input.description === undefined
+      ? {}
+      : input.description === ''
+        ? { description: null, descriptionSource: null, describedAt: null }
+        : { description: input.description, descriptionSource: 'user' as const, describedAt: updatedAt };
+  const values = { ...naming, ...describing, updatedAt };
+  db.insert(merchants).values({ key, ...values }).onConflictDoUpdate({ target: merchants.key, set: values }).run();
+  return getMerchant(db, key, today);
 }
 
 /** Tous les marchands, pour l'export JSON. */

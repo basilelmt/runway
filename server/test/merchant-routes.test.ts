@@ -23,10 +23,30 @@ describe('routes /api/merchants', () => {
     await expense('ACHAT CB CAFE DU PORT 03.10.26');
     await expense('ACHAT CB CAFE DU PORT');
     expect((await t.call('GET', '/api/merchants/status')).body).toEqual({ total: 1, named: 0, running: false, lastError: null });
-    expect((await t.call('GET', path('CAFE DU PORT'))).body).toEqual({ key: 'CAFE DU PORT', name: 'Cafe du Port', source: null, transactionCount: 2 });
+    expect((await t.call('GET', path('CAFE DU PORT'))).body).toEqual({
+      key: 'CAFE DU PORT',
+      name: 'Cafe du Port',
+      source: null,
+      transactionCount: 2,
+      description: null,
+      descriptionSource: null,
+      describedAt: null,
+      total12Months: -20_00,
+      firstDate: '2026-03-02',
+    });
 
     const renamed = await t.call('PUT', path('CAFE DU PORT'), { name: '  Café du Port  ' });
-    expect(renamed.body).toEqual({ key: 'CAFE DU PORT', name: 'Café du Port', source: 'user', transactionCount: 2 });
+    expect(renamed.body).toEqual({
+      key: 'CAFE DU PORT',
+      name: 'Café du Port',
+      source: 'user',
+      transactionCount: 2,
+      description: null,
+      descriptionSource: null,
+      describedAt: null,
+      total12Months: -20_00,
+      firstDate: '2026-03-02',
+    });
     expect((await t.call('GET', '/api/transactions')).body.map((x: any) => x.merchantName)).toEqual(['Café du Port', 'Café du Port']);
     expect((await t.call('GET', '/api/merchants/status')).body).toMatchObject({ total: 1, named: 1 });
   });
@@ -36,7 +56,17 @@ describe('routes /api/merchants', () => {
     await t.call('PUT', path('CAFE DU PORT'), { name: 'Café du Port' });
     const request = vi.spyOn(t.merchantNamer, 'request');
     const reset = await t.call('PUT', path('CAFE DU PORT'), { name: '' });
-    expect(reset.body).toEqual({ key: 'CAFE DU PORT', name: 'Cafe du Port', source: null, transactionCount: 1 });
+    expect(reset.body).toEqual({
+      key: 'CAFE DU PORT',
+      name: 'Cafe du Port',
+      source: null,
+      transactionCount: 1,
+      description: null,
+      descriptionSource: null,
+      describedAt: null,
+      total12Months: -10_00,
+      firstDate: '2026-03-02',
+    });
     expect(request).toHaveBeenCalledTimes(1);
   });
 
@@ -85,7 +115,36 @@ describe('routes /api/merchants', () => {
   it('l’export JSON contient les marchands', async () => {
     await expense('ACHAT CB CAFE DU PORT');
     const body = (await (await t.app.request('/api/export.json')).json()) as any;
-    expect(body.merchants).toEqual([{ key: 'CAFE DU PORT', name: null, source: null, updatedAt: expect.any(String) }]);
+    expect(body.merchants).toEqual([
+      { key: 'CAFE DU PORT', name: null, source: null, description: null, descriptionSource: null, describedAt: null, updatedAt: expect.any(String) },
+    ]);
     expect(body.transactions[0]).toMatchObject({ merchantKey: 'CAFE DU PORT', merchantName: 'Cafe du Port' });
+  });
+
+  it('détail : total signé sur 12 mois, première date, description vide par défaut', async () => {
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2025-02-01', amount: 99_00, label: 'ACHAT CB CAFE DU PORT', accountId: t.courant.id });
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2025-06-01', amount: 4_00, label: 'ACHAT CB CAFE DU PORT', accountId: t.courant.id });
+    await expense('ACHAT CB CAFE DU PORT');
+    const body = (await t.call('GET', path('CAFE DU PORT'))).body;
+    // today = 2026-03-12 : 2025-02-01 est hors des 365 jours, 2025-06-01 et 2026-03-02 dedans.
+    expect(body).toMatchObject({ transactionCount: 3, total12Months: -14_00, firstDate: '2025-02-01', description: null, descriptionSource: null, describedAt: null });
+  });
+
+  it('description donnée à la main, puis rendue à Claude', async () => {
+    await expense('ACHAT CB CAFE DU PORT');
+    const set = await t.call('PUT', path('CAFE DU PORT'), { name: 'Café du Port', description: '  Bar-tabac, Marseille ' });
+    expect(set.body).toMatchObject({ name: 'Café du Port', source: 'user', description: 'Bar-tabac, Marseille', descriptionSource: 'user' });
+    const kept = await t.call('PUT', path('CAFE DU PORT'), { name: 'Café du Port' });
+    expect(kept.body).toMatchObject({ description: 'Bar-tabac, Marseille', descriptionSource: 'user' });
+    const reset = await t.call('PUT', path('CAFE DU PORT'), { name: 'Café du Port', description: '' });
+    expect(reset.body).toMatchObject({ description: null, descriptionSource: null, describedAt: null });
+    expect((await t.call('PUT', path('CAFE DU PORT'), { name: 'x', description: 'y'.repeat(141) })).status).toBe(400);
+  });
+
+  it('liste les opérations d’un marchand', async () => {
+    await expense('ACHAT CB CAFE DU PORT');
+    await expense('ACHAT CB LIBRAIRIE');
+    const list = (await t.call('GET', '/api/transactions?merchant=CAFE%20DU%20PORT')).body;
+    expect(list.map((x: any) => x.merchantKey)).toEqual(['CAFE DU PORT']);
   });
 });

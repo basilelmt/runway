@@ -48,7 +48,7 @@ describe('nameMerchants', () => {
     expense('ACHAT CB BOULANGERIE DU COIN 03.10.26 CARTE NUMERO 123');
     expense('ACHAT CB BOULANGERIE DU COIN');
     expense('ACHAT CB LIBRAIRIE');
-    renameMerchant(ctx.db, 'LIBRAIRIE', 'Librairie du Centre');
+    renameMerchant(ctx.db, 'LIBRAIRIE', { name: 'Librairie du Centre' }, '2026-03-12');
     const exec = namingExec((key) => (key === 'CAFE DU PORT' ? 'Café du Port' : 'Boulangerie du Coin'));
 
     expect(await nameMerchants(ctx.db, { exec })).toBe(2);
@@ -79,7 +79,7 @@ describe('nameMerchants', () => {
   it('ne remplace jamais un nom donné par l’utilisateur pendant l’exécution', async () => {
     expense('ACHAT CB CAFE DU PORT');
     const exec = vi.fn<Exec>(async () => {
-      renameMerchant(ctx.db, 'CAFE DU PORT', 'Mon café');
+      renameMerchant(ctx.db, 'CAFE DU PORT', { name: 'Mon café' }, '2026-03-12');
       return ok({ names: [{ key: 'CAFE DU PORT', name: 'Café du Port' }] });
     });
     expect(await nameMerchants(ctx.db, { exec })).toBe(0);
@@ -193,6 +193,6 @@ describe('getMerchant', () => {
   it('garde les accents d’un libellé saisi à la main pour le nom de repli', () => {
     expense('Café de Léa');
 
-    expect(getMerchant(ctx.db, 'CAFE DE LEA').name).toBe('Café de Léa');
+    expect(getMerchant(ctx.db, 'CAFE DE LEA', '2026-03-12').name).toBe('Café de Léa');
   });
 });

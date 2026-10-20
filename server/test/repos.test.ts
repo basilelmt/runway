@@ -69,6 +69,7 @@ describe('transactions', () => {
     expect(listTransactions(ctx.db, { q: 'carr' })).toHaveLength(1);
     expect(listTransactions(ctx.db, { from: '2026-03-02', to: '2026-03-02' })).toHaveLength(1);
     expect(listTransactions(ctx.db, { kind: 'income' })).toHaveLength(1);
+    expect(listTransactions(ctx.db, { merchant: 'CARREFOUR' })).toHaveLength(1);
     expect(countUnsorted(ctx.db)).toBe(1);
 
     deleteTransaction(ctx.db, unsorted.id);

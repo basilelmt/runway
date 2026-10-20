@@ -15,11 +15,11 @@ export const merchantRoutes = (namer: MerchantNamer) =>
       namer.request();
       return c.json(namer.status());
     })
-    .get('/:key', validate('param', keyParam), (c) => c.json(getMerchant(c.get('db'), c.req.valid('param').key)))
+    .get('/:key', validate('param', keyParam), (c) => c.json(getMerchant(c.get('db'), c.req.valid('param').key, c.get('today'))))
     .put('/:key', validate('param', keyParam), validate('json', merchantRenameSchema), (c) => {
-      const { name } = c.req.valid('json');
-      const merchant = renameMerchant(c.get('db'), c.req.valid('param').key, name);
-      // Rendu à Claude : il le renomme sans attendre le prochain import.
-      if (name === '') namer.request();
+      const input = c.req.valid('json');
+      const merchant = renameMerchant(c.get('db'), c.req.valid('param').key, input, c.get('today'));
+      // Rendu à Claude : il le renomme ou le décrit sans attendre le prochain import.
+      if (input.name === '' || input.description === '') namer.request();
       return c.json(merchant);
     });
