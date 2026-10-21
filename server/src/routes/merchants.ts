@@ -3,14 +3,15 @@ import { z } from 'zod';
 import { merchantRenameSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import { getMerchant, renameMerchant } from '../repos/merchants';
+import type { ClaudeTasks } from '../services/claude-tasks';
 import type { Exec } from '../services/claude';
-import { describeMerchantOnWeb } from '../services/merchant-web';
+import { startMerchantWebSearch } from '../services/merchant-web';
 import type { MerchantNamer } from '../services/merchants';
 import { validate } from '../validate';
 
 const keyParam = z.object({ key: z.string().min(1).max(200) });
 
-export const merchantRoutes = (namer: MerchantNamer, exec?: Exec) =>
+export const merchantRoutes = (namer: MerchantNamer, tasks: ClaudeTasks, exec?: Exec) =>
   new Hono<AppEnv>()
     .get('/status', (c) => c.json(namer.status()))
     .post('/name', (c) => {
@@ -25,6 +26,6 @@ export const merchantRoutes = (namer: MerchantNamer, exec?: Exec) =>
       if (input.name === '' || input.description === '') namer.request();
       return c.json(merchant);
     })
-    .post('/:key/describe', validate('param', keyParam), async (c) =>
-      c.json(await describeMerchantOnWeb(c.get('db'), c.req.valid('param').key, c.get('today'), { exec })),
+    .post('/:key/describe', validate('param', keyParam), (c) =>
+      c.json(startMerchantWebSearch(c.get('db'), c.req.valid('param').key, c.get('today'), tasks, { exec }), 202),
     );

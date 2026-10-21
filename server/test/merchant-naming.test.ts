@@ -5,6 +5,7 @@ import { getMerchant, renameMerchant } from '../src/repos/merchants';
 import { getSettings, saveSettings } from '../src/repos/settings';
 import { createTransaction } from '../src/repos/transactions';
 import type { Exec, ExecResult } from '../src/services/claude';
+import { createClaudeTasks } from '../src/services/claude-tasks';
 import { MERCHANT_BATCH_SIZE, createMerchantNamer, nameMerchants } from '../src/services/merchants';
 import { createTestDb, type TestContext } from './helpers';
 
@@ -223,6 +224,44 @@ describe('createMerchantNamer', () => {
     await namer.idle();
     expect(exec).toHaveBeenCalledTimes(2);
     expect(namer.status().running).toBe(false);
+  });
+});
+
+describe('createMerchantNamer avec registre', () => {
+  it('ouvre une tâche « Claude décrit tes marchands », finie avec le nombre de marchands nommés ou décrits', async () => {
+    expense('ACHAT CB CAFE DU PORT');
+    expense('ACHAT CB LIBRAIRIE');
+    const tasks = createClaudeTasks();
+    const exec = namingExec((key) => (key === 'CAFE DU PORT' ? 'Café du Port' : 'Librairie'));
+    const namer = createMerchantNamer(ctx.db, { exec, log: () => {}, tasks });
+
+    namer.request();
+    await namer.idle();
+
+    expect(tasks.list()).toMatchObject([{ kind: 'merchant_naming', label: 'Claude décrit tes marchands', status: 'done', result: '2 marchands nommés ou décrits' }]);
+  });
+
+  it('n’ouvre aucune tâche quand il n’y a aucune clé à traiter', async () => {
+    const tasks = createClaudeTasks();
+    const exec = vi.fn<Exec>();
+    const namer = createMerchantNamer(ctx.db, { exec, log: () => {}, tasks });
+
+    namer.request();
+    await namer.idle();
+
+    expect(exec).not.toHaveBeenCalled();
+    expect(tasks.list()).toEqual([]);
+  });
+
+  it('passe l’erreur de Claude à la tâche', async () => {
+    expense('ACHAT CB CAFE DU PORT');
+    const tasks = createClaudeTasks();
+    const namer = createMerchantNamer(ctx.db, { exec: async () => notInstalled, log: () => {}, tasks });
+
+    namer.request();
+    await namer.idle();
+
+    expect(tasks.list()).toMatchObject([{ kind: 'merchant_naming', status: 'failed', error: 'Claude Code n’est pas installé (commande « claude » introuvable)' }]);
   });
 });
 

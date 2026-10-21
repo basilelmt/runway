@@ -10,6 +10,7 @@ import { createDbHolder } from './db/holder';
 import { failInterruptedRuns } from './repos/ideas';
 import { startBackgroundSync } from './services/bank-scheduler';
 import { createBackupService, defaultBackupsDir, startupBackup } from './services/backup';
+import { createClaudeTasks } from './services/claude-tasks';
 import { materializeDue } from './services/materialize';
 import { backfillMerchantKeys, createMerchantNamer } from './services/merchants';
 import { detectSignals } from './services/signals';
@@ -45,7 +46,9 @@ if (created > 0) console.log(`${created} occurrence(s) récurrente(s) créée(s)
 const backfilled = backfillMerchantKeys(db);
 if (backfilled > 0) console.log(`${backfilled} opération(s) rattachée(s) à un marchand`);
 
-const merchantNamer = createMerchantNamer(holder);
+// Registre des travaux longs de Claude (panneau du client), partagé par le nommeur et sa route.
+const claudeTasks = createClaudeTasks();
+const merchantNamer = createMerchantNamer(holder, { tasks: claudeTasks });
 // Nomme en tâche de fond les marchands apparus depuis le dernier démarrage, sans retarder l'écoute.
 merchantNamer.request();
 
@@ -64,7 +67,7 @@ startBackgroundSync({
   onError: (err) => console.error('[bank-scheduler]', err),
 });
 
-const app = createApp({ db: holder, merchantNamer, backupService });
+const app = createApp({ db: holder, merchantNamer, backupService, claudeTasks });
 
 if (existsSync(clientDist)) {
   app.use('/*', serveStatic({ root: relative(process.cwd(), clientDist) }));

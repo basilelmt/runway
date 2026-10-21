@@ -1,6 +1,7 @@
 import type { Account, Envelope } from '@shared/schemas';
 import { createApp } from '../src/app';
 import type { Exec, StreamExec } from '../src/services/claude';
+import { createClaudeTasks, type ClaudeTasks } from '../src/services/claude-tasks';
 import type { PricesDeps } from '../src/services/prices';
 import type { BankProvider } from '../src/bank/provider';
 import { openDb, type Db } from '../src/db/client';
@@ -30,8 +31,8 @@ export function createTestDb(): TestContext {
 export const offlineExec: Exec = async () => ({ stdout: '', stderr: 'ENOENT', exitCode: 127 });
 
 /** Nommeur de marchands silencieux, hors ligne par défaut, pour les applications de test. */
-export function quietMerchantNamer(db: Db, exec: Exec = offlineExec): MerchantNamer {
-  return createMerchantNamer(db, { exec, log: () => {} });
+export function quietMerchantNamer(db: Db, exec: Exec = offlineExec, tasks?: ClaudeTasks): MerchantNamer {
+  return createMerchantNamer(db, { exec, log: () => {}, tasks });
 }
 
 export type TestApp = TestContext & {
@@ -39,15 +40,17 @@ export type TestApp = TestContext & {
   today: string;
   setToday: (date: string) => void;
   merchantNamer: MerchantNamer;
+  claudeTasks: ClaudeTasks;
   /** Requête JSON pratique : renvoie le statut et le corps décodé. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
 };
 
-export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void }; exec?: Exec; askStream?: StreamExec; askSessionId?: () => string; merchantNamer?: MerchantNamer } = {}): TestApp {
+export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void }; exec?: Exec; askStream?: StreamExec; askSessionId?: () => string; merchantNamer?: MerchantNamer; claudeTasks?: ClaudeTasks } = {}): TestApp {
   const ctx = createTestDb();
   let today = initialToday;
-  const merchantNamer = opts.merchantNamer ?? quietMerchantNamer(ctx.db, opts.exec ?? offlineExec);
+  const claudeTasks = opts.claudeTasks ?? createClaudeTasks();
+  const merchantNamer = opts.merchantNamer ?? quietMerchantNamer(ctx.db, opts.exec ?? offlineExec, claudeTasks);
   const app = createApp({
     db: ctx.db,
     now: () => today,
@@ -55,6 +58,7 @@ export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?
     askStream: opts.askStream,
     askSessionId: opts.askSessionId,
     merchantNamer,
+    claudeTasks,
     bankDeps: {
       provider: opts.bankProvider ? () => opts.bankProvider! : undefined,
       now: () => new Date(`${today}T10:00:00Z`),
@@ -66,6 +70,7 @@ export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?
     ...ctx,
     app,
     merchantNamer,
+    claudeTasks,
     get today() {
       return today;
     },

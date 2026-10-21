@@ -1,5 +1,5 @@
 import { MERCHANT_DESCRIPTION_MAX, merchantWebResultSchema } from '@shared/schemas';
-import type { MerchantDetail } from '@shared/api-types';
+import type { ClaudeTaskView, MerchantDetail } from '@shared/api-types';
 import type { ISODate } from '@shared/dates';
 import type { Db } from '../db/client';
 import { merchants } from '../db/schema';
@@ -7,6 +7,7 @@ import { ConflictError } from '../errors';
 import { getMerchant, sampleLabels } from '../repos/merchants';
 import { getSettings } from '../repos/settings';
 import { ClaudeError, execClaude, runClaude, type Exec } from './claude';
+import type { ClaudeTasks } from './claude-tasks';
 
 export const MERCHANT_WEB_TIMEOUT_MS = 120_000;
 const WEB_TOOLS = 'WebSearch,WebFetch';
@@ -28,15 +29,9 @@ Consignes :
 - Réponds uniquement avec le JSON demandé.`;
 }
 
-const inFlight = new Map<string, Promise<MerchantDetail>>();
-
-/** Décrit un marchand d'après le web ; un appel en cours pour la même clé est partagé. */
+/** Décrit un marchand d'après le web. Le contrôle 409 (déjà décrit à la main) est fait par l'appelant. */
 export function describeMerchantOnWeb(db: Db, key: string, today: ISODate, deps: { exec?: Exec } = {}): Promise<MerchantDetail> {
-  const current = inFlight.get(key);
-  if (current) return current;
-  const run = (async () => {
-    const before = getMerchant(db, key, today);
-    if (before.descriptionSource === 'user') throw new ConflictError('Ce marchand a déjà une description donnée à la main');
+  return (async () => {
     const model = getSettings(db).claudeModel || undefined;
     const args = ['-p', '--tools', WEB_TOOLS, '--allowedTools', WEB_TOOLS, '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];
     if (model) args.push('--model', model);
@@ -51,7 +46,19 @@ export function describeMerchantOnWeb(db: Db, key: string, today: ISODate, deps:
       .onConflictDoUpdate({ target: merchants.key, set: { description, descriptionSource: 'web', describedAt: now, updatedAt: now } })
       .run();
     return getMerchant(db, key, today);
-  })().finally(() => inFlight.delete(key));
-  inFlight.set(key, run);
-  return run;
+  })();
+}
+
+/** Lance la recherche web en fond et renvoie sa tâche ; une recherche en cours pour la même clé est réutilisée. */
+export function startMerchantWebSearch(db: Db, key: string, today: ISODate, tasks: ClaudeTasks, deps: { exec?: Exec } = {}): ClaudeTaskView {
+  const running = tasks.find('merchant_web', key);
+  if (running) return running;
+  const merchant = getMerchant(db, key, today);
+  if (merchant.descriptionSource === 'user') throw new ConflictError('Ce marchand a déjà une description donnée à la main');
+  const id = tasks.start('merchant_web', `Claude cherche ${merchant.name} sur le web`, key);
+  describeMerchantOnWeb(db, key, today, deps).then(
+    (m) => tasks.finish(id, m.description ?? 'Rien trouvé sur le web'),
+    (e: unknown) => tasks.fail(id, e instanceof Error ? e.message : String(e)),
+  );
+  return tasks.find('merchant_web', key)!;
 }

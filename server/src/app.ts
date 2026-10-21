@@ -13,6 +13,7 @@ import { fundingRoutes } from './routes/fundings';
 import { importRoutes } from './routes/imports';
 import { investRoutes } from './routes/invest';
 import { exportRoutes, forecastRoutes, overviewRoutes, reportRoutes } from './routes/insights';
+import { claudeTaskRoutes } from './routes/claude-tasks';
 import { merchantRoutes } from './routes/merchants';
 import { recurringRuleRoutes } from './routes/recurring-rules';
 import { reviewRoutes } from './routes/reviews';
@@ -23,6 +24,7 @@ import { sortingRuleRoutes } from './routes/sorting-rules';
 import { transactionRoutes } from './routes/transactions';
 import { createBackupService, defaultBackupsDir, type BackupService } from './services/backup';
 import type { Exec, StreamExec } from './services/claude';
+import { createClaudeTasks, type ClaudeTasks } from './services/claude-tasks';
 import type { ImportDeps } from './services/import';
 import { materializeDue } from './services/materialize';
 import { createMerchantNamer, type MerchantNamer } from './services/merchants';
@@ -50,13 +52,16 @@ export type AppOptions = {
   merchantNamer?: MerchantNamer;
   /** Sauvegardes et restauration ; par défaut, un service dont le dossier dérive du chemin de la base. */
   backupService?: BackupService;
+  /** Registre des travaux longs de Claude (panneau du client) ; par défaut, un registre neuf par processus. */
+  claudeTasks?: ClaudeTasks;
 };
 
-export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer, backupService }: AppOptions) {
+export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer, backupService, claudeTasks }: AppOptions) {
   const app = new Hono<AppEnv>();
   const holder = toDbHolder(db);
   const prices = createPrices(holder, investDeps);
-  const namer = merchantNamer ?? createMerchantNamer(holder, { exec });
+  const tasks = claudeTasks ?? createClaudeTasks();
+  const namer = merchantNamer ?? createMerchantNamer(holder, { exec, tasks });
   const backups = backupService ?? createBackupService({ holder, dbPath: holder.current().$client.name, dir: defaultBackupsDir(holder.current().$client.name) });
 
   app.use('*', async (c, next) => {
@@ -110,7 +115,8 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
   app.route('/api/reviews', reviewRoutes);
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
-  app.route('/api/merchants', merchantRoutes(namer, exec));
+  app.route('/api/merchants', merchantRoutes(namer, tasks, exec));
+  app.route('/api/claude/tasks', claudeTaskRoutes(tasks));
   app.route('/api/signals', signalRoutes);
   app.route('/api/imports', importRoutes(importDeps, { onCommitted: () => namer.request() }));
   app.route('/api/bank-sync', bankSyncRoutes({ ...bankDeps, onNewTransactions: () => namer.request() }));

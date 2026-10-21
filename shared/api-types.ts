@@ -485,6 +485,24 @@ export type AskStreamEvent =
 /** État du nommage des marchands par Claude (`GET /api/merchants/status`). */
 export type MerchantStatus = { total: number; named: number; running: boolean; lastError: string | null };
 
+/** Nature d'un travail long de Claude suivi par le panneau du client. */
+export type ClaudeTaskKind = 'merchant_web' | 'merchant_naming' | 'ideas';
+
+/** Un travail long de Claude, en cours ou récemment terminé (`GET /api/claude/tasks`). */
+export type ClaudeTaskView = {
+  id: string;
+  kind: ClaudeTaskKind;
+  label: string;
+  /** Clé du marchand pour `merchant_web`, sinon null. */
+  subject: string | null;
+  status: 'running' | 'done' | 'failed';
+  startedAt: string;
+  finishedAt: string | null;
+  /** Phrase courte montrée à la fin : la description trouvée, le nombre d'idées. */
+  result: string | null;
+  error: string | null;
+};
+
 /** Un marchand, sa description et son historique (`GET /api/merchants/:key`). */
 export type MerchantDetail = {
   key: string;

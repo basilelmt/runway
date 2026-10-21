@@ -8,6 +8,7 @@ import { toDbHolder, type DbHolder } from '../db/holder';
 import { ensureMerchants, listKeysToProcess, listMerchantNames, merchantStats, sampleLabels, setClaudeResults } from '../repos/merchants';
 import { getSettings } from '../repos/settings';
 import { ClaudeError, execClaude, runClaude, type Exec } from './claude';
+import type { ClaudeTasks } from './claude-tasks';
 
 /**
  * Calcule la clé des dépenses et revenus qui n'en ont pas (opérations d'avant la migration 0010) et crée leurs marchands.
@@ -132,7 +133,7 @@ export type MerchantNamer = {
  * Nommeur en mémoire : une seule exécution à la fois, sans jamais bloquer l'appelant.
  * Une erreur est journalisée et gardée pour l'écran des Réglages, jusqu'au prochain succès.
  */
-export function createMerchantNamer(db: Db | DbHolder, deps: { exec?: Exec; log?: (message: string) => void } = {}): MerchantNamer {
+export function createMerchantNamer(db: Db | DbHolder, deps: { exec?: Exec; log?: (message: string) => void; tasks?: ClaudeTasks } = {}): MerchantNamer {
   const holder = toDbHolder(db);
   const log = deps.log ?? ((message: string) => console.warn(message));
   let current: Promise<void> | null = null;
@@ -147,14 +148,19 @@ export function createMerchantNamer(db: Db | DbHolder, deps: { exec?: Exec; log?
     current = new Promise<void>((resolve) => {
       setImmediate(() => {
         // Restauration en cours : ce tour est sauté (la prochaine demande reprendra les marchands sans nom).
-        const run = holder.isRestoring() ? Promise.resolve() : nameMerchants(holder.current(), { exec: deps.exec });
+        const restoring = holder.isRestoring();
+        // Rien à traiter : pas de tâche ouverte, pour ne pas polluer le panneau à chaque import ou synchro.
+        const taskId = !restoring && deps.tasks && listKeysToProcess(holder.current(), 1).length > 0 ? deps.tasks.start('merchant_naming', 'Claude décrit tes marchands') : null;
+        const run = restoring ? Promise.resolve(0) : nameMerchants(holder.current(), { exec: deps.exec });
         run
-          .then(() => {
+          .then((total) => {
             lastError = null;
+            if (taskId) deps.tasks!.finish(taskId, `${total} ${total > 1 ? 'marchands nommés ou décrits' : 'marchand nommé ou décrit'}`);
           })
           .catch((err: unknown) => {
             lastError = err instanceof Error ? err.message : String(err);
             log(`[marchands] Nommage par Claude impossible : ${lastError}`);
+            if (taskId) deps.tasks!.fail(taskId, lastError);
           })
           .finally(() => {
             current = null;

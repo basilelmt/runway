@@ -44,6 +44,16 @@ export function getRun(db: Db, id: number): IdeaRunRow {
   return row;
 }
 
+/** Fournées en cours, ou finies depuis moins de `since`, les plus récentes d'abord (panneau des travaux de Claude). */
+export function recentIdeaRuns(db: Db, since: string): IdeaRunRow[] {
+  return db
+    .select()
+    .from(ideaRuns)
+    .where(or(eq(ideaRuns.status, 'running'), gte(ideaRuns.finishedAt, since)))
+    .orderBy(desc(ideaRuns.startedAt), desc(ideaRuns.id))
+    .all();
+}
+
 export function latestRun(db: Db): IdeaRunRow | null {
   return db.select().from(ideaRuns).orderBy(desc(ideaRuns.startedAt), desc(ideaRuns.id)).limit(1).get() ?? null;
 }
