@@ -35,6 +35,7 @@ export const router = createBrowserRouter([
           { path: 'comptes', lazy: () => import('@/pages/settings/Accounts').then((m) => ({ Component: m.AccountsSettings })) },
           { path: 'banque', lazy: () => import('@/pages/settings/Bank').then((m) => ({ Component: m.BankSettings })) },
           { path: 'regles', lazy: () => import('@/pages/settings/SortingRules').then((m) => ({ Component: m.SortingRulesSettings })) },
+          { path: 'journal', lazy: () => import('@/pages/settings/Journal').then((m) => ({ Component: m.JournalSettings })) },
         ],
       },
       { path: 'a-trier', element: <Moved to="/operations?vue=a-ranger" /> },

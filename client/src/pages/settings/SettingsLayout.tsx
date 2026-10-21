@@ -8,6 +8,7 @@ const SECTIONS = [
   { value: 'comptes', label: 'Comptes', to: '/reglages/comptes' },
   { value: 'banque', label: 'Banque et import', to: '/reglages/banque' },
   { value: 'regles', label: 'Règles de tri', to: '/reglages/regles' },
+  { value: 'journal', label: 'Journal', to: '/reglages/journal' },
 ];
 
 export function SettingsLayout() {

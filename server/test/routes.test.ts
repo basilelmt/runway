@@ -73,6 +73,14 @@ describe('transactions', () => {
     expect((await t.call('DELETE', `/api/transactions/${dep.body.id}`)).status).toBe(404);
   });
 
+  it('écarte les répartitions sur demande, même filtré par enveloppe', async () => {
+    await t.call('POST', '/api/transactions', { kind: 'allocation', date: '2026-03-01', amount: 400_00, label: 'Budget courses', envelopeId: t.courses.id });
+    await t.call('POST', '/api/transactions', { kind: 'expense', date: '2026-03-02', amount: 30_00, label: 'Carrefour', accountId: t.courant.id, envelopeId: t.courses.id });
+    const labels = async (q: string) => (await t.call('GET', `/api/transactions?envelope=${t.courses.id}${q}`)).body.map((x: any) => x.label);
+    expect(await labels('')).toEqual(['Carrefour', 'Budget courses']);
+    expect(await labels('&excludeAllocations=true')).toEqual(['Carrefour']);
+  });
+
   it('refuse un transfert vers le même compte avec un message ciblé', async () => {
     const r = await t.call('POST', '/api/transactions', { kind: 'transfer', date: '2026-03-02', amount: 1, label: 'x', accountId: t.courant.id, toAccountId: t.courant.id });
     expect(r.status).toBe(400);

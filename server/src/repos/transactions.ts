@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, like, lte, ne, or, sql, type SQL } from 'drizzle-orm';
 import { merchantDisplayName, merchantKeyFor } from '@core/merchants';
 import type { Transaction, TransactionFilter, TransactionInput } from '@shared/schemas';
 import type { Db } from '../db/client';
@@ -65,6 +65,7 @@ export function listTransactions(db: Db, filter: Partial<TransactionFilter> = {}
   if (filter.status) where.push(eq(transactions.status, filter.status));
   if (filter.kind) where.push(eq(transactions.kind, filter.kind));
   if (filter.unsorted) where.push(and(eq(transactions.kind, 'expense'), isNull(transactions.envelopeId))!);
+  if (filter.excludeAllocations) where.push(ne(transactions.kind, 'allocation'));
   return selectTransactions(db)
     .where(where.length ? and(...where) : undefined)
     .orderBy(desc(transactions.date), desc(transactions.id))
