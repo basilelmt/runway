@@ -1,9 +1,9 @@
 import type { AskStreamEvent } from '@shared/api-types';
-import type { AskRequest } from '@shared/schemas';
+import type { AskRequestInput } from '@shared/schemas';
 import { ApiError } from './client';
 
 /** Envoie une question à Claude et transmet les événements SSE au fil de l'eau. */
-export async function streamAsk(req: AskRequest, onEvent: (e: AskStreamEvent) => void, signal: AbortSignal): Promise<void> {
+export async function streamAsk(req: AskRequestInput, onEvent: (e: AskStreamEvent) => void, signal: AbortSignal): Promise<void> {
   const res = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(req), signal });
   if (!res.ok || !res.body) {
     const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };

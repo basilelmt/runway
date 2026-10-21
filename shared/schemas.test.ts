@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recurringRuleInputSchema, tradePatchSchema, transactionInputSchema } from './schemas';
+import { askRequestSchema, recurringRuleInputSchema, tradePatchSchema, transactionInputSchema } from './schemas';
 
 const base = { date: '2026-03-01', amount: 1000, label: 'Test' };
 
@@ -90,5 +90,20 @@ describe('tradePatchSchema', () => {
 
   it('accepte une quantité à virgule', () => {
     expect(tradePatchSchema.parse({ quantity: '0,5' })).toEqual({ quantity: '0.5' });
+  });
+});
+
+describe('askRequestSchema', () => {
+  const ref = { kind: 'section' as const, id: null, label: 'Idées en cours', snapshot: 'Ensemble…' };
+
+  it('garde les anciennes requêtes valides : ni écran ni bloc par défaut', () => {
+    expect(askRequestSchema.parse({ question: 'Combien ?', sessionId: null })).toEqual({ question: 'Combien ?', sessionId: null, page: null, refs: [] });
+  });
+
+  it('accepte huit blocs au plus, et un texte de bloc de 1 500 caractères au plus', () => {
+    expect(askRequestSchema.safeParse({ question: 'q', sessionId: null, page: 'Investir', refs: Array(8).fill(ref) }).success).toBe(true);
+    expect(askRequestSchema.safeParse({ question: 'q', sessionId: null, refs: Array(9).fill(ref) }).success).toBe(false);
+    expect(askRequestSchema.safeParse({ question: 'q', sessionId: null, refs: [{ ...ref, snapshot: 'x'.repeat(1501) }] }).success).toBe(false);
+    expect(askRequestSchema.safeParse({ question: 'q', sessionId: null, refs: [{ ...ref, label: ' ' }] }).success).toBe(false);
   });
 });
