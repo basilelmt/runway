@@ -11,7 +11,7 @@ import styles from './AskAim.module.css';
  * marquées `data-ask-ui` (panneau, navigation) restent utilisables.
  */
 export function AskAim() {
-  const { addRef, refs, setAiming, setOpen } = useAsk();
+  const { addRef, refs, setAiming } = useAsk();
   const [hovered, setHovered] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -32,9 +32,9 @@ export function AskAim() {
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      // Le viseur est l'état ordinaire du panneau ouvert : Échap ferme le tout, d'où que vienne le focus.
+      // Avant le panneau, qui se fermerait sur la même touche : Échap range seulement le viseur.
       e.stopPropagation();
-      setOpen(false);
+      setAiming(false);
     };
     document.addEventListener('pointermove', onMove, true);
     document.addEventListener('pointerdown', block, true);
@@ -49,7 +49,7 @@ export function AskAim() {
       document.removeEventListener('click', onClick, true);
       window.removeEventListener('keydown', onKey, true);
     };
-  }, [addRef, setOpen]);
+  }, [addRef, setAiming]);
 
   return (
     <>
