@@ -1,5 +1,5 @@
 import { Settings, Sparkles } from 'lucide-react';
-import { NavLink, Outlet, useMatch } from 'react-router';
+import { NavLink, Outlet, useMatch, useMatches } from 'react-router';
 import { useMerchantNamingSync } from '@/api/hooks';
 import { useAsk } from '@/components/ask/ask-context';
 import { AskProvider } from '@/components/ask/AskProvider';
@@ -27,6 +27,9 @@ export function Shell() {
 function Layout() {
   const ask = useAsk();
   const settingsActive = Boolean(useMatch('/reglages/*'));
+  // Clé sur l'écran affiché (pas sur l'URL) : le fondu rejoue quand on change d'écran, pas quand
+  // seuls les filtres ou un onglet des Réglages changent.
+  const screen = useMatches()[1]?.id;
   return (
     <div className={styles.shell} data-ask-open={ask.open || undefined}>
       <SideNav />
@@ -56,7 +59,7 @@ function Layout() {
         </div>
       </header>
       <main className={styles.main} id="main">
-        <div className={styles.content}>
+        <div key={screen} className={styles.content}>
           <Outlet />
         </div>
       </main>

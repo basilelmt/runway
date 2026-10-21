@@ -42,22 +42,23 @@ export function SideNav() {
         <span className={styles.brandName}>Runway</span>
       </NavLink>
 
-      <Button variant="secondary" icon={<Plus aria-hidden strokeWidth={2} />} className={styles.navAction} aria-keyshortcuts="n" onClick={openQuickAdd} {...panelTrigger}>
-        Nouvelle opération
-        <Kbd>N</Kbd>
-      </Button>
-
-      <Button
-        variant="ghost"
-        icon={<Sparkles aria-hidden strokeWidth={2} />}
-        className={[styles.navAction, ask.open ? styles.navActionOpen : ''].join(' ')}
+      {/* Demander prend la forme d'un champ : on y pose une question, ce n'est pas une action de plus à côté de la saisie. */}
+      <button
+        type="button"
+        className={[styles.askField, ask.open ? styles.askFieldOpen : ''].join(' ')}
         aria-expanded={ask.open}
         aria-keyshortcuts="k"
         onClick={ask.toggle}
         {...panelTrigger}
       >
-        Demander
+        <Sparkles className={styles.askIcon} aria-hidden strokeWidth={2} />
+        <span className={styles.askPlaceholder}>Demander…</span>
         <Kbd>K</Kbd>
+      </button>
+
+      <Button variant="secondary" icon={<Plus aria-hidden strokeWidth={2} />} className={styles.navAction} aria-keyshortcuts="n" onClick={openQuickAdd} {...panelTrigger}>
+        Nouvelle opération
+        <Kbd>N</Kbd>
       </Button>
 
       <ul className={styles.list}>
