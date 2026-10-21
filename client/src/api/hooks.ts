@@ -397,14 +397,27 @@ export function useCommitImport(opts?: MutOpts<ImportRecord, ImportCommitInput &
 export const useMerchant = (key: string | null) =>
   useQuery({ queryKey: keys.merchant(key ?? ''), queryFn: () => api.get<MerchantDetail>(`/api/merchants/${encodeURIComponent(key!)}`), enabled: key !== null });
 
-/** Renomme un marchand pour toutes ses opérations ; un nom vide le rend à Claude. */
-export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; name: string }>) {
+/** Renomme un marchand et corrige sa description pour toutes ses opérations ; un nom ou une description vides sont rendus à Claude. */
+export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; name: string; description?: string }>) {
   const invalidate = useInvalidate();
   return useMutation({
     ...opts,
-    mutationFn: ({ key, name }) => api.put<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}`, { name }),
+    mutationFn: ({ key, ...body }) => api.put<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}`, body),
     onSuccess: (...a) => {
       invalidate(['merchants']);
+      opts?.onSuccess?.(...a);
+    },
+  });
+}
+
+/** Demande à Claude de chercher le marchand sur le web (jusqu'à deux minutes). */
+export function useDescribeMerchantOnWeb(opts?: MutOpts<MerchantDetail, string>) {
+  const qc = useQueryClient();
+  return useMutation({
+    ...opts,
+    mutationFn: (key) => api.post<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}/describe`),
+    onSuccess: (...a) => {
+      qc.setQueryData(keys.merchant(a[0].key), a[0]);
       opts?.onSuccess?.(...a);
     },
   });

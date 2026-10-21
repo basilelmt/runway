@@ -34,13 +34,30 @@ const expense: Transaction = {
 };
 
 let fetchMock: ReturnType<typeof vi.fn>;
+let lastPut: unknown;
 beforeEach(() => {
   let name = 'Carrefour Express';
+  let description = 'Supérette de quartier';
+  lastPut = undefined;
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
     if (url === '/api/merchants/CARREFOUR%20EXPR') {
-      if (init?.method === 'PUT') name = (JSON.parse(String(init.body)) as { name: string }).name;
-      return json({ key: 'CARREFOUR EXPR', name, source: 'user', transactionCount: 52 });
+      if (init?.method === 'PUT') {
+        lastPut = JSON.parse(String(init.body));
+        name = (lastPut as { name: string }).name;
+        description = (lastPut as { description?: string }).description ?? description;
+      }
+      return json({
+        key: 'CARREFOUR EXPR',
+        name,
+        source: 'user',
+        transactionCount: 52,
+        description,
+        descriptionSource: 'claude',
+        describedAt: '2026-10-20T10:00:00Z',
+        total12Months: -4500,
+        firstDate: '2025-03-01',
+      });
     }
     if (url.startsWith('/api/accounts')) return json(accounts);
     if (url.startsWith('/api/envelopes')) return json(envelopes);
@@ -68,9 +85,9 @@ describe('TransactionEditDialog', () => {
     // Le libellé brut n'apparaît qu'une fois, dans le champ éditable du formulaire, pas sous le titre.
     expect(screen.getAllByDisplayValue(expense.label)).toHaveLength(1);
 
-    // « Renommer » est sur la ligne du titre, dans l'en-tête du dialogue, pas dans le corps.
+    // « Modifier le marchand » est sur la ligne du titre, dans l'en-tête du dialogue, pas dans le corps.
     const dialog = screen.getByRole('dialog', { name: 'Carrefour Express', hidden: true });
-    const renameButton = screen.getByRole('button', { name: 'Renommer', hidden: true });
+    const renameButton = screen.getByRole('button', { name: 'Modifier le marchand', hidden: true });
     expect(dialog.querySelector('header')!.contains(renameButton)).toBe(true);
     // Quand un long titre le pousse sur sa propre ligne, son icône doit retomber sous le titre, pas sous son rembourrage.
     expect(renameButton.className).toMatch(/renameButton/);
@@ -80,16 +97,27 @@ describe('TransactionEditDialog', () => {
     const input = screen.getByLabelText('Nom du marchand');
     await user.clear(input);
     await user.type(input, 'Carrefour');
-    await user.click(screen.getByRole('button', { name: 'Enregistrer le nom', hidden: true }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer le marchand', hidden: true }));
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/merchants/CARREFOUR%20EXPR', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ name: 'Carrefour' }) }));
+    expect(lastPut).toEqual({ name: 'Carrefour', description: 'Supérette de quartier' });
     expect(await screen.findByRole('heading', { name: 'Carrefour', hidden: true })).toBeInTheDocument();
   });
 
-  it('Échap pendant le renommage annule et rend le focus à Renommer, sans soumettre ni fermer le dialogue', async () => {
+  it('modifie nom et description du marchand', async () => {
+    renderDialog({ ...expense, status: 'planned' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Modifier le marchand' }));
+    const description = screen.getByLabelText('Description');
+    expect(description).toHaveValue('Supérette de quartier');
+    await userEvent.clear(description);
+    await userEvent.type(description, 'Supérette, Paris 11e');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer le marchand' }));
+    expect(lastPut).toEqual({ name: 'Carrefour Express', description: 'Supérette, Paris 11e' });
+  });
+
+  it('Échap pendant le renommage annule et rend le focus à Modifier le marchand, sans soumettre ni fermer le dialogue', async () => {
     const user = userEvent.setup();
     renderDialog(expense);
-    await user.click(screen.getByRole('button', { name: 'Renommer', hidden: true }));
+    await user.click(screen.getByRole('button', { name: 'Modifier le marchand', hidden: true }));
     const input = await screen.findByLabelText('Nom du marchand');
     await user.clear(input);
     await user.type(input, 'Un autre nom');
@@ -97,7 +125,7 @@ describe('TransactionEditDialog', () => {
     expect(fireEvent.keyDown(input, { key: 'Escape' })).toBe(false); // false : preventDefault() a été appelé
 
     expect(screen.queryByLabelText('Nom du marchand')).not.toBeInTheDocument();
-    const renameButton = screen.getByRole('button', { name: 'Renommer', hidden: true });
+    const renameButton = screen.getByRole('button', { name: 'Modifier le marchand', hidden: true });
     expect(renameButton).toHaveFocus();
     expect(screen.getByRole('dialog', { name: 'Carrefour Express', hidden: true })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith('/api/merchants/CARREFOUR%20EXPR', expect.objectContaining({ method: 'PUT' }));
@@ -106,6 +134,6 @@ describe('TransactionEditDialog', () => {
   it('un virement garde son titre et n’a pas de marchand à renommer', () => {
     renderDialog({ ...expense, kind: 'transfer', toAccountId: 2, label: 'Épargne', merchantKey: null, merchantName: null });
     expect(screen.getByRole('heading', { name: 'Modifier : virement', hidden: true })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Renommer', hidden: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Modifier le marchand', hidden: true })).not.toBeInTheDocument();
   });
 });
