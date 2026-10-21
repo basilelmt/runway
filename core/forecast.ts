@@ -83,12 +83,14 @@ function findAlert(
 /** Événements futurs datés dans [today, end], triés par date. */
 export function collectEvents(state: State, rules: RecurringRule[], today: ISODate, end: ISODate): ForecastEvent[] {
   const events: ForecastEvent[] = [];
+  // Une charge fixe se lit par le nom de sa règle (« Assurance auto ») ; son libellé de relevé ne sert qu'au rapprochement.
+  const ruleNames = new Map(rules.map((r) => [r.id, r.name]));
 
   for (const t of state.transactions) {
     if (t.status !== 'planned' || t.date < today || t.date > end) continue;
     events.push({
       date: t.date,
-      label: t.label,
+      label: (t.recurringRuleId !== null ? ruleNames.get(t.recurringRuleId) : undefined) ?? t.label,
       kind: t.kind,
       amount: t.amount,
       accountId: t.accountId,
@@ -113,7 +115,7 @@ export function collectEvents(state: State, rules: RecurringRule[], today: ISODa
     if (settled.has(occurrenceKey(rule.id, date))) continue;
     events.push({
       date,
-      label: rule.label,
+      label: rule.name,
       kind: rule.kind,
       amount: rule.amount,
       accountId: rule.accountId ?? null,

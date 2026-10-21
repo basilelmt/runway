@@ -188,4 +188,16 @@ describe('forecast', () => {
     expect(r.events.filter((e) => e.source === 'rule').map((e) => e.date)).toEqual(['2026-11-26']);
     expect(r.days.find((d) => d.date === '2026-10-31')?.envelopes[sport.id]).toBe(8_04);
   });
+
+  it('nomme les charges fixes à venir par le nom de leur règle, pas par le libellé du relevé', () => {
+    const courant = account({ name: 'Courant', initialBalance: 1000_00 });
+    const assurance = rule({ kind: 'expense', amount: 412_00, name: 'Assurance auto', label: 'PRELEVEMENT DE MAIF ASSURANCE AUTO', accountId: courant.id, frequency: 'yearly', dayOfMonth: 26, startDate: '2026-10-26' });
+    const loyer = rule({ kind: 'expense', amount: 800_00, name: 'Loyer', label: 'VIREMENT POUR SCI LES TILLEULS', accountId: courant.id, frequency: 'monthly', dayOfMonth: 5, startDate: '2026-11-05', lastGeneratedDate: '2026-11-05' });
+    const prevu = tx({ kind: 'expense', amount: 800_00, label: 'VIREMENT POUR SCI LES TILLEULS', accountId: courant.id, status: 'planned', date: '2026-11-05', recurringRuleId: loyer.id });
+    const r = forecast({ accounts: [courant], envelopes: [], transactions: [prevu] }, [assurance, loyer], '2026-10-21', 20);
+    expect(r.events.map((e) => [e.date, e.label])).toEqual([
+      ['2026-10-26', 'Assurance auto'],
+      ['2026-11-05', 'Loyer'],
+    ]);
+  });
 });
