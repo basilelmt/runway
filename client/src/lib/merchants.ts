@@ -19,3 +19,12 @@ export function displayLabel(
   }
   return t.merchantName ?? t.label;
 }
+
+const squash = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+/** Les relevés PDF gardent le texte brut en note : inutile de l'afficher s'il ne fait que répéter le libellé. */
+export function repeatsLabel(note: string, label: string): boolean {
+  const n = squash(note);
+  const l = squash(label);
+  return n.startsWith(l.slice(0, 24)) || l.startsWith(n.slice(0, 24));
+}

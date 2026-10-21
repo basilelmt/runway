@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Account, Envelope, Transaction } from '@shared/schemas';
 import { Amount, Badge, Button, EnvelopeTag, ListRow, type ListRowClick } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
-import { displayLabel } from '@/lib/merchants';
+import { displayLabel, repeatsLabel } from '@/lib/merchants';
 import { signedAmount } from './signed';
 import styles from './TransactionRow.module.css';
 
@@ -20,25 +20,18 @@ type TransactionRowProps = {
   hasOpenAdvance?: boolean;
   /** Début de ligne, hors d'une liste groupée par jour : la date (dernières opérations de l'Accueil). */
   lead?: ReactNode;
+  /** Verbe du bouton qui couvre la ligne, annoncé aux lecteurs d'écran (« Modifier Carrefour »). */
+  clickVerb?: string;
 };
 
-const squash = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-
-/** Les relevés PDF gardent le texte brut en note : inutile de l'afficher s'il ne fait que répéter le libellé. */
-function repeatsLabel(note: string, label: string): boolean {
-  const n = squash(note);
-  const l = squash(label);
-  return n.startsWith(l.slice(0, 24)) || l.startsWith(n.slice(0, 24));
-}
-
-export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming, hasOpenAdvance, lead }: TransactionRowProps) {
+export function TransactionRow({ transaction: t, accounts, envelopes, viewAccountId, onClick, onConfirm, confirming, hasOpenAdvance, lead, clickVerb = 'Modifier' }: TransactionRowProps) {
   const amount = signedAmount(t, viewAccountId);
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
   const fromEnvelope = t.fromEnvelopeId != null ? envelopes.get(t.fromEnvelopeId) : undefined;
   const account = t.accountId != null ? accounts.get(t.accountId) : undefined;
   const planned = t.status === 'planned';
   const name = displayLabel(t, accounts, viewAccountId);
-  const click: ListRowClick = onClick ? { onClick, clickLabel: `Modifier ${name}` } : {};
+  const click: ListRowClick = onClick ? { onClick, clickLabel: `${clickVerb} ${name}` } : {};
   // Un revenu rangé dans une enveloppe est un remboursement : il affiche son enveloppe comme une dépense.
   const isReimbursement = t.kind === 'income' && envelope != null;
 

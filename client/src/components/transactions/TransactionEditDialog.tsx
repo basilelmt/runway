@@ -1,21 +1,34 @@
 import { Check, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Transaction } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
-import { useConfirmTransaction, useDeleteTransaction, useMerchant, useUpdateTransaction } from '@/api/hooks';
+import { useAccounts, useConfirmTransaction, useDeleteTransaction, useMerchant, useUpdateTransaction } from '@/api/hooks';
 import { AllocationForm } from '@/components/envelopes/AllocationForm';
 import { Button, ConfirmDialog, Dialog, useToast } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import { useMerchantHeading } from './MerchantHeading';
 import { QuickEntry } from './QuickEntry';
+import { TransactionSheet } from './TransactionSheet';
 
 type TransactionEditDialogProps = { transaction: Transaction | null; onClose: () => void };
 
-/** Édition, confirmation et suppression d'une opération existante. */
+/** La fiche s'ouvre pour ce qu'on a vraiment dépensé ou reçu ; prévues et répartitions vont droit au formulaire. */
+export const opensSheet = (t: Transaction) => t.status === 'confirmed' && t.kind !== 'allocation';
+
+/** Dialogue d'une opération : fiche de consultation par défaut, formulaire d'édition derrière « Modifier ». */
 export function TransactionEditDialog({ transaction, onClose }: TransactionEditDialogProps) {
   const toast = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [current, setCurrent] = useState<Transaction | null>(transaction);
+  const [mode, setMode] = useState<'view' | 'edit'>(transaction && opensSheet(transaction) ? 'view' : 'edit');
+  const [lastOpened, setLastOpened] = useState(transaction);
+  if (lastOpened !== transaction) {
+    setLastOpened(transaction);
+    setCurrent(transaction);
+    setMode(transaction && opensSheet(transaction) ? 'view' : 'edit');
+  }
+
   const update = useUpdateTransaction({
     onSuccess: () => {
       toast.success('Opération modifiée');
@@ -43,12 +56,22 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
     update.reset();
     onClose();
   };
+  // Annuler dans le formulaire revient à la fiche si on venait d'elle, ferme sinon.
+  const cancelEdit = (x: Transaction) => () => (opensSheet(x) ? setMode('view') : close());
 
-  const t = transaction;
+  const t = current;
+  const accountList = useAccounts();
+  const accounts = useMemo(() => new Map((accountList.data ?? []).map((a) => [a.id, a])), [accountList.data]);
   // Le nom suit le marchand en cache : il change dès qu'on le renomme, sans rouvrir le dialogue.
   const merchant = useMerchant(t?.merchantKey ?? null);
   const merchantHeading = useMerchantHeading(t?.merchantKey ?? null);
-  const title = !t ? '' : t.merchantKey ? (merchant.data?.name ?? displayLabel(t)) : `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}`;
+  const title = !t
+    ? ''
+    : t.merchantKey
+      ? merchant.data?.name ?? displayLabel(t)
+      : mode === 'edit'
+        ? `Modifier : ${KIND_LABELS[t.kind].toLowerCase()}`
+        : displayLabel(t, accounts);
   const serverError = update.error ? errorMessage(update.error) : null;
   const deleteButton = (
     <Button variant="danger-quiet" icon={<Trash2 />} onClick={() => setConfirmDelete(true)}>
@@ -62,12 +85,22 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
         open={t !== null && !confirmDelete}
         onClose={close}
         title={title}
-        description={t?.status === 'planned' ? 'Opération prévue par une règle récurrente, pas encore passée en banque.' : undefined}
-        headerAction={merchantHeading.action}
+        description={mode === 'edit' && t?.status === 'planned' ? 'Opération prévue par une règle récurrente, pas encore passée en banque.' : undefined}
+        headerAction={mode === 'edit' ? merchantHeading.action : null}
         size={t?.kind === 'allocation' ? 'md' : 'lg'}
       >
         {t ? (
-          t.kind === 'allocation' ? (
+          mode === 'view' ? (
+            <TransactionSheet
+              key={t.id}
+              transaction={t}
+              onEdit={() => setMode('edit')}
+              onOpen={(x) => {
+                setCurrent(x);
+                setMode(opensSheet(x) ? 'view' : 'edit');
+              }}
+            />
+          ) : t.kind === 'allocation' ? (
             <AllocationForm
               key={t.id}
               initial={t}
@@ -75,7 +108,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
               submitting={update.isPending}
               serverError={serverError}
               onSubmit={(input) => update.mutate({ id: t.id, ...input })}
-              onCancel={close}
+              onCancel={cancelEdit(t)}
               footerStart={deleteButton}
             />
           ) : (
@@ -89,6 +122,7 @@ export function TransactionEditDialog({ transaction, onClose }: TransactionEditD
                 serverError={serverError}
                 onSubmit={(input) => update.mutate({ id: t.id, ...input })}
                 onReconciled={close}
+                onCancel={cancelEdit(t)}
                 footerStart={deleteButton}
                 footerExtra={
                   t.status === 'planned' ? (

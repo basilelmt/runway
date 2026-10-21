@@ -82,6 +82,8 @@ describe('TransactionEditDialog', () => {
     const user = userEvent.setup();
     renderDialog(expense);
     expect(screen.getByRole('heading', { name: 'Carrefour Express', hidden: true })).toBeInTheDocument();
+    // Une opération confirmée ouvre la fiche : « Modifier » bascule vers le formulaire.
+    await user.click(await screen.findByRole('button', { name: 'Modifier' }));
     // Le libellé brut n'apparaît qu'une fois, dans le champ éditable du formulaire, pas sous le titre.
     expect(screen.getAllByDisplayValue(expense.label)).toHaveLength(1);
 
@@ -117,6 +119,7 @@ describe('TransactionEditDialog', () => {
   it('Échap pendant le renommage annule et rend le focus à Modifier le marchand, sans soumettre ni fermer le dialogue', async () => {
     const user = userEvent.setup();
     renderDialog(expense);
+    await user.click(await screen.findByRole('button', { name: 'Modifier' }));
     await user.click(screen.getByRole('button', { name: 'Modifier le marchand', hidden: true }));
     const input = await screen.findByLabelText('Nom du marchand');
     await user.clear(input);
@@ -132,8 +135,21 @@ describe('TransactionEditDialog', () => {
   });
 
   it('un virement garde son titre et n’a pas de marchand à renommer', () => {
-    renderDialog({ ...expense, kind: 'transfer', toAccountId: 2, label: 'Épargne', merchantKey: null, merchantName: null });
+    renderDialog({ ...expense, kind: 'transfer', toAccountId: 2, label: 'Épargne', merchantKey: null, merchantName: null, status: 'planned' });
     expect(screen.getByRole('heading', { name: 'Modifier : virement', hidden: true })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Modifier le marchand', hidden: true })).not.toBeInTheDocument();
+  });
+
+  it('une opération confirmée ouvre la fiche, Modifier puis Annuler y revient', async () => {
+    renderDialog(expense);
+    await userEvent.click(await screen.findByRole('button', { name: 'Modifier' }));
+    expect(screen.getByLabelText('Montant')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Annuler' }));
+    expect(await screen.findByRole('region', { name: 'Chez ce marchand' })).toBeInTheDocument();
+  });
+
+  it('une opération prévue ouvre directement le formulaire', async () => {
+    renderDialog({ ...expense, status: 'planned' });
+    expect(await screen.findByLabelText('Montant')).toBeInTheDocument();
   });
 });

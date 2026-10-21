@@ -1,0 +1,75 @@
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  color: var(--ink-mute);
+  font-size: var(--text-sm);
+}
+
+.editButton {
+  flex-shrink: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.sectionTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-mute);
+  margin: 0;
+}
+
+.sectionMeta {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.detailsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: var(--text-sm);
+}
+
+.detailsRow dt {
+  color: var(--ink-mute);
+}
+
+.detailsRow dd {
+  margin: 0;
+  color: var(--ink);
+  text-align: right;
+}

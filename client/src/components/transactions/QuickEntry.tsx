@@ -39,6 +39,8 @@ type QuickEntryProps = {
   footerExtra?: ReactNode;
   /** Un rapprochement d'avances vient de ranger ce revenu : l'appelant peut fermer le dialogue. */
   onReconciled?: () => void;
+  /** Bouton « Annuler » en modification (absent en création, qui garde « Enregistrer et en saisir une autre »). */
+  onCancel?: () => void;
 };
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -51,7 +53,7 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 /** Saisie d'une opération : le montant d'abord, puis le libellé qui propose l'enveloppe. Sert aussi à la modifier. */
-export function QuickEntry({ mode = 'create', initial, submitting, serverError, onSubmit, resetKey = 0, footerStart, footerExtra, onReconciled }: QuickEntryProps) {
+export function QuickEntry({ mode = 'create', initial, submitting, serverError, onSubmit, resetKey = 0, footerStart, footerExtra, onReconciled, onCancel }: QuickEntryProps) {
   const accounts = useAccounts();
   const envelopes = useEnvelopes();
   const amountRef = useRef<HTMLInputElement>(null);
@@ -373,6 +375,11 @@ export function QuickEntry({ mode = 'create', initial, submitting, serverError, 
           )
         }
       >
+        {editing && onCancel ? (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Annuler
+          </Button>
+        ) : null}
         {footerExtra}
         <Button type="submit" form={formId} variant="primary" loading={submitting} icon={<Check />} className={editing ? undefined : styles.submit}>
           {submitText}
