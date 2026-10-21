@@ -1,10 +1,11 @@
 import { Pencil } from 'lucide-react';
 import { useMemo } from 'react';
-import { formatDateWithWeekday, formatMonth, monthKey } from '@shared/dates';
+import { effectiveDate } from '@core/payment-date';
+import { addDays, formatDateShort, formatDateWithWeekday, formatMonth, monthKey } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import type { Transaction } from '@shared/schemas';
 import { useAccounts, useEnvelopes, useMerchant, useTransactions } from '@/api/hooks';
-import { Amount, Badge, Button, EnvelopeTag, listRowDate } from '@/components/ui';
+import { Amount, Badge, Button, EnvelopeTag, GroupLabel, listRowDate } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { repeatsLabel } from '@/lib/merchants';
 import { signedAmount } from './signed';
@@ -26,17 +27,21 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
   const envelopes = useMemo(() => new Map((envelopeList.data ?? []).map((e) => [e.id, e])), [envelopeList.data]);
   const merchant = useMerchant(t.merchantKey);
   const history = useTransactions({ merchant: t.merchantKey ?? undefined, limit: 6 }, { enabled: t.merchantKey !== null });
-  const sameDay = useTransactions({ from: t.date, to: t.date, status: 'confirmed' });
+  // Une carte est débitée quelques jours après l'achat : « le même jour » est celui de l'achat.
+  const day = effectiveDate(t);
+  // Les deux dates ne valent d'être montrées que si elles diffèrent.
+  const paidOn = day !== t.date ? day : null;
+  const sameDay = useTransactions({ from: day, to: addDays(day, 7), status: 'confirmed' });
 
   const others = (list: Transaction[] | undefined) => (list ?? []).filter((x) => x.id !== t.id);
-  const row = (x: Transaction) => (
+  // Le même jour, la date se répéterait sur chaque ligne : seul l'historique du marchand la montre.
+  const row = (x: Transaction, withDate = true) => (
     <TransactionRow
       key={x.id}
       transaction={x}
       accounts={accounts}
       envelopes={envelopes}
-      lead={<span className={listRowDate}>{formatDateCompact(x.date)}</span>}
-      clickVerb="Ouvrir"
+      lead={withDate ? <span className={listRowDate}>{formatDateCompact(effectiveDate(x))}</span> : undefined}
       onClick={() => onOpen(x)}
     />
   );
@@ -49,7 +54,7 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
   const isReimbursement = t.kind === 'income' && envelope != null;
 
   const merchantHistory = others(history.data);
-  const sameDayList = others(sameDay.data).filter((x) => x.kind !== 'allocation');
+  const sameDayList = others(sameDay.data).filter((x) => x.kind !== 'allocation' && effectiveDate(x) === day);
 
   return (
     <div className={styles.sheet}>
@@ -57,7 +62,13 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
         <div className={styles.info}>
           <Amount cents={amount} size="xl" tone={amount > 0 ? 'always' : 'neutral'} />
           <div className={styles.meta}>
-            <span>{formatDateWithWeekday(t.date)}</span>
+            {paidOn ? (
+              <span>
+                Payé le {formatDateWithWeekday(paidOn)} · débité le {formatDateShort(t.date)}
+              </span>
+            ) : (
+              <span>{formatDateWithWeekday(t.date)}</span>
+            )}
             {where ? <span>{where}</span> : null}
             {t.kind === 'expense' || isReimbursement ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null}
           </div>
@@ -71,24 +82,24 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
 
       {merchant.data && merchant.data.transactionCount > 1 ? (
         <section aria-label="Chez ce marchand" className={styles.section}>
-          <h3 className={styles.sectionTitle}>Chez ce marchand</h3>
+          <GroupLabel>Chez ce marchand</GroupLabel>
           <p className={styles.sectionMeta}>
             {plural(merchant.data.transactionCount, 'passage')} depuis {formatMonth(monthKey(merchant.data.firstDate ?? t.date)).toLowerCase()} ·{' '}
             {formatEuros(Math.abs(merchant.data.total12Months))} sur 12 mois
           </p>
-          {merchantHistory.length > 0 ? <ul className="ledger">{merchantHistory.slice(0, 5).map(row)}</ul> : null}
+          {merchantHistory.length > 0 ? <ul className="ledger">{merchantHistory.slice(0, 5).map((x) => row(x))}</ul> : null}
         </section>
       ) : null}
 
       {sameDayList.length > 0 ? (
         <section aria-label="Le même jour" className={styles.section}>
-          <h3 className={styles.sectionTitle}>Le même jour</h3>
-          <ul className="ledger">{sameDayList.map(row)}</ul>
+          <GroupLabel>Le même jour</GroupLabel>
+          <ul className="ledger">{sameDayList.map((x) => row(x, false))}</ul>
         </section>
       ) : null}
 
       <section aria-label="Détails bancaires" className={styles.section}>
-        <h3 className={styles.sectionTitle}>Détails bancaires</h3>
+        <GroupLabel>Détails bancaires</GroupLabel>
         <dl className={styles.details}>
           <div className={styles.detailsRow}>
             <dt>Libellé de la banque</dt>

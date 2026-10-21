@@ -45,9 +45,12 @@ const other8 = tx({ id: 8, kind: 'expense', date: '2026-09-20', amount: 1100, la
 const other9 = tx({ id: 9, kind: 'expense', date: '2026-09-10', amount: 900, label: 'ACHAT CB CARREFOUR EXPR 10.09.26', merchantKey: 'CARREFOUR EXPR', merchantName: 'Carrefour Express' });
 const sncf = tx({ id: 20, kind: 'expense', date: '2026-10-03', amount: 2200, label: 'SNCF VOYAGEURS', accountId: 2, merchantKey: 'SNCF', merchantName: 'SNCF' });
 
+/** Réponse de la liste du jour pour un test, à la place de `[expense, sncf]`. */
+let sameDayExtra: Transaction[] | null;
 let detail: { description: string | null; descriptionSource: 'claude' | 'web' | 'user' | null; describedAt: string | null };
 
 beforeEach(() => {
+  sameDayExtra = null;
   detail = { description: 'Supérette de quartier', descriptionSource: 'claude', describedAt: '2026-10-20T10:00:00Z' };
   const fetchMock = vi.fn(async (url: string) => {
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
@@ -59,7 +62,7 @@ beforeEach(() => {
       return json({ key: 'CARREFOUR EXPR', name: 'Carrefour Express', source: 'user', transactionCount: 14, total12Months: -18240, firstDate: '2025-03-01', ...detail });
     }
     if (url.startsWith('/api/transactions') && url.includes('merchant=')) return json([expense, other8, other9]);
-    if (url.startsWith('/api/transactions') && url.includes('from=2026-10-03')) return json([expense, sncf]);
+    if (url.startsWith('/api/transactions') && url.includes('from=2026-10-03')) return json(sameDayExtra ?? [expense, sncf]);
     if (url.startsWith('/api/accounts')) return json(accounts);
     if (url.startsWith('/api/envelopes')) return json(envelopes);
     return json([]);
@@ -99,6 +102,25 @@ describe('TransactionSheet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Chercher sur le web' }));
     expect(await screen.findByText('Supérette de quartier, Paris')).toBeInTheDocument();
     expect(screen.getByText('d’après le web')).toBeInTheDocument();
+  });
+
+  it('une carte débitée plus tard : date d’achat en tête, et le même jour est celui de l’achat', async () => {
+    const late = { ...expense, id: 30, date: '2026-10-06' };
+    const boughtSameDay = tx({ id: 31, kind: 'expense', date: '2026-10-05', amount: 450, label: 'ACHAT CB VELIB 03.10.26 CARTE NUMERO 123', merchantKey: 'VELIB', merchantName: 'Velib' });
+    const boughtNextDay = tx({ id: 32, kind: 'expense', date: '2026-10-05', amount: 800, label: 'ACHAT CB PHARMACIE 04.10.26 CARTE NUMERO 123', merchantKey: 'PHARMACIE', merchantName: 'Pharmacie' });
+    sameDayExtra = [late, sncf, boughtSameDay, boughtNextDay];
+    renderSheet(late);
+    expect(screen.getByText(/^Payé le sam\. 3 oct\. 2026 · débité le 6 oct\./)).toBeInTheDocument();
+    const sameDay = await screen.findByRole('region', { name: 'Le même jour' });
+    expect(within(sameDay).getByText('SNCF')).toBeInTheDocument();
+    expect(within(sameDay).getByText('Velib')).toBeInTheDocument();
+    expect(within(sameDay).queryByText('Pharmacie')).toBeNull();
+  });
+
+  it('achat et débit le même jour : une seule date', async () => {
+    renderSheet(expense);
+    expect(await screen.findByText('sam. 3 oct. 2026')).toBeInTheDocument();
+    expect(screen.queryByText(/Payé le/)).toBeNull();
   });
 
   it('pas de bouton web pour une description donnée à la main', async () => {

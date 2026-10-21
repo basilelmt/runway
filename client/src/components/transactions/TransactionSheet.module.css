@@ -37,12 +37,6 @@
   gap: var(--s-2);
 }
 
-.sectionTitle {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--ink-mute);
-  margin: 0;
-}
 
 .sectionMeta {
   margin: 0;
@@ -72,4 +66,15 @@
   margin: 0;
   color: var(--ink);
   text-align: right;
+}
+
+@media (max-width: 479px) {
+  .detailsRow {
+    flex-direction: column;
+    gap: var(--s-1);
+  }
+
+  .detailsRow dd {
+    text-align: left;
+  }
 }

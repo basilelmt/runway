@@ -1,7 +1,7 @@
 import { Globe } from 'lucide-react';
 import { errorMessage } from '@/api/client';
 import { useDescribeMerchantOnWeb, useMerchant } from '@/api/hooks';
-import { Button, Notice, Skeleton } from '@/components/ui';
+import { Button, GroupLabel, Notice, Skeleton } from '@/components/ui';
 import styles from './MerchantAbout.module.css';
 
 const SOURCE_LABELS = { claude: 'd’après Claude', web: 'd’après le web', user: null } as const;
@@ -20,12 +20,12 @@ export function MerchantAbout({ merchantKey }: { merchantKey: string }) {
 
   return (
     <section aria-label="Qui c'est" className={styles.about}>
-      <h3 className={styles.heading}>Qui c'est</h3>
+      <GroupLabel>Qui c'est</GroupLabel>
       <p className={m.description && !web.isPending ? styles.description : styles.missing}>{text}</p>
       {source ? <p className={styles.source}>{source}</p> : null}
       {web.error ? <Notice tone="negative">{errorMessage(web.error)}</Notice> : null}
       {m.descriptionSource !== 'user' ? (
-        <Button size="sm" variant="ghost" icon={<Globe />} loading={web.isPending} onClick={() => web.mutate(merchantKey)}>
+        <Button size="sm" variant="text" icon={<Globe />} loading={web.isPending} onClick={() => web.mutate(merchantKey)}>
           Chercher sur le web
         </Button>
       ) : null}

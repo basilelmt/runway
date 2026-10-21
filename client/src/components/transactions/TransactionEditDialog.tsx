@@ -8,13 +8,12 @@ import { Button, ConfirmDialog, Dialog, useToast } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import { useMerchantHeading } from './MerchantHeading';
+import { opensSheet } from './opensSheet';
 import { QuickEntry } from './QuickEntry';
 import { TransactionSheet } from './TransactionSheet';
 
 type TransactionEditDialogProps = { transaction: Transaction | null; onClose: () => void };
 
-/** La fiche s'ouvre pour ce qu'on a vraiment dépensé ou reçu ; prévues et répartitions vont droit au formulaire. */
-export const opensSheet = (t: Transaction) => t.status === 'confirmed' && t.kind !== 'allocation';
 
 /** Dialogue d'une opération : fiche de consultation par défaut, formulaire d'édition derrière « Modifier ». */
 export function TransactionEditDialog({ transaction, onClose }: TransactionEditDialogProps) {

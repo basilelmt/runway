@@ -165,7 +165,7 @@ describe('Accueil', () => {
   it('montre les dernières opérations confirmées, sans les répartitions, et un lien vers toutes', async () => {
     renderHome();
     const section = await screen.findByRole('region', { name: 'Dernières opérations' });
-    expect(await within(section).findByRole('button', { name: 'Modifier Velib' })).toBeInTheDocument();
+    expect(await within(section).findByRole('button', { name: 'Ouvrir Velib' })).toBeInTheDocument();
     expect(section).toHaveTextContent('7 oct.');
     expect(within(section).getByRole('link', { name: 'Tout voir' })).toHaveAttribute('href', '/operations');
     expect(fetchMock).toHaveBeenCalledWith('/api/transactions?status=confirmed&excludeAllocations=true&limit=5', expect.anything());

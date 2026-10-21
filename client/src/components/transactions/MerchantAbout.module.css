@@ -5,12 +5,6 @@
   align-items: flex-start;
 }
 
-.heading {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--ink-mute);
-  margin: 0;
-}
 
 .description {
   margin: 0;
