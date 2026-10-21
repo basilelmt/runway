@@ -38,6 +38,12 @@
   height: 16px;
 }
 
+/* Texte en plusieurs blocs (titre, phrase, liste) : l'icône reste en face de la première ligne au lieu de flotter au milieu. */
+.notice:has(> .text > :nth-child(2)) > .icon {
+  align-self: flex-start;
+  margin-top: calc((1lh - 16px) / 2);
+}
+
 .marking .icon {
   color: var(--marking-ink);
 }

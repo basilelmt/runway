@@ -1,4 +1,4 @@
-import { CheckCheck, Inbox, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCheck, Inbox, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { SuggestResponse } from '@shared/api-types';
 import type { Transaction } from '@shared/schemas';
@@ -158,7 +158,7 @@ export function UnsortedList() {
                       }
                     />
                     <span className="mono">{r.pattern}</span>
-                    <span className="muted">→</span>
+                    <ArrowRight className={styles.ruleArrow} aria-label="vers" />
                     {env ? <EnvelopeTag name={env.name} color={env.color} /> : null}
                   </label>
                 );

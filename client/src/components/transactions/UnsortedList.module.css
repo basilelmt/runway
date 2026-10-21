@@ -1,4 +1,6 @@
 .wrap {
+  /* Colonne de l'étincelle de Claude et des pastilles d'enveloppe : assez large pour la plupart des noms, les montants restent alignés. */
+  --list-actions: 160px;
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
@@ -34,7 +36,7 @@
 
 .rules {
   border: none;
-  margin: 0;
+  margin: var(--s-3) 0 0;
   padding: var(--s-2) 0 0;
   border-top: 1px solid var(--rule);
   display: flex;
@@ -48,6 +50,13 @@
   gap: var(--s-2);
   font-size: var(--text-sm);
   cursor: pointer;
+}
+
+.ruleArrow {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--ink-mute);
 }
 
 .rule input {
@@ -102,6 +111,8 @@
   color: var(--marking-ink);
   display: inline-flex;
   cursor: help;
+  /* En tête de la colonne des actions : les étincelles restent alignées quelle que soit la largeur de la pastille. */
+  margin-right: auto;
 }
 
 .sparkle :global(svg) {

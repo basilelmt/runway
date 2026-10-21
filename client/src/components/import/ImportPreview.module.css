@@ -1,4 +1,6 @@
 .wrap {
+  /* Colonne des pastilles d'enveloppe : assez large pour la plupart des noms, les montants restent alignés. */
+  --list-actions: 136px;
   display: flex;
   flex-direction: column;
   gap: var(--s-4);

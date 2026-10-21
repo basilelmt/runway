@@ -127,7 +127,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--s-1);
-  min-width: 38px;
+  /* Une liste dont les actions changent de largeur d'une ligne à l'autre (pastilles d'enveloppe) fixe `--list-actions`
+     pour garder la colonne des montants alignée. */
+  min-width: var(--list-actions, 38px);
 }
 
 .header {
