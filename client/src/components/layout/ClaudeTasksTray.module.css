@@ -102,8 +102,9 @@
 }
 
 @media (max-width: 767px) {
+  /* Au-dessus du bouton rond « Nouvelle opération » (QuickAdd), qui occupe le coin bas droit. */
   .tray {
-    inset: auto var(--s-4) calc(var(--bottomnav-height) + var(--s-4) + env(safe-area-inset-bottom)) var(--s-4);
+    inset: auto var(--s-4) calc(var(--bottomnav-height) + var(--s-4) + var(--fab-size) + var(--s-3) + env(safe-area-inset-bottom)) var(--s-4);
     width: auto;
   }
 
