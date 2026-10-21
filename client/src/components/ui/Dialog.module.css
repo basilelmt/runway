@@ -1,6 +1,6 @@
 /* Centré à l'ouverture, puis figé à cette hauteur (`data-pinned`, posé par Dialog.tsx) :
-   quand le contenu change de hauteur (données qui arrivent), le dialogue s'allonge vers le bas
-   sans déplacer son en-tête. */
+   quand le contenu change de hauteur (données qui arrivent), Dialog.tsx recalcule le centre
+   et le dialogue y glisse, sans saut de l'en-tête. */
 .dialog {
   --dialog-max-height: calc(100dvh - 2 * var(--s-4));
   border: none;
@@ -16,6 +16,7 @@
   .dialog[data-pinned] {
     --dialog-max-height: calc(100dvh - var(--dialog-top) - var(--s-4));
     margin: var(--dialog-top) auto auto;
+    transition: margin-top var(--dur) var(--ease-out);
   }
 }
 

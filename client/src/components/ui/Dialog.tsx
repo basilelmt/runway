@@ -10,11 +10,27 @@ const CLOSE_MS = 160;
 /** Pied du dialogue englobant : `undefined` hors dialogue, `null` tant qu'il n'est pas monté. */
 const FooterContext = createContext<HTMLElement | null | undefined>(undefined);
 
-/** Fige le dialogue là où le centrage le place : un contenu qui grandit l'allonge ensuite vers le bas. */
+/** Fige le dialogue là où le centrage le place : sa position ne dépend plus de la hauteur du contenu. */
 function pin(el: HTMLDialogElement) {
   delete el.dataset.pinned;
   el.style.setProperty('--dialog-top', `${el.getBoundingClientRect().top}px`);
   el.dataset.pinned = '';
+}
+
+/**
+ * Le contenu a changé de hauteur (données arrivées, fiche voisine ouverte) : on recentre en glissant
+ * depuis la position figée, au lieu de laisser le dialogue s'allonger vers le bas et finir décentré.
+ */
+function recenter(el: HTMLDialogElement) {
+  if (!el.open || el.dataset.pinned === undefined) return;
+  const from = el.style.getPropertyValue('--dialog-top');
+  delete el.dataset.pinned;
+  const to = `${el.getBoundingClientRect().top}px`;
+  el.dataset.pinned = '';
+  if (to === from) return;
+  // Le navigateur part de la position figée (lue ici), puis la transition CSS mène à la nouvelle.
+  void el.getBoundingClientRect();
+  el.style.setProperty('--dialog-top', to);
 }
 
 function unpin(el: HTMLDialogElement) {
@@ -136,7 +152,10 @@ export function Dialog({ open, onClose, title, description, children, footer, he
     const body = bodyRef.current;
     const inner = innerRef.current;
     if (!rendered || !body || !inner || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver(() => {
+      measure();
+      if (ref.current) recenter(ref.current);
+    });
     observer.observe(body);
     observer.observe(inner);
     return () => observer.disconnect();
