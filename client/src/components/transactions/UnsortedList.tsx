@@ -5,6 +5,7 @@ import type { Transaction } from '@shared/schemas';
 import { ApiError, errorMessage } from '@/api/client';
 import { useAccounts, useApplySorting, useEnvelopes, useSuggestSorting, useTransactions, useUpdateTransaction } from '@/api/hooks';
 import { RuleBanner } from '@/components/transactions/RuleBanner';
+import { TransactionEditDialog } from '@/components/transactions/TransactionEditDialog';
 import { Amount, Button, EmptyState, EnvelopeTag, ErrorState, GroupLabel, InlinePill, ListRow, ListRowSkeleton, Notice, listRowDate, useToast } from '@/components/ui';
 import { formatDateCompact, NBSP, plural } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
@@ -42,6 +43,7 @@ export function UnsortedList() {
   const [leaving, setLeaving] = useState<Set<number>>(new Set());
   const [suggestions, setSuggestions] = useState<SuggestResponse | null>(null);
   const [checkedRules, setCheckedRules] = useState<Set<string>>(new Set());
+  const [opened, setOpened] = useState<Transaction | null>(null);
 
   const update = useUpdateTransaction({ onError: (e) => toast.error(errorMessage(e)) });
   const suggest = useSuggestSorting({
@@ -193,6 +195,8 @@ export function UnsortedList() {
                   as="div"
                   lead={<span className={listRowDate}>{formatDateCompact(t.date)}</span>}
                   title={<span title={t.label}>{displayLabel(t)}</span>}
+                  onClick={() => setOpened(t)}
+                  clickLabel={`Ouvrir ${displayLabel(t)}`}
                   meta={account?.name}
                   trail={<Amount cents={-t.amount} tone="neutral" />}
                   actions={
@@ -219,6 +223,7 @@ export function UnsortedList() {
           })}
         </ul>
       )}
+      <TransactionEditDialog transaction={opened} onClose={() => setOpened(null)} />
     </div>
   );
 }
