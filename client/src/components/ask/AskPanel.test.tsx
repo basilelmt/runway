@@ -89,7 +89,7 @@ describe('AskPanel', () => {
     expect(screen.getByLabelText('Ta question')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Arrêter' })).toBeInTheDocument();
 
-    sse.push('step', { text: 'Je consulte tes opérations…' });
+    sse.push('step', { text: 'Je consulte tes opérations…', source: 'opérations' });
     expect(await screen.findByText('Je consulte tes opérations…')).toBeInTheDocument();
     sse.push('answer', answer);
     sse.close();
@@ -142,7 +142,7 @@ describe('AskPanel', () => {
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Demander' }));
-    const aim = screen.getByRole('button', { name: 'Montrer un bloc' });
+    const aim = screen.getByRole('button', { name: 'Viser un bloc' });
     expect(aim).toHaveAttribute('aria-pressed', 'true');
 
     // Le bloc le plus profond est désigné, et son bouton ne reçoit pas le clic.

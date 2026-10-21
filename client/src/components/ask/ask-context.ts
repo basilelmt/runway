@@ -11,6 +11,8 @@ export type AskTurn = {
   status: 'pending' | 'done' | 'error';
   /** Dernière étape annoncée pendant que Claude travaille. */
   step: string | null;
+  /** Sources consultées (« portefeuille », « opérations »), dans l'ordre, sans doublon. */
+  sources: string[];
   answer: AskAnswerEvent | null;
   error: string | null;
 };

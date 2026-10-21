@@ -61,7 +61,7 @@ describe('POST /api/ask', () => {
     createTransaction(t.db, { kind: 'expense', date: '2026-03-02', amount: 8_00, label: 'B', accountId: t.courant.id });
     const { status, events } = await ask('Combien en restos ?');
     expect(status).toBe(200);
-    expect(events[0]).toEqual({ event: 'step', data: { text: 'Je consulte tes opérations…' } });
+    expect(events[0]).toEqual({ event: 'step', data: { text: 'Je consulte tes opérations…', source: 'opérations' } });
     expect(events.at(-1)).toEqual({
       event: 'answer',
       data: {
@@ -117,6 +117,7 @@ describe('POST /api/ask', () => {
       'Je regarde les idées…',
       'Je cherche sur le web…',
     ]);
+    expect(events.filter((e) => e.event === 'step').map((e) => e.data.source)).toEqual(['bilan', 'portefeuille', 'idées', 'web']);
   });
 
   it('lance claude isolé, puis reprend la session pour une suite', async () => {

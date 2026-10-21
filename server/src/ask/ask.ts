@@ -94,8 +94,8 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
         }
         if (event?.type === 'assistant') {
           for (const block of event.message?.content ?? []) {
-            const text = block.type === 'tool_use' && block.name ? toolStepText(block.name, block.input) : null;
-            if (text) emit({ event: 'step', data: { text } });
+            const step = block.type === 'tool_use' && block.name ? toolStepText(block.name, block.input) : null;
+            if (step) emit({ event: 'step', data: step });
           }
         }
         if (event?.type === 'result') final = event as ResultEvent;

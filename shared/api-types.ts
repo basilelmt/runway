@@ -478,7 +478,8 @@ export type AskAnswerEvent = {
 
 /** Événements SSE de `POST /api/ask`. */
 export type AskStreamEvent =
-  | { event: 'step'; data: { text: string } }
+  /** `source` : ce que Claude consulte (« portefeuille »), gardé sous la réponse. */
+  | { event: 'step'; data: { text: string; source: string } }
   | { event: 'answer'; data: AskAnswerEvent }
   | { event: 'error'; data: { message: string; code: string } };
 

@@ -101,23 +101,27 @@ export const answerJsonSchema = {
   required: ['answer', 'highlight', 'chart', 'actions'],
 };
 
-/** Phrase courte affichée pendant qu'une requête tourne. */
-export function stepText(sql: string): string {
+/** Étape d'un appel d'outil : la phrase affichée pendant l'attente, et la source consultée, gardée sous la réponse. */
+export type ToolStep = { text: string; source: string };
+
+/** Étape d'une requête SQL, devinée d'après les tables lues. */
+export function stepText(sql: string): ToolStep {
   const s = sql.toLowerCase();
-  if (/strftime|substr\(\s*date/.test(s)) return 'Je calcule mois par mois…';
-  if (s.includes('recurring_rules')) return 'Je regarde tes charges fixes…';
-  if (s.includes('transactions')) return 'Je consulte tes opérations…';
-  if (s.includes('envelopes')) return 'Je regarde tes enveloppes…';
-  if (s.includes('accounts')) return 'Je regarde tes comptes…';
-  return 'Je vérifie dans tes données…';
+  if (/strftime|substr\(\s*date/.test(s)) return { text: 'Je calcule mois par mois…', source: 'opérations' };
+  if (s.includes('recurring_rules')) return { text: 'Je regarde tes charges fixes…', source: 'charges fixes' };
+  if (s.includes('transactions')) return { text: 'Je consulte tes opérations…', source: 'opérations' };
+  if (s.includes('envelopes')) return { text: 'Je regarde tes enveloppes…', source: 'enveloppes' };
+  if (s.includes('accounts')) return { text: 'Je regarde tes comptes…', source: 'comptes' };
+  if (s.includes('holding')) return { text: 'Je regarde tes positions…', source: 'portefeuille' };
+  return { text: 'Je vérifie dans tes données…', source: 'données' };
 }
 
-/** Phrase courte affichée pendant un appel d'outil, null pour un outil sans étape (réponse structurée). */
-export function toolStepText(name: string, input: { sql?: unknown } | undefined): string | null {
+/** Étape d'un appel d'outil, null pour un outil sans étape (réponse structurée). */
+export function toolStepText(name: string, input: { sql?: unknown } | undefined): ToolStep | null {
   if (name === 'mcp__runway__query') return stepText(String(input?.sql ?? ''));
-  if (name === 'mcp__runway__month_summary') return 'Je regarde le bilan du mois…';
-  if (name === 'mcp__runway__portfolio') return 'Je regarde ton portefeuille…';
-  if (name === 'mcp__runway__ideas') return 'Je regarde les idées…';
-  if (name === 'WebSearch') return 'Je cherche sur le web…';
+  if (name === 'mcp__runway__month_summary') return { text: 'Je regarde le bilan du mois…', source: 'bilan' };
+  if (name === 'mcp__runway__portfolio') return { text: 'Je regarde ton portefeuille…', source: 'portefeuille' };
+  if (name === 'mcp__runway__ideas') return { text: 'Je regarde les idées…', source: 'idées' };
+  if (name === 'WebSearch') return { text: 'Je cherche sur le web…', source: 'web' };
   return null;
 }

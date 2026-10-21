@@ -1,7 +1,7 @@
 import { ArrowUp, Crosshair, RotateCcw, Sparkles, Square, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { AskRef } from '@shared/schemas';
-import { Button, ListRow, Textarea } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { useAsk } from './ask-context';
 import { AskOutline } from './AskAim';
 import { AskMessage } from './AskMessage';
@@ -82,7 +82,9 @@ export function AskPanel() {
     >
       <header className={styles.header}>
         <h2 className={styles.title}>
-          <Sparkles aria-hidden />
+          <span className={styles.mark} aria-hidden>
+            <Sparkles />
+          </span>
           Demander
         </h2>
         <div className={styles.headerActions}>
@@ -94,10 +96,15 @@ export function AskPanel() {
       <div ref={threadRef} className={styles.thread}>
         {turns.length === 0 ? (
           <div className={styles.empty}>
-            <p className={styles.emptyText}>Pose une question sur ton argent. Claude lit tes données sans rien modifier, et te propose des actions que tu valides d’un clic.</p>
-            <ul className="ledger" aria-label="Suggestions">
+            <p className={styles.emptyLead}>Pose une question sur ton argent.</p>
+            <p className={styles.emptyText}>Claude lit tes données sans rien modifier, et te propose des actions que tu valides d’un clic. Clique un bloc de la page pour lui montrer de quoi tu parles.</p>
+            <ul className={styles.suggestions} aria-label="Suggestions">
               {ASK_SUGGESTIONS.map((s) => (
-                <ListRow key={s} compact onClick={() => submit(s)} clickLabel={s} title={s} />
+                <li key={s}>
+                  <button type="button" className={styles.suggestion} onClick={() => submit(s)}>
+                    {s}
+                  </button>
+                </li>
               ))}
             </ul>
           </div>
@@ -112,51 +119,58 @@ export function AskPanel() {
 
       <form
         className={styles.composer}
+        data-disabled={pending || undefined}
         onSubmit={(e) => {
           e.preventDefault();
           submit(draft);
         }}
+        onPointerDown={(e) => {
+          // Toute la carte vaut champ : un clic à côté du texte y remet le curseur.
+          if (e.target === e.currentTarget) {
+            e.preventDefault();
+            inputRef.current?.focus();
+          }
+        }}
       >
-        {refs.length > 0 || aiming ? (
-          <div className={styles.context}>
-            {aiming ? <p className={styles.aimHint}>Clique un bloc de la page pour le montrer à Claude.</p> : null}
-            {refs.length > 0 ? (
-              <ul className={styles.refs} aria-label="Blocs montrés">
-                {refs.map((ref) => (
-                  <RefChip key={`${ref.kind}-${ref.id}-${ref.label}`} item={ref} onRemove={() => removeRef(ref)} onShow={(on) => setShown(on ? elementOf(ref) : null)} />
-                ))}
-              </ul>
-            ) : null}
-          </div>
+        {refs.length > 0 ? (
+          <ul className={styles.refs} aria-label="Blocs montrés">
+            {refs.map((ref) => (
+              <RefChip key={`${ref.kind}-${ref.id}-${ref.label}`} item={ref} onRemove={() => removeRef(ref)} onShow={(on) => setShown(on ? elementOf(ref) : null)} />
+            ))}
+          </ul>
         ) : null}
-        <div className={styles.inputRow}>
-          <Button
-            size="sm"
-            variant={aiming ? 'marking' : 'ghost'}
-            icon={<Crosshair />}
-            aria-label="Montrer un bloc"
+        <textarea
+          ref={inputRef}
+          className={styles.field}
+          aria-label="Ta question"
+          placeholder={refs.length > 0 ? 'Ta question sur ces blocs…' : 'Combien en restos depuis mars ?'}
+          rows={1}
+          maxLength={500}
+          value={draft}
+          disabled={pending}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onInputKey}
+        />
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            className={styles.aim}
             aria-pressed={aiming}
-            title={refs.length >= MAX_REFS ? `${MAX_REFS} blocs au plus` : 'Montrer un bloc de la page'}
+            title={refs.length >= MAX_REFS ? `${MAX_REFS} blocs au plus` : aiming ? 'Clique un bloc de la page pour le montrer à Claude' : 'Montrer un bloc de la page à Claude'}
             disabled={pending || (!aiming && refs.length >= MAX_REFS)}
             onClick={() => setAiming(!aiming)}
-            className={styles.send}
-          />
-          <Textarea
-            ref={inputRef}
-            className={styles.field}
-            aria-label="Ta question"
-            placeholder={refs.length > 0 ? 'Ta question sur ces blocs' : 'Combien en restos depuis mars ?'}
-            rows={1}
-            maxLength={500}
-            value={draft}
-            disabled={pending}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={onInputKey}
-          />
+          >
+            {aiming ? <span className={styles.aimDot} aria-hidden /> : <Crosshair aria-hidden />}
+            Viser un bloc
+          </button>
           {pending ? (
-            <Button size="sm" variant="secondary" icon={<Square />} aria-label="Arrêter" title="Arrêter" onClick={stop} className={styles.send} />
+            <button type="button" className={[styles.send, styles.stop].join(' ')} aria-label="Arrêter" title="Arrêter" onClick={stop}>
+              <Square aria-hidden />
+            </button>
           ) : (
-            <Button type="submit" size="sm" variant="primary" icon={<ArrowUp />} aria-label="Envoyer" title="Envoyer (Entrée)" disabled={!draft.trim()} className={styles.send} />
+            <button type="submit" className={styles.send} aria-label="Envoyer" title="Envoyer (Entrée)" disabled={!draft.trim()}>
+              <ArrowUp aria-hidden />
+            </button>
           )}
         </div>
       </form>

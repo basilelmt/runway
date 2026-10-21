@@ -36,7 +36,10 @@ export function AskProvider({ children }: { children: ReactNode }) {
     streamAsk(
       { question, sessionId: sessionId.current, page, refs },
       (e) => {
-        if (e.event === 'step') update(id, { step: e.data.text });
+        if (e.event === 'step') {
+          const { text, source } = e.data;
+          setTurns((all) => all.map((t) => (t.id === id ? { ...t, step: text, sources: t.sources.includes(source) ? t.sources : [...t.sources, source] } : t)));
+        }
         if (e.event === 'answer') {
           sessionId.current = e.data.sessionId;
           update(id, { status: 'done', answer: e.data, step: null });
@@ -64,7 +67,7 @@ export function AskProvider({ children }: { children: ReactNode }) {
       const id = nextId.current++;
       // L'écran est lu à l'envoi : le fournisseur vit au-dessus du routeur dans les tests.
       const turn = { question, refs, page: pageLabel(window.location.pathname) };
-      setTurns((all) => [...all, { id, ...turn, status: 'pending', step: null, answer: null, error: null }]);
+      setTurns((all) => [...all, { id, ...turn, status: 'pending', step: null, sources: [], answer: null, error: null }]);
       setRefs([]);
       run(id, turn);
     },
@@ -81,7 +84,7 @@ export function AskProvider({ children }: { children: ReactNode }) {
     (id: number) => {
       const turn = turns.find((t) => t.id === id);
       if (!turn) return;
-      update(id, { status: 'pending', error: null, step: null });
+      update(id, { status: 'pending', error: null, step: null, sources: [] });
       run(id, turn);
     },
     [turns, run],
@@ -102,27 +105,22 @@ export function AskProvider({ children }: { children: ReactNode }) {
   }, []);
   const toggle = useCallback(() => setOpen(!open), [open, setOpen]);
 
-  // Le viseur se range dès qu'on atteint le nombre maximal de blocs.
-  const addRef = useCallback(
-    (ref: AskRef) => {
-      if (refs.some((r) => sameRef(r, ref)) || refs.length >= MAX_REFS) return;
-      setRefs([...refs, ref]);
-      if (refs.length + 1 >= MAX_REFS) setAiming(false);
-    },
-    [refs],
-  );
+  const addRef = useCallback((ref: AskRef) => setRefs((all) => (all.some((r) => sameRef(r, ref)) || all.length >= MAX_REFS ? all : [...all, ref])), []);
   const removeRef = useCallback((ref: AskRef) => setRefs((all) => all.filter((r) => !sameRef(r, ref))), []);
 
+  // Plein, le viseur se range ; il revient dès qu'une pastille est retirée.
+  const aimingOn = aiming && refs.length < MAX_REFS;
+
   const api = useMemo<AskApi>(
-    () => ({ open, setOpen, toggle, turns, pending: turns.some((t) => t.status === 'pending'), send, stop, retry, reset, refs, addRef, removeRef, aiming, setAiming }),
-    [open, setOpen, toggle, turns, send, stop, retry, reset, refs, addRef, removeRef, aiming],
+    () => ({ open, setOpen, toggle, turns, pending: turns.some((t) => t.status === 'pending'), send, stop, retry, reset, refs, addRef, removeRef, aiming: aimingOn, setAiming }),
+    [open, setOpen, toggle, turns, send, stop, retry, reset, refs, addRef, removeRef, aimingOn],
   );
 
   return (
     <AskContext.Provider value={api}>
       {children}
       <AskPanel />
-      {aiming ? <AskAim /> : null}
+      {aimingOn ? <AskAim /> : null}
     </AskContext.Provider>
   );
 }

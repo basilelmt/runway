@@ -20,14 +20,15 @@
   }
 }
 
+/* En-tête */
+
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-2);
-  height: 56px;
-  padding: 0 var(--s-2) 0 var(--s-5);
-  border-bottom: 1px solid var(--rule);
+  height: 60px;
+  padding: 0 var(--s-3) 0 var(--s-5);
   flex: none;
 }
 
@@ -42,36 +43,94 @@
   letter-spacing: -0.015em;
 }
 
-.title :global(svg) {
-  width: 18px;
-  height: 18px;
-  color: var(--marking);
+/* La marque de Demander : un carré de marquage jaune, comme un repère de piste. */
+.mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  background: var(--marking);
+  color: var(--marking-on);
+}
+
+.mark :global(svg) {
+  width: 14px;
+  height: 14px;
 }
 
 .headerActions {
   display: flex;
   gap: var(--s-1);
+  color: var(--ink-mute);
 }
+
+/* Fil */
 
 .thread {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--s-5);
+  padding: var(--s-2) var(--s-5) var(--s-5);
 }
 
 .empty {
   display: flex;
   flex-direction: column;
-  gap: var(--s-5);
+  gap: var(--s-2);
+  padding-top: var(--s-4);
+}
+
+.emptyLead {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .emptyText {
-  margin: 0;
+  margin: 0 0 var(--s-4);
   color: var(--ink-soft);
   font-size: var(--text-sm);
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.suggestion {
+  width: 100%;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.suggestion:hover {
+  background: var(--paper-sunken);
+  border-color: var(--rule-strong);
+}
+
+.suggestion:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .turns {
@@ -86,21 +145,96 @@
 .turn {
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
+  gap: var(--s-4);
+}
+
+/* La question : une bulle claire à droite, ses blocs montrés en dessous. */
+.ask {
+  align-self: flex-end;
+  max-width: 86%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-1);
 }
 
 .question {
-  align-self: flex-end;
-  max-width: 85%;
   margin: 0;
   padding: var(--s-2) var(--s-3);
   border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--paper-sunken);
+  color: var(--ink);
   font-size: var(--text-sm);
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.questionRefs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-1);
+}
+
+.questionRef {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  max-width: 100%;
+  height: 22px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+/* Petit repère jaune : le bloc vient du viseur. */
+.questionRef::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: var(--radius-xs);
+  background: var(--marking);
+}
+
+.questionRefLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La réponse : tenue par un filet de marquage. */
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding-left: var(--s-4);
+  border-left: var(--stroke-mark) solid var(--marking);
+}
+
+.sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.source {
+  padding: var(--s-half) var(--s-2);
+  border-radius: var(--radius-sm);
+  background: var(--paper-sunken);
+  color: var(--ink-mute);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
 }
 
 .pending {
@@ -112,16 +246,29 @@
   font-size: var(--text-sm);
 }
 
-.answer {
+.figure {
   display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: var(--s-2);
+  margin: 0;
+}
+
+.figureAmount {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.figureLabel {
+  color: var(--ink-mute);
+  font-size: var(--text-sm);
 }
 
 .text {
   margin: 0;
   font-size: var(--text-md);
-  line-height: 1.55;
+  line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
@@ -161,34 +308,164 @@
   line-height: 1.4;
 }
 
+/* Champ : une carte qui réunit les blocs montrés, le texte et sa barre d'outils. */
+
 .composer {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
-  padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--rule);
+  margin: 0 var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom));
+  padding: var(--s-3) var(--s-2) var(--s-2) var(--s-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-bright);
+  box-shadow: var(--shadow-raise);
+  cursor: text;
   flex: none;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
-.inputRow {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--s-2);
+.composer:focus-within {
+  border-color: var(--ink-mute);
 }
 
-.context {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
+.composer[data-disabled] {
+  cursor: default;
 }
 
-.aimHint {
+.field {
+  width: 100%;
+  min-height: 24px;
   margin: 0;
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-  line-height: 1.4;
+  padding: 0 var(--s-1) 0 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-input);
+  line-height: 1.5;
+  resize: none;
 }
 
+.field::placeholder {
+  color: var(--ink-mute);
+}
+
+.field:focus {
+  outline: none;
+}
+
+.field:disabled {
+  color: var(--ink-mute);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+/* Le viseur : discret au repos, en encre avec son point jaune quand il est armé. */
+.aim {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  height: 30px;
+  padding: 0 var(--s-3) 0 var(--s-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.aim :global(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.aim:hover:not(:disabled) {
+  background: var(--paper-sunken);
+}
+
+.aim[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.aim:focus-visible,
+.send:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.aim:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Point jaune du viseur armé, avec son halo. */
+.aimDot {
+  width: 6px;
+  height: 6px;
+  margin: 0 var(--s-half);
+  border-radius: var(--radius-pill);
+  background: var(--marking);
+  box-shadow: 0 0 0 calc(var(--stroke-mark) * 1.5) color-mix(in srgb, var(--marking) 35%, transparent);
+}
+
+.send {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--marking);
+  color: var(--marking-on);
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
+}
+
+.send :global(svg) {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.4;
+}
+
+.send:disabled {
+  background: var(--paper-sunken);
+  color: var(--ink-mute);
+  cursor: not-allowed;
+}
+
+.stop {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.stop :global(svg) {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+/* Pastilles des blocs montrés, dans le champ. */
 .refs {
   list-style: none;
   margin: 0;
@@ -203,13 +480,14 @@
   align-items: center;
   gap: var(--s-1);
   max-width: 100%;
-  height: 26px;
+  height: 24px;
   padding: 0 var(--s-half) 0 var(--s-2);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--marking-soft);
   color: var(--marking-ink);
   font-size: var(--text-xs);
   font-weight: 500;
+  cursor: default;
 }
 
 .ref > :global(svg) {
@@ -228,12 +506,12 @@
 .refRemove {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   flex: none;
   padding: 0;
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -251,28 +529,6 @@
 .refRemove :global(svg) {
   width: 12px;
   height: 12px;
-}
-
-/* Sous la bulle d'une question : les blocs qui l'accompagnaient, en lecture seule. */
-.questionRefs {
-  align-self: flex-end;
-  justify-content: flex-end;
-  max-width: 85%;
-  margin-top: calc(-1 * var(--s-2));
-}
-
-.questionRefs .ref {
-  padding-right: var(--s-2);
-}
-
-.field {
-  flex: 1;
-}
-
-.send {
-  flex: none;
-  width: 36px;
-  height: 36px;
 }
 
 @media (max-width: 767px) {
