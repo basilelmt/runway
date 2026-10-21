@@ -7,6 +7,7 @@ import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
 import { Button, Disclosure, EmptyState, ErrorState, Notice, PulseDot, SectionHeader, Skeleton } from '@/components/ui';
 import { keepTogether } from '@/lib/format';
 import { failedAnglesText, formatPct, gainTone, ideasTotal, runOutcome } from '@/lib/invest';
+import { askTarget } from '@/components/ask/ask-target';
 import { IdeaCard } from './IdeaCard';
 import { IdeaDialog } from './IdeaDialog';
 import { IdeasScore } from './IdeasScore';
@@ -78,14 +79,14 @@ export function IdeasSection() {
               description={`${IDEA_ANGLES.length} chercheurs fouillent l’actualité, un critique ne garde que ce que le marché n’a pas encore vu.`}
             />
           ) : (
-            <>
+            <div className={styles.openIdeas} {...askTarget('section', null, 'Idées en cours')}>
               <OpenTotal ideas={data.open} />
               <div className={[styles.grid, 'stagger'].join(' ')}>
                 {data.open.map((i) => (
                   <IdeaCard key={i.id} idea={i} onOpen={() => setOpen(i)} />
                 ))}
               </div>
-            </>
+            </div>
           )}
 
           <IdeasScore summary={data.summary} />
@@ -113,9 +114,10 @@ function OpenTotal({ ideas }: { ideas: IdeaView[] }) {
   if (!total) return null;
   return (
     <p className={styles.scoreLine}>
-      {total.count > 1 ? `Ensemble, les ${total.count} idées en cours font` : 'L’idée en cours fait'}{' '}
-      <strong className={['num', styles[gainTone(total.ideas)]].join(' ')}>{formatPct(total.ideas, { signed: true })}</strong>, contre{' '}
-      <span className="num">{formatPct(total.bench, { signed: true })}</span> pour le S&P 500 sur les mêmes périodes.
+      {total.count > 1 ? `En moyenne, les ${total.count} idées en cours font` : 'L’idée en cours fait'}{' '}
+      <strong className={['num', styles[gainTone(total.ideas)]].join(' ')}>{formatPct(total.ideas, { signed: true })}</strong>
+      {total.count > 1 ? ' (100 € sur chacune)' : ''}, contre <span className="num">{formatPct(total.bench, { signed: true })}</span> pour le S&P 500{' '}
+      {total.count > 1 ? 'sur les mêmes périodes' : 'sur la même période'}.
     </p>
   );
 }

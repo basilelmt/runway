@@ -14,7 +14,7 @@ const answer = (overrides: Partial<AskAnswerEvent> = {}): AskAnswerEvent => ({
   ...overrides,
 });
 
-const turnDone = (a: AskAnswerEvent): AskTurn => ({ id: 1, question: 'Combien ?', status: 'done', step: null, answer: a, error: null });
+const turnDone = (a: AskAnswerEvent): AskTurn => ({ id: 1, question: 'Combien ?', refs: [], page: null, status: 'done', step: null, answer: a, error: null });
 
 describe('AskMessage', () => {
   it('affiche le motif d’une action refusée sous la réponse', () => {

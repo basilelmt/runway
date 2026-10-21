@@ -163,11 +163,106 @@
 
 .composer {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: var(--s-2);
   padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom));
   border-top: 1px solid var(--rule);
   flex: none;
+}
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+}
+
+.context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.aimHint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.refs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.ref {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  max-width: 100%;
+  height: 26px;
+  padding: 0 var(--s-half) 0 var(--s-2);
+  border-radius: var(--radius-pill);
+  background: var(--marking-soft);
+  color: var(--marking-ink);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.ref > :global(svg) {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.refLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.refRemove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.refRemove:hover {
+  background: color-mix(in srgb, var(--marking-ink) 12%, transparent);
+}
+
+.refRemove:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.refRemove :global(svg) {
+  width: 12px;
+  height: 12px;
+}
+
+/* Sous la bulle d'une question : les blocs qui l'accompagnaient, en lecture seule. */
+.questionRefs {
+  align-self: flex-end;
+  justify-content: flex-end;
+  max-width: 85%;
+  margin-top: calc(-1 * var(--s-2));
+}
+
+.questionRefs .ref {
+  padding-right: var(--s-2);
 }
 
 .field {
@@ -186,6 +281,11 @@
     width: auto;
     border-left: none;
     box-shadow: none;
+  }
+
+  /* Plein écran, le panneau cacherait la page : il s'efface le temps de viser (voir la barre d'AskAim). */
+  .panel[data-aiming] {
+    display: none;
   }
 }
 

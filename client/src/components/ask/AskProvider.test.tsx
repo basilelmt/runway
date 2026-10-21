@@ -64,13 +64,13 @@ describe('AskProvider', () => {
     });
     expect(await screen.findByText('Combien ?|done||20 €|')).toBeInTheDocument();
     expect(api.pending).toBe(false);
-    expect(bodyOf(0)).toEqual({ question: 'Combien ?', sessionId: null });
+    expect(bodyOf(0)).toEqual({ question: 'Combien ?', sessionId: null, page: 'Accueil', refs: [] });
 
     const second = controllableSse();
     fetchMock.mockResolvedValueOnce(second.response);
     act(() => api.send('Et en 2025 ?'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(bodyOf(1)).toEqual({ question: 'Et en 2025 ?', sessionId: SESSION });
+    expect(bodyOf(1)).toEqual({ question: 'Et en 2025 ?', sessionId: SESSION, page: 'Accueil', refs: [] });
   });
 
   it('nouvelle conversation : vide le fil et oublie la session', async () => {

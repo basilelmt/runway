@@ -36,6 +36,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { bankSyncTodo } from '@/lib/bank';
 import { budgetOverIncome, watchTodo } from '@/lib/budget';
 import { formatDateCompact, plural } from '@/lib/format';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Home.module.css';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -134,6 +135,7 @@ function MonthHero({ data }: { data: Overview }) {
   return (
     <KeyFigure
       label="Dépensé ce mois-ci"
+      data={askTarget('section', null, 'Mois en cours')}
       figure={<Amount cents={spent} size="xl" tone="neutral" animate />}
       context={budget > 0 ? `sur ${formatEuros(budget)} prévus` : undefined}
       chart={chart ? <MonthPaceChart daily={variable.daily} budget={variable.budget} monthStart={data.month.start} monthEnd={data.month.end} /> : undefined}
@@ -295,7 +297,7 @@ function RecentOperations() {
   const list = transactions.data;
 
   return (
-    <section aria-labelledby="recent-title">
+    <section aria-labelledby="recent-title" {...askTarget('section', null, 'Dernières opérations')}>
       <SectionHeader id="recent-title" title="Dernières opérations" aside={<SectionLink to="/operations">Tout voir</SectionLink>} />
       {error ? (
         <ErrorState title="Impossible de charger les opérations" description={errorMessage(error)} onRetry={() => void Promise.all([transactions.refetch(), accounts.refetch(), envelopes.refetch()])} />
@@ -324,12 +326,13 @@ function RecentOperations() {
 
 function AccountsList({ data }: { data: Overview }) {
   return (
-    <section aria-labelledby="accounts-title">
+    <section aria-labelledby="accounts-title" {...askTarget('section', null, 'Comptes')}>
       <SectionHeader id="accounts-title" title="Comptes" aside={<Total cents={data.netWorth} />} />
       <ul className="ledger">
         {data.accounts.map((a) => (
           <ListRow
             key={a.id}
+            data={askTarget('account', a.id, `Compte ${a.name}`)}
             title={
               <>
                 {a.name}

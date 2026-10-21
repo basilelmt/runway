@@ -22,12 +22,14 @@ type KeyFigureProps = {
   decoration?: ReactNode;
   /** Mise en page propre à l'écran (hauteur laissée à la décoration). */
   className?: string;
+  /** Attributs `data-*` posés sur la section (bloc visable de Demander). */
+  data?: { [key: `data-${string}`]: string | undefined };
 };
 
 /** Le chiffre clé d'un écran : un seul par écran, sans cadre sauf la nuit d'Investir. */
-export function KeyFigure({ label, figure, context, caption, children, aside, chart, variant = 'plain', size = 'md', decoration, className }: KeyFigureProps) {
+export function KeyFigure({ label, figure, context, caption, children, aside, chart, variant = 'plain', size = 'md', decoration, className, data }: KeyFigureProps) {
   return (
-    <section aria-label={label} className={[styles.figure, styles[variant], styles[size], className ?? ''].join(' ')}>
+    <section aria-label={label} className={[styles.figure, styles[variant], styles[size], className ?? ''].join(' ')} {...data}>
       {decoration ? (
         <div className={styles.decoration} aria-hidden="true">
           {decoration}

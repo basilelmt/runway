@@ -4,6 +4,7 @@ import type { Account, Envelope, Transaction } from '@shared/schemas';
 import { Amount, Badge, Button, EnvelopeTag, ListRow, type ListRowClick } from '@/components/ui';
 import { KIND_LABELS } from '@/lib/format';
 import { displayLabel, repeatsLabel } from '@/lib/merchants';
+import { askTarget } from '@/components/ask/ask-target';
 import { opensSheet } from './opensSheet';
 import { signedAmount } from './signed';
 import styles from './TransactionRow.module.css';
@@ -46,6 +47,7 @@ export function TransactionRow({ transaction: t, accounts, envelopes, viewAccoun
     <ListRow
       muted={planned}
       {...click}
+      data={askTarget('transaction', t.id, `Opération ${name}`)}
       lead={lead}
       title={<span title={t.label}>{name}</span>}
       meta={

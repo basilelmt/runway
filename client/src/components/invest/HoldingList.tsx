@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { HoldingView } from '@shared/api-types';
 import { Amount, Badge, ColumnHeader, EmptyState, ListRow } from '@/components/ui';
 import { formatPct, formatQty, gainTone, platformLabel } from '@/lib/invest';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Portfolio.module.css';
 
 type Props = { holdings: HoldingView[]; onOpen: (id: number) => void; emptyAction?: ReactNode };
@@ -34,6 +35,7 @@ export function HoldingList({ holdings, onOpen, emptyAction }: Props) {
         {holdings.map((h) => (
           <ListRow
             key={h.id}
+            data={askTarget('holding', h.id, `Position ${h.name}`)}
             onClick={() => onOpen(h.id)}
             clickLabel={`Voir le détail de ${h.name}`}
             title={h.name}

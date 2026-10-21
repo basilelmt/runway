@@ -1,4 +1,4 @@
-import { RotateCcw } from 'lucide-react';
+import { Crosshair, RotateCcw } from 'lucide-react';
 import { Amount, Button, KeyFigure, Notice, PulseDot } from '@/components/ui';
 import { keepTogether } from '@/lib/format';
 import type { AskTurn } from './ask-context';
@@ -16,6 +16,16 @@ export function AskMessage({ turn, onRetry }: AskMessageProps) {
   return (
     <li className={styles.turn}>
       <p className={styles.question}>{turn.question}</p>
+      {turn.refs.length > 0 ? (
+        <ul className={[styles.refs, styles.questionRefs].join(' ')} aria-label="Blocs montrés">
+          {turn.refs.map((ref) => (
+            <li key={`${ref.kind}-${ref.id}-${ref.label}`} className={styles.ref}>
+              <Crosshair aria-hidden />
+              <span className={styles.refLabel}>{ref.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {turn.status === 'pending' ? (
         <p className={styles.pending}>
           <PulseDot />

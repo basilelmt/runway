@@ -36,6 +36,7 @@ import {
 import { formatDateCompact, formatDateLong } from '@/lib/format';
 import { displayLabel } from '@/lib/merchants';
 import { useCountUp } from '@/lib/motion';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Analyse.module.css';
 
 type View = 'depenses' | 'evolution' | 'a-venir' | 'bilan';
@@ -147,6 +148,7 @@ function ByEnvelope({ report, months }: { report: SpendingReport; months: number
     <div className={styles.byEnvelope}>
       <KeyFigure
         label="Dépensé sur la période"
+        data={askTarget('section', null, 'Dépensé sur la période')}
         figure={<Amount cents={report.total} size="xl" tone="neutral" animate />}
         aside={
           budget > 0 ? (
@@ -165,7 +167,7 @@ function ByEnvelope({ report, months }: { report: SpendingReport; months: number
         }
       />
 
-      <section aria-label="Dépenses par enveloppe" className={styles.block}>
+      <section aria-label="Dépenses par enveloppe" className={styles.block} {...askTarget('section', null, 'Dépenses par enveloppe')}>
         {/* Barres relatives à la plus grosse enveloppe, trait au budget de la période */}
         <ul className={['ledger', 'stagger', styles.bars].join(' ')}>
           {report.byEnvelope.map((e) => {
@@ -216,7 +218,7 @@ function TopExpenses({ from, to }: { from: string; to: string }) {
   );
 
   return (
-    <section aria-labelledby="top-title">
+    <section aria-labelledby="top-title" {...askTarget('section', null, 'Plus grosses dépenses')}>
       <SectionHeader id="top-title" title="Plus grosses dépenses" />
       {transactions.isPending ? (
         <ListRowSkeleton rows={4} />
@@ -266,6 +268,7 @@ function Evolution() {
       ) : (
         <KeyFigure
           label="Taux d’épargne sur 12 mois"
+          data={askTarget('section', null, 'Taux d’épargne')}
           figure={
             <span className={keyFigureValue} aria-label={kpis.rate === null ? 'inconnu' : `${Math.round(kpis.rate * 100)} %`}>
               <span aria-hidden>{kpis.rate === null ? '–' : `${ratePercent} %`}</span>
@@ -285,7 +288,7 @@ function Evolution() {
         />
       )}
 
-      <section aria-labelledby="monthly-title">
+      <section aria-labelledby="monthly-title" {...askTarget('section', null, 'Revenus, dépenses et épargne')}>
         <SectionHeader id="monthly-title" title="Revenus, dépenses et épargne" aside={<span className={styles.period}>12 derniers mois</span>} />
         {monthly.isPending ? (
           <Skeleton height={260} />
@@ -296,7 +299,7 @@ function Evolution() {
         )}
       </section>
 
-      <section aria-labelledby="networth-title">
+      <section aria-labelledby="networth-title" {...askTarget('section', null, 'Total des comptes')}>
         <SectionHeader id="networth-title" title="Total de tes comptes" aside={<span className={styles.period}>12 mois passés, 90 jours projetés</span>} />
         {netWorth.isPending ? (
           <Skeleton height={260} />

@@ -6,6 +6,7 @@ import { formatDateLong, formatDateShort } from '@shared/dates';
 import { axisEuros, ChartTooltip } from '@/components/charts/ChartTooltip';
 import chart from '@/components/charts/chart.module.css';
 import { FilterPill, SectionHeader, Segmented } from '@/components/ui';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Portfolio.module.css';
 
 const RANGES: { value: PortfolioRange; label: string }[] = [
@@ -34,7 +35,7 @@ export function PortfolioChart({ series, holdings, range, onRange, loading = fal
   const shown = holding ? holding.series : series;
 
   return (
-    <section aria-labelledby="chart-title">
+    <section aria-labelledby="chart-title" {...askTarget('section', null, 'Évolution du portefeuille')}>
       <SectionHeader
         id="chart-title"
         title="Évolution"

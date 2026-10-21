@@ -5,6 +5,7 @@ import { useAsk } from '@/components/ask/ask-context';
 import { AskProvider } from '@/components/ask/AskProvider';
 import { useAutoBankSync } from '@/components/import/useAutoBankSync';
 import { BrandMark, Button, ButtonLink } from '@/components/ui';
+import { askUi } from '@/components/ask/ask-target';
 import { BottomNav } from './BottomNav';
 import { QuickAddProvider } from './QuickAdd';
 import { panelTrigger } from './quick-add-context';
@@ -33,7 +34,7 @@ function Layout() {
   return (
     <div className={styles.shell} data-ask-open={ask.open || undefined}>
       <SideNav />
-      <header className={styles.topBar}>
+      <header className={styles.topBar} {...askUi}>
         <NavLink to="/" className={styles.brand} aria-label="Runway, accueil">
           <BrandMark size={20} />
           Runway
