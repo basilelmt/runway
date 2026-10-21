@@ -20,7 +20,7 @@ function Logo() {
   const mark = spring({ frame, fps, config: { damping: 11, stiffness: 200, mass: 0.6 } });
   const word = spring({ frame: frame - 5, fps, config: { damping: 200 }, durationInFrames: 16 });
   const tag = spring({ frame: frame - 22, fps, config: { damping: 200 }, durationInFrames: 16 });
-  const fly = interpolate(frame, [20, 62], [-300, 2200], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => t * t });
+  const fly = interpolate(frame, [10, 48], [-300, 2200], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => t * t });
   return (
     <AbsoluteFill style={{ background: color.tarmac, alignItems: 'center', justifyContent: 'center' }}>
       <PerspectiveRunway speed={18} opacity={0.7} />
@@ -35,7 +35,7 @@ function Logo() {
       <div style={{ position: 'absolute', top: 596, opacity: tag, transform: `translateY(${(1 - tag) * 20}px)`, font: `500 30px ${font.mono}`, letterSpacing: '0.14em', color: color.marking }}>
         ENVELOPPES · PRÉVISION · CLAUDE · EN LOCAL
       </div>
-      <div style={{ position: 'absolute', left: fly, top: 470 - (fly / 2200) * 260, transform: `rotate(${-(fly / 2200) * 14}deg)`, filter: 'blur(1px)' }}>
+      <div style={{ position: 'absolute', left: fly, top: 900 - (fly / 2200) * 200, transform: `rotate(${-(fly / 2200) * 10}deg)`, filter: 'blur(1px)' }}>
         <Plane size={110} />
       </div>
     </AbsoluteFill>
@@ -43,8 +43,8 @@ function Logo() {
 }
 
 export const intro: ShotDef[] = [
-  { frames: 32, node: <Words text="Ton argent," background={color.tarmac} ink={color.tarmacInk} speed={30} /> },
-  { frames: 26, node: <Words text="jusqu’à la" background={color.tarmac} ink={color.tarmacInk} speed={44} /> },
-  { frames: 36, flash: true, node: <Words text="prochaine paie." background={color.marking} ink={color.markingOn} speed={0} /> },
-  { frames: 95, entrance: 'punch', node: <Logo /> },
+  { frames: 14, node: <Words text="Ton argent," background={color.tarmac} ink={color.tarmacInk} speed={30} /> },
+  { frames: 12, node: <Words text="jusqu’à la" background={color.tarmac} ink={color.tarmacInk} speed={44} /> },
+  { frames: 18, flash: true, node: <Words text="prochaine paie." background={color.marking} ink={color.markingOn} speed={0} /> },
+  { frames: 66, entrance: 'punch', node: <Logo /> },
 ];

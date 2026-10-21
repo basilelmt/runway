@@ -95,19 +95,20 @@ function Overspend() {
 
   return (
     <Paper>
-      <Caption index="01 ENVELOPPES" text={'Ça déborde ?\nTu le sais\ntout de suite.'} />
+      <Caption index="01 ENVELOPPES" text={'Ça déborde ?\nTu le sais tout de suite.'} size={64} />
 
-      {/* Les tickets de dépense arrivent de la droite et tombent dans l'enveloppe. */}
-      {OUTINGS.map((o, i) => {
-        const t = interpolate(frame, [HIT(i) - 12, HIT(i)], [0, 1], { ...clamp, easing: outEase });
-        const gone = interpolate(frame, [HIT(i), HIT(i) + 4], [1, 0], clamp);
-        if (t <= 0 || gone <= 0) return null;
-        return (
-          <div key={o.label} style={{ position: 'absolute', left: 1960 - (1960 - 1240) * t, top: 560 - 40 * t, opacity: gone, padding: '14px 22px', borderRadius: 14, background: color.paperRaised, boxShadow: '0 16px 36px rgb(20 32 28 / 0.2)', font: `500 28px ${font.body}`, color: color.ink, whiteSpace: 'nowrap' }}>
-            {o.label} <span style={{ color: color.negative, marginLeft: 12 }}>{eur(-o.amount)}</span>
-          </div>
-        );
-      })}
+      {/* Les dépenses du mois s'ajoutent une à une sous la légende, et la jauge monte d'autant. */}
+      <div style={{ position: 'absolute', left: 96, top: 430, width: 580, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {OUTINGS.map((o, i) => {
+          const t = interpolate(frame, [HIT(i) - 10, HIT(i)], [0, 1], { ...clamp, easing: outEase });
+          return (
+            <div key={o.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 22px', borderRadius: 14, background: color.paperRaised, boxShadow: '0 10px 26px rgb(20 32 28 / 0.12)', font: `500 28px ${font.body}`, color: color.ink, opacity: t, transform: `translateX(${(1 - t) * -60}px)` }}>
+              <span>{o.label}</span>
+              <span style={{ color: color.negative, fontVariantNumeric: 'tabular-nums' }}>{eur(-o.amount)}</span>
+            </div>
+          );
+        })}
+      </div>
 
       <Card style={{ left: 760, top: 300, width: 1064, padding: '34px 40px', transform: `translateX(${shake}px)`, boxShadow: over ? `0 40px 90px rgb(200 65 43 / 0.25), 0 0 0 3px ${color.negative}` : undefined }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
@@ -165,7 +166,7 @@ function Overspend() {
 }
 
 export const envelopes: ShotDef[] = [
-  { frames: 26, flash: true, node: <TitleCard index="01" word="Enveloppes" /> },
-  { frames: 170, node: <Distribute /> },
-  { frames: 165, entrance: 'whip', node: <Overspend /> },
+  { frames: 14, flash: true, node: <TitleCard index="01" word="Enveloppes" /> },
+  { frames: 150, node: <Distribute /> },
+  { frames: 140, entrance: 'whip', node: <Overspend /> },
 ];

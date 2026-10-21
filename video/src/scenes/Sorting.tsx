@@ -44,11 +44,11 @@ function Drop() {
   const frame = useCurrentFrame();
   const p = path(frame, [
     [0, 1500, 120],
-    [30, 1290, 470],
+    [26, 1150, 690],
   ]);
-  const dropped = frame >= 32;
-  const flash = interpolate(frame, [32, 46], [1, 0], clamp);
-  const stats = usePop(36);
+  const dropped = frame >= 30;
+  const flash = frame < 30 ? 0 : interpolate(frame, [30, 44], [1, 0], clamp);
+  const stats = usePop(34);
   return (
     <Paper>
       <Caption index="02 CLAUDE RANGE" text={'Ton relevé\nbancaire,\ntel quel.'} />
@@ -99,7 +99,7 @@ function Sort() {
   const rules = usePop(SCAN(LINES.length - 1) + 20);
   const pointer = path(frame, [
     [0, 1500, 500],
-    [16, 1700, 262],
+    [16, 1680, 206],
   ]);
   return (
     <Paper>
@@ -121,6 +121,10 @@ function Sort() {
         {LINES.map((line, i) => {
           const scan = interpolate(frame, [SCAN(i) - 12, SCAN(i)], [0, 1], { ...clamp, easing: outEase });
           const done = popAt(frame, SCAN(i));
+          // L'ancien libellé s'efface avant que le nouveau n'apparaisse : les deux ne se superposent jamais.
+          const swap = interpolate(frame, [SCAN(i), SCAN(i) + 12], [0, 1], clamp);
+          const before = interpolate(swap, [0, 0.45], [1, 0], clamp);
+          const after = interpolate(swap, [0.5, 1], [0, 1], clamp);
           const sorted = frame >= SCAN(i);
           return (
             <div key={line.raw} style={{ position: 'relative', height: ROW, display: 'flex', alignItems: 'center', gap: 22, borderTop: `1.5px solid ${color.rule}` }}>
@@ -133,12 +137,12 @@ function Sort() {
               </div>
               <div style={{ flex: 1, minWidth: 0, position: 'relative', height: ROW - 20 }}>
                 {/* Avant : le libellé brut de la banque. */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', opacity: 1 - Math.min(1, done), transform: `translateY(${-Math.min(1, done) * 20}px)` }}>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', opacity: before, transform: `translateY(${(1 - before) * -20}px)` }}>
                   <div style={{ font: `500 23px ${font.mono}`, color: color.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line.raw}</div>
                   <div style={{ marginTop: 6, font: `400 22px ${font.body}`, color: color.inkMute }}>{line.date}</div>
                 </div>
                 {/* Après : le marchand, le moyen de paiement, ce que c'est. */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, opacity: Math.min(1, done), transform: `translateY(${(1 - Math.min(1, done)) * 20}px)` }}>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, opacity: after, transform: `translateY(${(1 - after) * 20}px)` }}>
                   <div style={{ font: `600 34px ${font.body}`, color: color.ink }}>
                     {line.name} <span style={{ font: `400 26px ${font.body}`, color: color.inkMute }}>· {line.what}</span>
                   </div>
@@ -174,7 +178,7 @@ function popAt(frame: number, delay: number): number {
 }
 
 export const sorting: ShotDef[] = [
-  { frames: 26, flash: true, node: <TitleCard index="02" word="Claude range" tone="tarmac" /> },
-  { frames: 100, node: <Drop /> },
-  { frames: 240, entrance: 'whip', node: <Sort /> },
+  { frames: 14, flash: true, node: <TitleCard index="02" word="Claude range" tone="tarmac" /> },
+  { frames: 66, node: <Drop /> },
+  { frames: 215, entrance: 'whip', node: <Sort /> },
 ];

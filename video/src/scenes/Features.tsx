@@ -11,17 +11,17 @@ const ANSWER = 'Cinq sorties ce mois-ci, dont un concert à la Cigale à 82,50 �
 /** Demander : la question se tape, la réponse arrive mot à mot, l'action s'applique d'un clic. */
 function Ask() {
   const frame = useCurrentFrame();
-  const typed = QUESTION.slice(0, Math.floor(interpolate(frame, [8, 50], [0, QUESTION.length], clamp)));
-  const sent = frame >= 58;
+  const typed = QUESTION.slice(0, Math.floor(interpolate(frame, [6, 32], [0, QUESTION.length], clamp)));
+  const sent = frame >= 38;
   const answerWords = ANSWER.split(' ');
-  const shown = Math.floor(interpolate(frame, [72, 140], [0, answerWords.length], clamp));
-  const figure = usePop(64);
-  const action = usePop(146);
+  const shown = Math.floor(interpolate(frame, [52, 112], [0, answerWords.length], clamp));
+  const figure = usePop(44);
+  const action = usePop(116);
   const p = path(frame, [
-    [150, 1500, 980],
-    [172, 1666, 812],
+    [118, 1500, 980],
+    [138, 1700, 600],
   ]);
-  const applied = frame >= 178;
+  const applied = frame >= 144;
   return (
     <Paper>
       <Caption index="03 DEMANDER" text={'Demande,\nClaude\ncherche.'} />
@@ -41,11 +41,11 @@ function Ask() {
           <div style={{ alignSelf: 'flex-end', marginTop: 34, padding: '16px 24px', borderRadius: 18, background: color.paperSunken, font: `500 30px ${font.body}`, color: color.ink }}>{QUESTION}</div>
         ) : null}
 
-        {frame >= 64 ? (
+        {frame >= 44 ? (
           <div style={{ marginTop: 30, paddingLeft: 26, borderLeft: `4px solid ${color.marking}` }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, opacity: Math.min(1, figure), transform: `translateY(${(1 - Math.min(1, figure)) * 16}px)` }}>
               <span style={{ font: `700 72px ${font.display}`, letterSpacing: '-0.03em', color: color.negative }}>
-                <Counter to={225.3} delay={64} duration={22} />
+                <Counter to={225.3} delay={44} duration={20} />
               </span>
               <span style={{ font: `400 28px ${font.body}`, color: color.inkMute }}>pour 200,00 € prévus</span>
             </div>
@@ -81,7 +81,7 @@ function Ask() {
           </div>
         </div>
       </Card>
-      {frame >= 150 ? <Pointer x={p.x} y={p.y} clickAt={174} /> : null}
+      {frame >= 118 ? <Pointer x={p.x} y={p.y} clickAt={140} /> : null}
     </Paper>
   );
 }
@@ -185,16 +185,16 @@ function Invest() {
 }
 
 export const askShots: ShotDef[] = [
-  { frames: 26, flash: true, node: <TitleCard index="03" word="Demander" /> },
-  { frames: 250, node: <Ask /> },
+  { frames: 14, flash: true, node: <TitleCard index="03" word="Demander" /> },
+  { frames: 190, node: <Ask /> },
 ];
 
 export const forecastShots: ShotDef[] = [
-  { frames: 26, flash: true, node: <TitleCard index="04" word="Prévision" tone="tarmac" /> },
-  { frames: 160, entrance: 'punch', node: <Forecast /> },
+  { frames: 14, flash: true, node: <TitleCard index="04" word="Prévision" tone="tarmac" /> },
+  { frames: 128, entrance: 'punch', node: <Forecast /> },
 ];
 
 export const investShots: ShotDef[] = [
-  { frames: 26, flash: true, node: <TitleCard index="05" word="Investir" tone="night" /> },
-  { frames: 130, entrance: 'punch', node: <Invest /> },
+  { frames: 14, flash: true, node: <TitleCard index="05" word="Investir" tone="night" /> },
+  { frames: 96, entrance: 'punch', node: <Invest /> },
 ];

@@ -36,9 +36,9 @@ export function Presentation() {
 
 /** Boucle courte du GIF du README : le logo, le salaire réparti, puis le tri par Claude. */
 const TEASER: ShotDef[] = [
-  { ...intro[3]!, frames: 60 },
+  { ...intro[3]!, frames: 54 },
   { ...envelopes[1]!, frames: 130 },
-  { ...sorting[2]!, frames: 200 },
+  { ...sorting[2]!, frames: 190 },
 ];
 export const TEASER_FRAMES = TEASER.reduce((sum, s) => sum + s.frames, 0);
 
