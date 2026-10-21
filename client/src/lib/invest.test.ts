@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { domainOf, failedAnglesText, formatMarketContext, formatPct, formatQty, gainTone, runOutcome } from './invest';
+import { domainOf, failedAnglesText, formatMarketContext, formatPct, formatQty, gainTone, ideasTotal, runOutcome } from './invest';
+import { openIdea } from '@/components/invest/idea-fixture';
 
 describe('format invest', () => {
   it('formatPct', () => {
@@ -38,5 +39,16 @@ describe('format invest', () => {
   it('failedAnglesText', () => {
     expect(failedAnglesText([{ label: 'International' }])).toBe('Le chercheur International n’a pas répondu.');
     expect(failedAnglesText([{ label: 'International' }, { label: 'Calendrier' }])).toBe('Les chercheurs International et Calendrier n’ont pas répondu.');
+  });
+});
+
+describe('ideasTotal', () => {
+  it('moyenne les idées cotées et le S&P 500 sur leurs périodes, sans compter les idées sans cours', () => {
+    expect(ideasTotal([])).toBeNull();
+    expect(ideasTotal([{ ...openIdea, return: null }])).toBeNull();
+    const total = ideasTotal([openIdea, { ...openIdea, return: -0.023, benchReturn: 0.03 }, { ...openIdea, return: null }]);
+    expect(total?.count).toBe(2);
+    expect(total?.ideas).toBeCloseTo(0.03);
+    expect(total?.bench).toBeCloseTo(0.02);
   });
 });

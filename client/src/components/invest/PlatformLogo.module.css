@@ -1,0 +1,14 @@
+.logo {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.trade_republic {
+  color: var(--ink);
+}
+
+.binance {
+  color: #f0b90b;
+}

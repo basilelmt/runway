@@ -11,7 +11,7 @@ describe('IdeaCard', () => {
     expect(screen.getByText('D’ici le 28 oct.')).toBeInTheDocument();
     expect(screen.getByText('Baguettes SA')).toBeInTheDocument();
     expect(screen.getByText('BAG.PA')).toBeInTheDocument();
-    expect(screen.getByText('Sur Trade Republic')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Sur Trade Republic' })).toBeInTheDocument();
     expect(screen.getByText('+8,3 %')).toBeInTheDocument();
     expect(screen.getByText('+1,0 %')).toBeInTheDocument();
   });

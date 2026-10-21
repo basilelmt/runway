@@ -22,9 +22,11 @@ export function IdeasScore({ summary }: { summary: IdeasSummary }) {
       <StatGroup>
         <Stat label="100 € investis sur chaque idée">{formatEuros(invested)}</Stat>
         <Stat label="Auraient donné" emphasis>
-          <span className={styles[gainTone(ideas - bench)]}>{formatEuros(ideas)}</span>
+          <span className={styles[gainTone(ideas - bench)]}>{formatEuros(ideas)}</span> <span className="num">({formatPct(ideas / invested - 1, { signed: true })})</span>
         </Stat>
-        <Stat label="Sur le S&P 500">{formatEuros(bench)}</Stat>
+        <Stat label="Sur le S&P 500">
+          {formatEuros(bench)} <span className="num">({formatPct(bench / invested - 1, { signed: true })})</span>
+        </Stat>
       </StatGroup>
       {summary.filter ? (
         <p className={styles.scoreLine}>
