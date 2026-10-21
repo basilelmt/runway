@@ -10,7 +10,7 @@ mkdir -p "$OUT" "$TMP"
 npx remotion bundle src/index.ts --out-dir "$TMP/bundle" --log=error
 npx remotion render "$TMP/bundle" Presentation "$OUT/runway-presentation.mp4" --log=error
 # L'affiche : le logo posé sur la piste, une fois l'accroche affichée.
-npx remotion still "$TMP/bundle" Presentation "$OUT/poster.png" --frame=104 --log=error
+npx remotion still "$TMP/bundle" Presentation "$OUT/poster.png" --frame=168 --log=error
 npx remotion render "$TMP/bundle" Teaser "$TMP/teaser.mp4" --log=error
 
 # GIF : 960 px, 15 images par seconde, palette calculée sur la boucle elle-même.

@@ -25,7 +25,7 @@ Commande : `npm run render` dans `video/` produit tous les fichiers de `docs/med
 
 Dans `docs/media/`, versionnés :
 
-- `runway-presentation.mp4` : 1920×1080, 30 i/s, H.264, muette, environ 36 s ;
+- `runway-presentation.mp4` : 1920×1080, 30 i/s, H.264, muette, environ 60 s ;
 - `runway-presentation.gif` : boucle de 6 à 8 s tirée de la vidéo, 960 px de large, moins de 8 Mo ;
 - `poster.png` : affiche 1920×1080, image d'ouverture ;
 - `screens/*.png` : captures de l'app utilisées par la vidéo et la grille du README.
@@ -41,9 +41,9 @@ Dans `docs/media/`, versionnés :
 
 ## Récit
 
-Environ 36 s, des plans de 1 à 4 s coupés sec, sur des imitations animées de l'interface (couleurs, polices et composants de Runway redessinés en grand).
+Environ 60 s, des plans de 1 à 8 s coupés sec, assez longs pour lire chaque texte, sur des imitations animées de l'interface (couleurs, polices et composants de Runway redessinés en grand).
 Les vraies captures ne servent qu'au mur de la fin.
-Deux versions précédentes (70 s puis 32 s sur captures) ont été jugées trop longues, puis trop peu centrées sur les enveloppes et le tri.
+Les versions précédentes (70 s puis 32 s sur captures, puis 36 s en imitations) ont été jugées trop longues, trop peu centrées sur les enveloppes et le tri, puis trop rapides à lire.
 
 1. **Ouverture** : « Ton argent, / jusqu'à la / prochaine paie. » sur une piste vue du cockpit, puis le logo et un avion.
 2. **Enveloppes** : le salaire de 2 680 € se répartit d'un geste dans huit enveloppes jusqu'à zéro ; puis les sorties s'empilent, Sorties dépasse son budget (225,30 € pour 200 €), la jauge passe au rouge et l'alerte tombe.
@@ -53,7 +53,7 @@ Deux versions précédentes (70 s puis 32 s sur captures) ont été jugées trop
 6. **Investir** : la carte de nuit, la valeur qui défile, la courbe.
 7. **Fin** : le mur des vraies captures, « En local. / Sans compte. / Sans cloud. », le logo et `npm install && npm run dev`.
 
-Le GIF reprend le logo, la répartition du salaire et le tri par Claude, environ 8 s.
+Le GIF reprend le logo, la répartition du salaire et le tri par Claude, environ 13 s.
 
 ## README
 

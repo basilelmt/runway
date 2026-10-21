@@ -44,11 +44,11 @@ function Drop() {
   const frame = useCurrentFrame();
   const p = path(frame, [
     [0, 1500, 120],
-    [20, 1290, 470],
+    [30, 1290, 470],
   ]);
-  const dropped = frame >= 22;
-  const flash = interpolate(frame, [22, 34], [1, 0], clamp);
-  const stats = usePop(26);
+  const dropped = frame >= 32;
+  const flash = interpolate(frame, [32, 46], [1, 0], clamp);
+  const stats = usePop(36);
   return (
     <Paper>
       <Caption index="02 CLAUDE RANGE" text={'Ton relevé\nbancaire,\ntel quel.'} />
@@ -90,7 +90,7 @@ function Drop() {
 }
 
 const ROW = 128;
-const SCAN = (i: number) => 26 + i * 17;
+const SCAN = (i: number) => 36 + i * 28;
 
 /** Claude passe sur chaque ligne : il reconnaît le marchand et le moyen de paiement, et pose la bonne enveloppe. */
 function Sort() {
@@ -99,7 +99,7 @@ function Sort() {
   const rules = usePop(SCAN(LINES.length - 1) + 20);
   const pointer = path(frame, [
     [0, 1500, 500],
-    [12, 1700, 262],
+    [16, 1700, 262],
   ]);
   return (
     <Paper>
@@ -114,12 +114,12 @@ function Sort() {
       <Card style={{ left: 740, top: 150, width: 1084, padding: '26px 34px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 18 }}>
           <span style={{ font: `700 38px ${font.display}`, color: color.ink }}>À ranger</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '12px 22px', borderRadius: 12, background: color.marking, color: color.markingOn, font: `600 26px ${font.body}`, transform: `scale(${(frame >= 12 && frame < 17 ? 0.94 : 1) * Math.min(1, button)})` }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '12px 22px', borderRadius: 12, background: color.marking, color: color.markingOn, font: `600 26px ${font.body}`, transform: `scale(${(frame >= 18 && frame < 23 ? 0.94 : 1) * Math.min(1, button)})` }}>
             <Sparkle size={26} /> Trier avec Claude
           </span>
         </div>
         {LINES.map((line, i) => {
-          const scan = interpolate(frame, [SCAN(i) - 8, SCAN(i)], [0, 1], { ...clamp, easing: outEase });
+          const scan = interpolate(frame, [SCAN(i) - 12, SCAN(i)], [0, 1], { ...clamp, easing: outEase });
           const done = popAt(frame, SCAN(i));
           const sorted = frame >= SCAN(i);
           return (
@@ -161,7 +161,7 @@ function Sort() {
           );
         })}
       </Card>
-      <Pointer x={pointer.x} y={pointer.y} clickAt={12} opacity={interpolate(frame, [20, 28], [1, 0], clamp)} />
+      <Pointer x={pointer.x} y={pointer.y} clickAt={18} opacity={interpolate(frame, [28, 36], [1, 0], clamp)} />
     </Paper>
   );
 }
@@ -174,7 +174,7 @@ function popAt(frame: number, delay: number): number {
 }
 
 export const sorting: ShotDef[] = [
-  { frames: 16, flash: true, node: <TitleCard index="02" word="Claude range" tone="tarmac" /> },
-  { frames: 56, node: <Drop /> },
-  { frames: 150, entrance: 'whip', node: <Sort /> },
+  { frames: 26, flash: true, node: <TitleCard index="02" word="Claude range" tone="tarmac" /> },
+  { frames: 100, node: <Drop /> },
+  { frames: 240, entrance: 'whip', node: <Sort /> },
 ];

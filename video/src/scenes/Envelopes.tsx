@@ -19,7 +19,7 @@ const SPLIT: { env: EnvKey; amount: number }[] = [
 ];
 
 const CARD = { left: 760, top: 150, width: 1064, row: 94 };
-const ARRIVE = (i: number) => 18 + i * 7;
+const ARRIVE = (i: number) => 20 + i * 11;
 
 /** Répartir : chaque montant part du salaire et remplit son enveloppe ; « À répartir » descend à zéro. */
 function Distribute() {
@@ -81,7 +81,7 @@ const OUTINGS: { label: string; amount: number }[] = [
   { label: 'Concert, La Cigale', amount: 82.5 },
 ];
 const BUDGET = 200;
-const HIT = (i: number) => 10 + i * 10;
+const HIT = (i: number) => 16 + i * 16;
 
 /** Déborder : les sorties s'empilent, la jauge dépasse son budget, passe au rouge, et l'alerte tombe. */
 function Overspend() {
@@ -99,7 +99,7 @@ function Overspend() {
 
       {/* Les tickets de dépense arrivent de la droite et tombent dans l'enveloppe. */}
       {OUTINGS.map((o, i) => {
-        const t = interpolate(frame, [HIT(i) - 8, HIT(i)], [0, 1], { ...clamp, easing: outEase });
+        const t = interpolate(frame, [HIT(i) - 12, HIT(i)], [0, 1], { ...clamp, easing: outEase });
         const gone = interpolate(frame, [HIT(i), HIT(i) + 4], [1, 0], clamp);
         if (t <= 0 || gone <= 0) return null;
         return (
@@ -165,7 +165,7 @@ function Overspend() {
 }
 
 export const envelopes: ShotDef[] = [
-  { frames: 16, flash: true, node: <TitleCard index="01" word="Enveloppes" /> },
-  { frames: 100, node: <Distribute /> },
-  { frames: 92, entrance: 'whip', node: <Overspend /> },
+  { frames: 26, flash: true, node: <TitleCard index="01" word="Enveloppes" /> },
+  { frames: 170, node: <Distribute /> },
+  { frames: 165, entrance: 'whip', node: <Overspend /> },
 ];

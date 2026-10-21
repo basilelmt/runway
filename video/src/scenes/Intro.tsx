@@ -20,7 +20,7 @@ function Logo() {
   const mark = spring({ frame, fps, config: { damping: 11, stiffness: 200, mass: 0.6 } });
   const word = spring({ frame: frame - 5, fps, config: { damping: 200 }, durationInFrames: 16 });
   const tag = spring({ frame: frame - 22, fps, config: { damping: 200 }, durationInFrames: 16 });
-  const fly = interpolate(frame, [16, 50], [-300, 2200], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => t * t });
+  const fly = interpolate(frame, [20, 62], [-300, 2200], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => t * t });
   return (
     <AbsoluteFill style={{ background: color.tarmac, alignItems: 'center', justifyContent: 'center' }}>
       <PerspectiveRunway speed={18} opacity={0.7} />
@@ -43,8 +43,8 @@ function Logo() {
 }
 
 export const intro: ShotDef[] = [
-  { frames: 22, node: <Words text="Ton argent," background={color.tarmac} ink={color.tarmacInk} speed={30} /> },
-  { frames: 16, node: <Words text="jusqu’à la" background={color.tarmac} ink={color.tarmacInk} speed={44} /> },
-  { frames: 24, flash: true, node: <Words text="prochaine paie." background={color.marking} ink={color.markingOn} speed={0} /> },
-  { frames: 70, entrance: 'punch', node: <Logo /> },
+  { frames: 32, node: <Words text="Ton argent," background={color.tarmac} ink={color.tarmacInk} speed={30} /> },
+  { frames: 26, node: <Words text="jusqu’à la" background={color.tarmac} ink={color.tarmacInk} speed={44} /> },
+  { frames: 36, flash: true, node: <Words text="prochaine paie." background={color.marking} ink={color.markingOn} speed={0} /> },
+  { frames: 95, entrance: 'punch', node: <Logo /> },
 ];

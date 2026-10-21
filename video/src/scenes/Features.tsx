@@ -11,17 +11,17 @@ const ANSWER = 'Cinq sorties ce mois-ci, dont un concert à la Cigale à 82,50 �
 /** Demander : la question se tape, la réponse arrive mot à mot, l'action s'applique d'un clic. */
 function Ask() {
   const frame = useCurrentFrame();
-  const typed = QUESTION.slice(0, Math.floor(interpolate(frame, [4, 30], [0, QUESTION.length], clamp)));
-  const sent = frame >= 34;
+  const typed = QUESTION.slice(0, Math.floor(interpolate(frame, [8, 50], [0, QUESTION.length], clamp)));
+  const sent = frame >= 58;
   const answerWords = ANSWER.split(' ');
-  const shown = Math.floor(interpolate(frame, [44, 84], [0, answerWords.length], clamp));
-  const figure = usePop(40);
-  const action = usePop(86);
+  const shown = Math.floor(interpolate(frame, [72, 140], [0, answerWords.length], clamp));
+  const figure = usePop(64);
+  const action = usePop(146);
   const p = path(frame, [
-    [86, 1500, 980],
-    [102, 1666, 812],
+    [150, 1500, 980],
+    [172, 1666, 812],
   ]);
-  const applied = frame >= 106;
+  const applied = frame >= 178;
   return (
     <Paper>
       <Caption index="03 DEMANDER" text={'Demande,\nClaude\ncherche.'} />
@@ -41,11 +41,11 @@ function Ask() {
           <div style={{ alignSelf: 'flex-end', marginTop: 34, padding: '16px 24px', borderRadius: 18, background: color.paperSunken, font: `500 30px ${font.body}`, color: color.ink }}>{QUESTION}</div>
         ) : null}
 
-        {frame >= 40 ? (
+        {frame >= 64 ? (
           <div style={{ marginTop: 30, paddingLeft: 26, borderLeft: `4px solid ${color.marking}` }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, opacity: Math.min(1, figure), transform: `translateY(${(1 - Math.min(1, figure)) * 16}px)` }}>
               <span style={{ font: `700 72px ${font.display}`, letterSpacing: '-0.03em', color: color.negative }}>
-                <Counter to={225.3} delay={40} duration={16} />
+                <Counter to={225.3} delay={64} duration={22} />
               </span>
               <span style={{ font: `400 28px ${font.body}`, color: color.inkMute }}>pour 200,00 € prévus</span>
             </div>
@@ -81,7 +81,7 @@ function Ask() {
           </div>
         </div>
       </Card>
-      {frame >= 86 ? <Pointer x={p.x} y={p.y} clickAt={102} /> : null}
+      {frame >= 150 ? <Pointer x={p.x} y={p.y} clickAt={174} /> : null}
     </Paper>
   );
 }
@@ -92,10 +92,10 @@ const RED_AT = 0.2;
 /** Prévision : l'avion roule sur la piste, qui rougit au premier découvert ; la courbe plonge sous zéro. */
 function Forecast() {
   const frame = useCurrentFrame();
-  const red = interpolate(frame, [18, 30], [0, 1], { ...clamp, easing: outEase });
-  const roll = interpolate(frame, [4, 26], [0.02, RED_AT - 0.035], { ...clamp, easing: outEase });
-  const status = usePop(26);
-  const draw = interpolate(frame, [30, 70], [0, 1], { ...clamp, easing: outEase });
+  const red = interpolate(frame, [30, 48], [0, 1], { ...clamp, easing: outEase });
+  const roll = interpolate(frame, [8, 42], [0.02, RED_AT - 0.035], { ...clamp, easing: outEase });
+  const status = usePop(42);
+  const draw = interpolate(frame, [52, 110], [0, 1], { ...clamp, easing: outEase });
   // Solde de Transports : 166 €, puis -245 € le 26 (assurance auto), remonté par le budget du 1er.
   const points: [number, number][] = [
     [0, 166],
@@ -148,8 +148,8 @@ function Forecast() {
 /** Investir : la carte de nuit du portefeuille, sa valeur qui défile et sa courbe. */
 function Invest() {
   const frame = useCurrentFrame();
-  const draw = interpolate(frame, [10, 50], [0, 1], { ...clamp, easing: outEase });
-  const chips = usePop(30);
+  const draw = interpolate(frame, [14, 74], [0, 1], { ...clamp, easing: outEase });
+  const chips = usePop(44);
   const pts = Array.from({ length: 60 }, (_, i) => {
     const t = i / 59;
     const steps = Math.floor(t * 6) * 0.13;
@@ -162,10 +162,10 @@ function Invest() {
       <div style={{ position: 'absolute', left: 210, top: 300, width: 1500, height: 300, borderRadius: 26, background: 'radial-gradient(circle at 85% 30%, #1d3a66 0%, #0b0f18 45%, #05070c 100%)', boxShadow: '0 0 0 1.5px rgb(242 239 232 / 0.12)', padding: '50px 60px' }}>
         <div style={{ font: `500 26px ${font.body}`, letterSpacing: '0.12em', color: color.nightInkSoft }}>VALEUR DU PORTEFEUILLE</div>
         <div style={{ marginTop: 8, font: `700 120px/1.05 ${font.display}`, letterSpacing: '-0.035em', color: color.nightInk }}>
-          <Counter to={8369.19} duration={30} />
+          <Counter to={8369.19} duration={44} />
         </div>
         <div style={{ marginTop: 6, font: `500 32px ${font.mono}`, color: color.nightPositive }}>
-          +<Counter to={1602.19} duration={30} suffix=" € (+23,7 %)" /> <span style={{ color: color.nightInkSoft, font: `400 28px ${font.body}` }}>de plus-value latente</span>
+          +<Counter to={1602.19} duration={44} suffix=" € (+23,7 %)" /> <span style={{ color: color.nightInkSoft, font: `400 28px ${font.body}` }}>de plus-value latente</span>
         </div>
         <div style={{ position: 'absolute', right: 60, top: 60, display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'flex-end', opacity: Math.min(1, chips), transform: `translateX(${(1 - Math.min(1, chips)) * 40}px)` }}>
           {['Trade Republic', 'Binance'].map((p) => (
@@ -185,16 +185,16 @@ function Invest() {
 }
 
 export const askShots: ShotDef[] = [
-  { frames: 16, flash: true, node: <TitleCard index="03" word="Demander" /> },
-  { frames: 122, node: <Ask /> },
+  { frames: 26, flash: true, node: <TitleCard index="03" word="Demander" /> },
+  { frames: 250, node: <Ask /> },
 ];
 
 export const forecastShots: ShotDef[] = [
-  { frames: 16, flash: true, node: <TitleCard index="04" word="Prévision" tone="tarmac" /> },
-  { frames: 86, entrance: 'punch', node: <Forecast /> },
+  { frames: 26, flash: true, node: <TitleCard index="04" word="Prévision" tone="tarmac" /> },
+  { frames: 160, entrance: 'punch', node: <Forecast /> },
 ];
 
 export const investShots: ShotDef[] = [
-  { frames: 16, flash: true, node: <TitleCard index="05" word="Investir" tone="night" /> },
-  { frames: 72, entrance: 'punch', node: <Invest /> },
+  { frames: 26, flash: true, node: <TitleCard index="05" word="Investir" tone="night" /> },
+  { frames: 130, entrance: 'punch', node: <Invest /> },
 ];

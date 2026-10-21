@@ -10,7 +10,7 @@ const WALL = ['budget.png', 'demander-reponse.png', 'prevision.png', 'investir.p
 function Wall() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const zoom = interpolate(frame, [0, 50], [1.5, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const zoom = interpolate(frame, [0, 70], [1.5, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <AbsoluteFill style={{ background: color.tarmac, perspective: 2200, overflow: 'hidden' }}>
       <div
@@ -56,8 +56,8 @@ function End() {
   const { fps } = useVideoConfig();
   const mark = spring({ frame, fps, config: { damping: 12, stiffness: 200 } });
   const cmd = spring({ frame: frame - 12, fps, config: { damping: 200 }, durationInFrames: 16 });
-  const fly = interpolate(frame, [20, 70], [-200, 2300], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => t * t });
-  const fade = interpolate(frame, [70, 86], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const fly = interpolate(frame, [28, 92], [-200, 2300], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: (t) => t * t });
+  const fade = interpolate(frame, [100, 120], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <AbsoluteFill style={{ background: color.tarmac }}>
       <AbsoluteFill style={{ opacity: fade, alignItems: 'center', justifyContent: 'center' }}>
@@ -94,9 +94,9 @@ function End() {
 }
 
 export const outro: ShotDef[] = [
-  { frames: 46, entrance: 'punch', node: <Wall /> },
-  { frames: 14, flash: true, node: <Word text="En local." background={color.marking} ink={color.markingOn} /> },
-  { frames: 14, node: <Word text="Sans compte." background={color.tarmac} ink={color.tarmacInk} /> },
-  { frames: 18, node: <Word text="Sans cloud." background={color.tarmac} ink={color.marking} /> },
-  { frames: 86, entrance: 'punch', node: <End /> },
+  { frames: 70, entrance: 'punch', node: <Wall /> },
+  { frames: 24, flash: true, node: <Word text="En local." background={color.marking} ink={color.markingOn} /> },
+  { frames: 24, node: <Word text="Sans compte." background={color.tarmac} ink={color.tarmacInk} /> },
+  { frames: 30, node: <Word text="Sans cloud." background={color.tarmac} ink={color.marking} /> },
+  { frames: 120, entrance: 'punch', node: <End /> },
 ];
