@@ -339,6 +339,8 @@ export type ImportRecord = z.infer<typeof importRecordSchema>;
 export const settingsSchema = z.object({
   forecastHorizonDays: z.number().int().min(7).max(730).default(90),
   claudeModel: z.string().trim().max(60).default(''),
+  /** Région de l'utilisateur, donnée à la recherche web des marchands pour départager les homonymes. Vide = rien n'est envoyé. */
+  homeArea: z.string().trim().max(80).default(''),
   /** Application ID Enable Banking (en-tête `kid` du JWT). Vide = synchro bancaire désactivée. */
   enableBankingAppId: z.string().trim().max(100).default(''),
   /** Clé privée PEM de l'application Enable Banking. */

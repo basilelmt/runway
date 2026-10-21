@@ -23,7 +23,8 @@ export function GeneralSettings() {
 
   const [horizon, setHorizon] = useState('90');
   const [model, setModel] = useState('');
-  const [errors, setErrors] = useState<{ horizon?: string; model?: string }>({});
+  const [homeArea, setHomeArea] = useState('');
+  const [errors, setErrors] = useState<{ horizon?: string; model?: string; homeArea?: string }>({});
 
   // Le formulaire se remplit à l'arrivée des réglages (et se resynchronise après enregistrement).
   const [loaded, setLoaded] = useState<typeof settings.data | null>(null);
@@ -31,16 +32,18 @@ export function GeneralSettings() {
     setLoaded(settings.data);
     setHorizon(String(settings.data.forecastHorizonDays));
     setModel(settings.data.claudeModel);
+    setHomeArea(settings.data.homeArea);
   }
 
   function submit(e: { preventDefault(): void }) {
     e.preventDefault();
-    const parsed = settingsSchema.safeParse({ ...settings.data, forecastHorizonDays: Number(horizon), claudeModel: model });
+    const parsed = settingsSchema.safeParse({ ...settings.data, forecastHorizonDays: Number(horizon), claudeModel: model, homeArea });
     if (!parsed.success) {
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
         if (issue.path[0] === 'forecastHorizonDays') next.horizon = 'Entre 7 et 730 jours';
         if (issue.path[0] === 'claudeModel') next.model = issue.message;
+        if (issue.path[0] === 'homeArea') next.homeArea = issue.message;
       }
       setErrors(next);
       return;
@@ -74,6 +77,9 @@ export function GeneralSettings() {
             </Field>
             <Field label="Modèle Claude" error={errors.model} hint="Vide pour le modèle par défaut de Claude Code, sinon par exemple sonnet, opus ou haiku.">
               {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={model} onChange={(e) => setModel(e.target.value)} placeholder="Par défaut" className={styles.short} />}
+            </Field>
+            <Field label="Ta région" error={errors.homeArea} hint="Aide Claude à trouver le bon commerce quand il cherche un marchand sur le web. Vide pour ne rien envoyer.">
+              {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={homeArea} onChange={(e) => setHomeArea(e.target.value)} placeholder="Par exemple Île-de-France" maxLength={80} className={styles.short} />}
             </Field>
             <div className={styles.actions}>
               <Button type="submit" variant="primary" loading={save.isPending}>

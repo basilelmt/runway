@@ -14,15 +14,24 @@ const WEB_TOOLS = 'WebSearch,WebFetch';
 
 const outputJsonSchema = { type: 'object', properties: { description: { type: 'string' } }, required: ['description'] };
 
-/** Le prompt ne porte que la clé et des libellés bruts : jamais de montant, de date ni de compte. */
-export function buildMerchantWebPrompt(key: string, labels: string[]): string {
+/**
+ * Le prompt ne porte que la clé, des libellés bruts et, si l'utilisateur l'a donnée dans les réglages,
+ * sa région : jamais de montant, de date ni de compte.
+ */
+export function buildMerchantWebPrompt(key: string, labels: string[], homeArea = ''): string {
+  // Sans région, un petit commerce au nom courant (« Le Kairn ») peut être confondu avec un homonyme à l'autre bout du pays.
+  const area = homeArea
+    ? `
+L’utilisateur vit en ${homeArea} : quand plusieurs commerces portent ce nom, préfère celui de cette région, et tu peux l’ajouter à ta recherche.
+`
+    : '';
   return `Tu identifies un marchand vu sur un relevé bancaire français, en cherchant sur le web.
 
 Clé du marchand : ${JSON.stringify(key)}
 Libellés bruts : ${labels.map((l) => JSON.stringify(l)).join(', ')}
-
+${area}
 Consignes :
-- Cherche avec WebSearch le nom du marchand tiré de la clé ou du libellé, rien d'autre.
+- Cherche avec WebSearch le nom du marchand tiré de la clé ou du libellé (avec la région ci-dessus s'il y en a une), rien d'autre.
 - Réponds par une phrase courte qui dit ce qu'est ce marchand : son type et, pour un commerce local, sa ville ou son quartier. Exemple : « Boutique de vêtements de seconde main, Paris (11e) ».
 - ${MERCHANT_DESCRIPTION_MAX} caractères au plus, sans URL.
 - Si rien de fiable ne correspond, laisse "description" vide : ne jamais deviner.
@@ -32,10 +41,11 @@ Consignes :
 /** Décrit un marchand d'après le web. Le contrôle 409 (déjà décrit à la main) est fait par l'appelant. */
 export function describeMerchantOnWeb(db: Db, key: string, today: ISODate, deps: { exec?: Exec } = {}): Promise<MerchantDetail> {
   return (async () => {
-    const model = getSettings(db).claudeModel || undefined;
+    const settings = getSettings(db);
+    const model = settings.claudeModel || undefined;
     const args = ['-p', '--tools', WEB_TOOLS, '--allowedTools', WEB_TOOLS, '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];
     if (model) args.push('--model', model);
-    args.push(buildMerchantWebPrompt(key, sampleLabels(db, key, 3)));
+    args.push(buildMerchantWebPrompt(key, sampleLabels(db, key, 3), settings.homeArea));
     const parsed = merchantWebResultSchema.safeParse(await runClaude(args, MERCHANT_WEB_TIMEOUT_MS, deps.exec ?? execClaude));
     if (!parsed.success) throw new ClaudeError('Réponse de Claude invalide (format inattendu)', 'claude_invalid_output');
     const text = parsed.data.description.trim();

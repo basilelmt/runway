@@ -34,6 +34,18 @@ describe('POST /api/merchants/:key/describe', () => {
     expect((await t.call('GET', '/api/claude/tasks')).body).toMatchObject([{ status: 'done', result: 'Boutique de vêtements, Paris (3e)' }]);
   });
 
+  it('donne la région des réglages pour départager les homonymes, et rien quand elle est vide', async () => {
+    await t.call('POST', path('SC-FOURTEEN CA'));
+    await settle();
+    expect(exec.mock.calls[0]![0].at(-1)).not.toContain('vit en');
+
+    const settings = (await t.call('GET', '/api/settings')).body;
+    await t.call('PUT', '/api/settings', { ...settings, homeArea: 'Île-de-France' });
+    await t.call('POST', path('SC-FOURTEEN CA'));
+    await settle();
+    expect(exec.mock.calls[1]![0].at(-1)).toContain('L’utilisateur vit en Île-de-France');
+  });
+
   it('rien trouvé : description nulle, « Rien trouvé sur le web » comme résultat de la tâche', async () => {
     exec.mockResolvedValueOnce(ok({ description: '  ' }));
     await t.call('POST', path('SC-FOURTEEN CA'));

@@ -27,7 +27,7 @@ function fakeEnableBanking() {
 }
 
 function configure(db: Db) {
-  saveSettings(db, { forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: 'app', enableBankingPrivateKey: pem, backupMirrorDir: '' });
+  saveSettings(db, { forecastHorizonDays: 90, claudeModel: '', homeArea: '', enableBankingAppId: 'app', enableBankingPrivateKey: pem, backupMirrorDir: '' });
   const c = createConnection(db, { aspspName: 'La Banque Postale', aspspCountry: 'FR', state: 's' });
   updateConnection(db, c.id, { status: 'active', sessionId: 'sess-1' });
 }

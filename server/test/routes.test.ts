@@ -168,7 +168,7 @@ describe('sorting rules apply', () => {
 
 describe('settings', () => {
   it('lit les valeurs par défaut et enregistre', async () => {
-    expect((await t.call('GET', '/api/settings')).body).toEqual({ forecastHorizonDays: 90, claudeModel: '', enableBankingAppId: '', enableBankingPrivateKey: '', backupMirrorDir: '' });
+    expect((await t.call('GET', '/api/settings')).body).toEqual({ forecastHorizonDays: 90, claudeModel: '', homeArea: '', enableBankingAppId: '', enableBankingPrivateKey: '', backupMirrorDir: '' });
     const r = await t.call('PUT', '/api/settings', { forecastHorizonDays: 60, claudeModel: 'haiku', enableBankingAppId: 'app-1', enableBankingPrivateKey: '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----' });
     expect(r.body).toMatchObject({ forecastHorizonDays: 60, claudeModel: 'haiku', enableBankingAppId: 'app-1' });
     expect((await t.call('PUT', '/api/settings', { forecastHorizonDays: 1 })).status).toBe(400);
