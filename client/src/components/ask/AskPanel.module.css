@@ -368,20 +368,20 @@
   gap: var(--s-2);
 }
 
-/* Le viseur : discret au repos, en encre avec son point jaune quand il est armé. */
+/* Le viseur : bordé au repos, jaune de marquage quand il est armé (lisible dans les deux thèmes). */
 .aim {
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  height: 30px;
+  height: 32px;
   padding: 0 var(--s-3) 0 var(--s-2);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-strong);
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink);
   font: inherit;
-  font-size: var(--text-xs);
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: 600;
   cursor: pointer;
   transition:
     background var(--dur) var(--ease-out),
@@ -390,8 +390,8 @@
 }
 
 .aim :global(svg) {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .aim:hover:not(:disabled) {
@@ -399,9 +399,14 @@
 }
 
 .aim[aria-pressed='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+  border-color: var(--marking);
+  background: var(--marking);
+  color: var(--marking-on);
+}
+
+.aim[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--marking);
+  filter: brightness(0.96);
 }
 
 .aim:focus-visible,
@@ -415,14 +420,21 @@
   cursor: not-allowed;
 }
 
-/* Point jaune du viseur armé, avec son halo. */
+/* Point du viseur armé : il pulse tant que la page attend un clic. */
 .aimDot {
-  width: 6px;
-  height: 6px;
-  margin: 0 var(--s-half);
+  width: 8px;
+  height: 8px;
+  margin: 0 var(--s-1);
   border-radius: var(--radius-pill);
-  background: var(--marking);
-  box-shadow: 0 0 0 calc(var(--stroke-mark) * 1.5) color-mix(in srgb, var(--marking) 35%, transparent);
+  background: var(--marking-on);
+  animation: aim-pulse 1.4s var(--ease-out) infinite;
+}
+
+@keyframes aim-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
 }
 
 .send {
@@ -546,7 +558,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .panel {
+  .panel,
+  .aimDot {
     animation: none;
   }
 }
