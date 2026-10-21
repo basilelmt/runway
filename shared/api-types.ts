@@ -492,7 +492,10 @@ export type ClaudeTaskKind = 'merchant_web' | 'merchant_naming' | 'ideas';
 export type ClaudeTaskView = {
   id: string;
   kind: ClaudeTaskKind;
+  /** Phrase montrée pendant le travail : « Claude cherche SC-Fourteen sur le web ». */
   label: string;
+  /** Sujet court, rappelé à côté du résultat ou de l'erreur une fois fini : « SC-Fourteen ». */
+  title: string;
   /** Clé du marchand pour `merchant_web`, sinon null. */
   subject: string | null;
   status: 'running' | 'done' | 'failed';

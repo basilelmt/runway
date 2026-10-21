@@ -32,6 +32,7 @@ const webTask = (status: ClaudeTaskView['status'], extra: Partial<ClaudeTaskView
   id: 'merchant_web-1',
   kind: 'merchant_web',
   label: 'Claude cherche Carrefour Express sur le web',
+  title: 'Carrefour Express',
   subject: 'CARREFOUR EXPR',
   status,
   startedAt: '2026-10-21T10:00:00Z',
@@ -45,6 +46,7 @@ const ideasTask = (status: ClaudeTaskView['status'], extra: Partial<ClaudeTaskVi
   id: 'ideas-5',
   kind: 'ideas',
   label: "Claude cherche des idées d'investissement",
+  title: "Idées d'investissement",
   subject: null,
   status,
   startedAt: '2026-10-21T10:00:00Z',
@@ -79,7 +81,9 @@ describe('ClaudeTasksTray', () => {
     expect(within(region).getByText('Claude cherche Carrefour Express sur le web')).toBeInTheDocument();
 
     await settle(2000); // intervalle de scrutation d'une tâche en cours
-    expect(within(region).getByText('Supérette de quartier, Paris')).toBeInTheDocument();
+    // Le sujet rappelle de quoi parle le résultat.
+    expect(within(region).getByText('Carrefour Express')).toBeInTheDocument();
+    expect(within(region).getByText(/Supérette de quartier, Paris/)).toBeInTheDocument();
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['merchants'] });
 
     await settle(10_000); // disparition automatique d'une tâche finie
@@ -94,13 +98,14 @@ describe('ClaudeTasksTray', () => {
     expect(screen.getByText('Claude cherche Carrefour Express sur le web')).toBeInTheDocument();
 
     await settle(2000);
-    expect(screen.getByText('Claude est indisponible')).toBeInTheDocument();
+    expect(screen.getByText(/Claude est indisponible/)).toBeInTheDocument();
+    expect(screen.getByText('Carrefour Express')).toBeInTheDocument();
 
     await settle(10_000);
-    expect(screen.getByText('Claude est indisponible')).toBeInTheDocument();
+    expect(screen.getByText(/Claude est indisponible/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Fermer' }));
-    expect(screen.queryByText('Claude est indisponible')).toBeNull();
+    expect(screen.queryByText(/Claude est indisponible/)).toBeNull();
   });
 
   it('ne montre pas une tâche déjà finie au premier chargement', async () => {
@@ -118,7 +123,22 @@ describe('ClaudeTasksTray', () => {
     await settle(0);
     expect(screen.getByText("Claude cherche des idées d'investissement")).toBeInTheDocument();
     await settle(2000);
-    expect(screen.getByText('3 idées retenues')).toBeInTheDocument();
+    expect(screen.getByText(/3 idées retenues/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Voir' })).toHaveAttribute('href', '/investir');
+  });
+
+  it('une tâche finie disparaît après 10 secondes même si la liste change à chaque interrogation', async () => {
+    const done = webTask('done', { finishedAt: '2026-10-21T10:01:40Z', result: 'Supérette' });
+    // Une nouvelle recherche démarre à chaque interrogation : la liste change, le panneau se redessine toutes les 2 s.
+    const others = (n: number) => Array.from({ length: n }, (_, i) => webTask('running', { id: `merchant_web-${i + 2}`, subject: `K${i}`, label: `Recherche ${i}` }));
+    mockTasks([[webTask('running')], ...Array.from({ length: 12 }, (_, i) => [done, ...others(i + 1)])]);
+    renderTray();
+
+    await settle(0);
+    await settle(2000);
+    expect(screen.getByText(/Supérette/)).toBeInTheDocument();
+    for (let i = 0; i < 6; i++) await settle(2000);
+    expect(screen.queryByText(/Supérette/)).toBeNull();
+    expect(screen.getByText('Recherche 0')).toBeInTheDocument();
   });
 });

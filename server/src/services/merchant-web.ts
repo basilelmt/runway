@@ -55,7 +55,7 @@ export function startMerchantWebSearch(db: Db, key: string, today: ISODate, task
   if (running) return running;
   const merchant = getMerchant(db, key, today);
   if (merchant.descriptionSource === 'user') throw new ConflictError('Ce marchand a déjà une description donnée à la main');
-  const id = tasks.start('merchant_web', `Claude cherche ${merchant.name} sur le web`, key);
+  const id = tasks.start('merchant_web', `Claude cherche ${merchant.name} sur le web`, key, merchant.name);
   describeMerchantOnWeb(db, key, today, deps).then(
     (m) => tasks.finish(id, m.description ?? 'Rien trouvé sur le web'),
     (e: unknown) => tasks.fail(id, e instanceof Error ? e.message : String(e)),

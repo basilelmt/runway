@@ -5,7 +5,8 @@ export const FINISHED_TTL_MS = 600_000;
 const MAX_TASKS = 20;
 
 export type ClaudeTasks = {
-  start(kind: ClaudeTaskKind, label: string, subject?: string | null): string;
+  /** `title` : sujet court rappelé à la fin (« SC-Fourteen ») ; par défaut le libellé. */
+  start(kind: ClaudeTaskKind, label: string, subject?: string | null, title?: string): string;
   finish(id: string, result?: string | null): void;
   fail(id: string, error: string): void;
   list(): ClaudeTaskView[];
@@ -35,9 +36,9 @@ export function createClaudeTasks(opts: { now?: () => Date } = {}): ClaudeTasks 
     if (t) tasks.set(id, { ...t, ...patch, finishedAt: now().toISOString() });
   };
   return {
-    start(kind, label, subject = null) {
+    start(kind, label, subject = null, title = label) {
       const id = `${kind}-${++seq}`;
-      tasks.set(id, { id, kind, label, subject, status: 'running', startedAt: now().toISOString(), finishedAt: null, result: null, error: null });
+      tasks.set(id, { id, kind, label, title, subject, status: 'running', startedAt: now().toISOString(), finishedAt: null, result: null, error: null });
       order.set(id, seq);
       return id;
     },

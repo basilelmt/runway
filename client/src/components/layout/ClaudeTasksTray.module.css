@@ -59,6 +59,10 @@
   color: var(--ink);
 }
 
+.title {
+  font-weight: 600;
+}
+
 .close {
   display: flex;
   flex-shrink: 0;

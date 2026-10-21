@@ -150,7 +150,7 @@ export function createMerchantNamer(db: Db | DbHolder, deps: { exec?: Exec; log?
         // Restauration en cours : ce tour est sauté (la prochaine demande reprendra les marchands sans nom).
         const restoring = holder.isRestoring();
         // Rien à traiter : pas de tâche ouverte, pour ne pas polluer le panneau à chaque import ou synchro.
-        const taskId = !restoring && deps.tasks && listKeysToProcess(holder.current(), 1).length > 0 ? deps.tasks.start('merchant_naming', 'Claude décrit tes marchands') : null;
+        const taskId = !restoring && deps.tasks && listKeysToProcess(holder.current(), 1).length > 0 ? deps.tasks.start('merchant_naming', 'Claude décrit tes marchands', null, 'Tes marchands') : null;
         const run = restoring ? Promise.resolve(0) : nameMerchants(holder.current(), { exec: deps.exec });
         run
           .then((total) => {

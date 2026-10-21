@@ -10,6 +10,7 @@ function ideaRunTask(row: IdeaRunRow): ClaudeTaskView {
     id: `ideas-${row.id}`,
     kind: 'ideas',
     label: "Claude cherche des idées d'investissement",
+    title: "Idées d'investissement",
     subject: null,
     status: row.status,
     startedAt: row.startedAt,
