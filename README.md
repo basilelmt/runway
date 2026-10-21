@@ -162,7 +162,7 @@ L'écran Investir suit ton portefeuille et propose des idées d'investissement t
 ## Refaire la vidéo et les captures
 
 La vidéo est un projet [Remotion](https://www.remotion.dev) dans `video/`, avec ses propres dépendances.
-Elle se compose des captures de `docs/media/screens/`, partagées avec ce README.
+Les écrans y sont redessinés et animés ; seules les captures de `docs/media/screens/`, partagées avec ce README, défilent à la fin.
 
 ```sh
 cd video
