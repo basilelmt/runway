@@ -172,4 +172,20 @@ describe('forecast', () => {
     const r = forecast({ accounts: [a, b], envelopes: [], transactions: [] }, rules, '2026-03-10', 30);
     expect(r.alerts.map((x) => x.name)).toEqual(['B', 'A']);
   });
+  it('ne compte pas une seconde fois une charge déjà prélevée en avance ce mois-ci', () => {
+    const courant = account({ name: 'Courant', initialBalance: 1000_00 });
+    const sport = envelope({ name: 'Sport' });
+    // Règle calée sur le 26, mais le club a prélevé le 14 : l'occurrence du 26 n'existe pas encore en base.
+    const salle = rule({ kind: 'expense', amount: 31_96, accountId: courant.id, envelopeId: sport.id, dayOfMonth: 26, startDate: '2026-10-01', lastGeneratedDate: '2026-10-16' });
+    const transactions = [
+      tx({ kind: 'allocation', amount: 40_00, envelopeId: sport.id, date: '2026-10-06' }),
+      tx({ kind: 'expense', amount: 31_96, accountId: courant.id, envelopeId: sport.id, date: '2026-10-14' }),
+    ];
+    const [budgeted] = withBudgets([sport], [salle], '2026-10-16');
+    const r = forecast({ accounts: [courant], envelopes: [budgeted!], transactions }, [salle], '2026-10-16', 60);
+
+    expect(r.alerts).toEqual([]);
+    expect(r.events.filter((e) => e.source === 'rule').map((e) => e.date)).toEqual(['2026-11-26']);
+    expect(r.days.find((d) => d.date === '2026-10-31')?.envelopes[sport.id]).toBe(8_04);
+  });
 });

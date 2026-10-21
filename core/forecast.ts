@@ -3,6 +3,7 @@ import { addDays, addMonths, daysBetween, startOfMonth, type ISODate } from '@sh
 import type { RecurringRule } from '@shared/schemas';
 import { applyOperation, computeBalances, rolloverEnvelopes, type AccountMap, type EnvelopeMap } from './balances';
 import { monthActivity, remainingToFund, withBudgets } from './budget';
+import { occurrenceKey, settledEarly, type RuleOccurrence } from './matching';
 import { expandRule } from './recurrence';
 import type { State } from './types';
 
@@ -99,24 +100,29 @@ export function collectEvents(state: State, rules: RecurringRule[], today: ISODa
     });
   }
 
+  const occurrences: RuleOccurrence[] = [];
   for (const rule of rules) {
     // Tout ce qui est antérieur ou égal à lastGeneratedDate existe déjà en base (confirmé ou prévu).
     const from = rule.lastGeneratedDate ? addDays(rule.lastGeneratedDate, 1) : today;
     const start = from > today ? from : today;
-    for (const date of expandRule(rule, start, end)) {
-      events.push({
-        date,
-        label: rule.label,
-        kind: rule.kind,
-        amount: rule.amount,
-        accountId: rule.accountId ?? null,
-        toAccountId: rule.toAccountId ?? null,
-        envelopeId: rule.envelopeId ?? null,
-        fromEnvelopeId: rule.fromEnvelopeId ?? null,
-        source: 'rule',
-        sourceId: rule.id,
-      });
-    }
+    for (const date of expandRule(rule, start, end)) occurrences.push({ rule, date });
+  }
+  // Une occurrence déjà payée en avance (prélèvement arrivé avant la date de la règle) n'est pas comptée deux fois.
+  const settled = settledEarly(occurrences, state.transactions);
+  for (const { rule, date } of occurrences) {
+    if (settled.has(occurrenceKey(rule.id, date))) continue;
+    events.push({
+      date,
+      label: rule.label,
+      kind: rule.kind,
+      amount: rule.amount,
+      accountId: rule.accountId ?? null,
+      toAccountId: rule.toAccountId ?? null,
+      envelopeId: rule.envelopeId ?? null,
+      fromEnvelopeId: rule.fromEnvelopeId ?? null,
+      source: 'rule',
+      sourceId: rule.id,
+    });
   }
 
   events.push(...budgetEvents(state, rules, today, end));
