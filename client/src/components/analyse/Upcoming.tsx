@@ -2,6 +2,7 @@ import { Landmark, Plane, WalletCards } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { errorMessage } from '@/api/client';
 import { useForecast, useSettings } from '@/api/hooks';
+import { askTarget } from '@/components/ask/ask-target';
 import { BalanceAreaChart } from '@/components/charts/BalanceAreaChart';
 import { RunwayStrip } from '@/components/dashboard/RunwayStrip';
 import { Amount, Badge, ButtonLink, ColumnHeader, EmptyState, ErrorState, FilterPill, ListRow, ListRowSkeleton, listRowDate, Range, SectionHeader, Skeleton } from '@/components/ui';
@@ -38,7 +39,7 @@ export function Upcoming() {
   const hasInputs = (data?.events.length ?? 0) > 0;
 
   return (
-    <div className={styles.view}>
+    <div className={styles.view} {...askTarget('section', null, 'À venir')}>
       <div className={styles.toolbar}>
         <p className={styles.intro}>Soldes projetés à partir de tes charges fixes, des opérations prévues et du budget mensuel de tes enveloppes.</p>
         <label className={styles.horizon}>
