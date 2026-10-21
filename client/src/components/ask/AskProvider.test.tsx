@@ -56,7 +56,7 @@ describe('AskProvider', () => {
     fetchMock.mockResolvedValueOnce(first.response);
     act(() => api.send('Combien ?'));
     expect(await screen.findByText('Combien ?|pending|||')).toBeInTheDocument();
-    act(() => first.push('step', { text: 'Je consulte tes opérations…' }));
+    act(() => first.push('step', { text: 'Je consulte tes opérations…', source: 'opérations' }));
     expect(await screen.findByText('Combien ?|pending|Je consulte tes opérations…||')).toBeInTheDocument();
     act(() => {
       first.push('answer', answer('20 €'));
@@ -64,13 +64,13 @@ describe('AskProvider', () => {
     });
     expect(await screen.findByText('Combien ?|done||20 €|')).toBeInTheDocument();
     expect(api.pending).toBe(false);
-    expect(bodyOf(0)).toEqual({ question: 'Combien ?', sessionId: null });
+    expect(bodyOf(0)).toEqual({ question: 'Combien ?', sessionId: null, page: 'Accueil', refs: [] });
 
     const second = controllableSse();
     fetchMock.mockResolvedValueOnce(second.response);
     act(() => api.send('Et en 2025 ?'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(bodyOf(1)).toEqual({ question: 'Et en 2025 ?', sessionId: SESSION });
+    expect(bodyOf(1)).toEqual({ question: 'Et en 2025 ?', sessionId: SESSION, page: 'Accueil', refs: [] });
   });
 
   it('nouvelle conversation : vide le fil et oublie la session', async () => {
@@ -126,5 +126,19 @@ describe('AskProvider', () => {
     act(() => api.send('Q'));
     act(() => cut.close());
     expect(await screen.findByText('Q|error|||La réponse a été interrompue')).toBeInTheDocument();
+  });
+
+  it('garde chaque bloc montré, même désignés dans le même instant, sans doublon et huit au plus', () => {
+    const ref = (label: string) => ({ kind: 'section' as const, id: null, label, snapshot: '' });
+    act(() => {
+      api.addRef(ref('A'));
+      api.addRef(ref('B'));
+      api.addRef(ref('A'));
+    });
+    expect(api.refs.map((r) => r.label)).toEqual(['A', 'B']);
+    act(() => {
+      for (const label of ['C', 'D', 'E', 'F', 'G', 'H', 'I']) api.addRef(ref(label));
+    });
+    expect(api.refs).toHaveLength(8);
   });
 });

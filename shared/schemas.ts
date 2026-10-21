@@ -494,11 +494,26 @@ export type IdeaReview = z.infer<typeof ideaReviewSchema>;
 /** Sortie brute du critique, validée verdict par verdict. */
 export const ideaReviewBatchSchema = z.object({ reviews: z.array(z.unknown()) });
 
+/** Bloc de l'app désigné au viseur de Demander : ce que l'utilisateur voit, et de quoi retrouver le détail. */
+export const askRefSchema = z.object({
+  kind: z.enum(['section', 'idea', 'holding', 'envelope', 'transaction', 'account']),
+  /** Null pour une section. */
+  id: idSchema.nullable(),
+  label: z.string().trim().min(1).max(80),
+  /** Texte visible du bloc au moment du clic, tronqué côté client. */
+  snapshot: z.string().max(1500),
+});
+export type AskRef = z.infer<typeof askRefSchema>;
+
 export const askRequestSchema = z.object({
   question: z.string().trim().min(1, 'Question vide').max(500, 'Question trop longue'),
   sessionId: z.uuid().nullable(),
+  /** Écran affiché au moment de la question (« Investir »), null hors des écrans principaux. */
+  page: z.string().trim().max(40).nullable().default(null),
+  refs: z.array(askRefSchema).max(8, 'Huit blocs au plus').default([]),
 });
 export type AskRequest = z.infer<typeof askRequestSchema>;
+export type AskRequestInput = z.input<typeof askRequestSchema>;
 
 /** Actions que Claude peut proposer depuis Demander ; rien n'est appliqué sans un clic. */
 export const askActionSchema = z.discriminatedUnion('type', [

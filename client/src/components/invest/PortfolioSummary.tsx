@@ -2,6 +2,7 @@ import type { PortfolioView } from '@shared/api-types';
 import { Amount, KeyFigure, Skeleton, Stat, StatGroup } from '@/components/ui';
 import { formatPct, gainTone } from '@/lib/invest';
 import { formatDateCompact } from '@/lib/format';
+import { askTarget } from '@/components/ask/ask-target';
 import { EarthriseArt } from './EarthriseArt';
 import { MoonTrail } from './MoonTrail';
 import styles from './Portfolio.module.css';
@@ -24,6 +25,7 @@ export function PortfolioSummary({ portfolio }: { portfolio: PortfolioView }) {
     <KeyFigure
       variant="night"
       className={styles.summary}
+      data={askTarget('section', null, 'Portefeuille')}
       label="Valeur du portefeuille"
       figure={<Amount cents={totals.value} size="xl" tone="neutral" animate />}
       caption={

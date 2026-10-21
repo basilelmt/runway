@@ -3,6 +3,7 @@ import { BENCHMARK_NAME } from '@shared/invest';
 import { Badge, Card } from '@/components/ui';
 import { formatDateCompact, keepTogether } from '@/lib/format';
 import { formatPct, gainTone, platformLabel } from '@/lib/invest';
+import { askTarget } from '@/components/ask/ask-target';
 import { PlatformLogo } from './PlatformLogo';
 import styles from './Ideas.module.css';
 
@@ -12,7 +13,7 @@ export function IdeaCard({ idea, onOpen }: { idea: IdeaView; onOpen: () => void 
   const beat = idea.return !== null && idea.benchReturn !== null ? idea.return > idea.benchReturn : null;
 
   return (
-    <Card tone="flat" padding="md" className={styles.card}>
+    <Card tone="flat" padding="md" className={styles.card} {...askTarget('idea', idea.id, `Idée ${idea.assetName}`)}>
       <button type="button" className={styles.cardButton} onClick={onOpen} aria-label={`Voir le raisonnement : ${idea.title}`} />
       <header className={styles.cardHead}>
         <h3 className={styles.cardTitle}>{keepTogether(idea.title)}</h3>

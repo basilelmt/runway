@@ -15,6 +15,7 @@ import {
 import { describeFrequency } from '@/components/recurring/frequency';
 import { RecurringRuleForm } from '@/components/recurring/RecurringRuleForm';
 import { Amount, Badge, Button, ConfirmDialog, Dialog, EmptyState, EnvelopeTag, ErrorState, GroupLabel, ListRow, ListRowSkeleton, RowMenu, SectionHeader, useToast } from '@/components/ui';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './FixedCharges.module.css';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; rule: RecurringRuleView } | { mode: 'delete'; rule: RecurringRuleView } | null;
@@ -93,7 +94,7 @@ export function FixedCharges() {
   );
 
   return (
-    <section aria-labelledby="fixed-title">
+    <section aria-labelledby="fixed-title" {...askTarget('section', null, 'Charges fixes')}>
       <SectionHeader
         id="fixed-title"
         title="Charges fixes et revenus"

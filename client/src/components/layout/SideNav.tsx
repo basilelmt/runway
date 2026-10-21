@@ -6,6 +6,7 @@ import { useAsk } from '@/components/ask/ask-context';
 import { BrandMark, Button, CountBadge, Kbd } from '@/components/ui';
 import { budgetNeedsAttention } from '@/lib/budget';
 import { useActiveIndicator } from '@/lib/motion';
+import { askUi } from '@/components/ask/ask-target';
 import { LiftoffArrow } from './LiftoffArrow';
 import { NAV, SETTINGS_NAV, type NavItem } from './nav';
 import { panelTrigger, useQuickAdd } from './quick-add-context';
@@ -35,7 +36,7 @@ export function SideNav() {
   );
 
   return (
-    <nav ref={navRef} className={styles.nav} aria-label="Navigation principale">
+    <nav ref={navRef} className={styles.nav} aria-label="Navigation principale" {...askUi}>
       {indicator ? <span className={styles.indicator} style={{ transform: `translateY(${indicator.top}px)`, height: indicator.height }} aria-hidden /> : null}
       <NavLink to="/" end className={styles.brand} aria-label="Runway, accueil" data-brand>
         <BrandMark />

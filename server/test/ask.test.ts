@@ -34,8 +34,8 @@ function parseSse(text: string) {
 let t: TestApp;
 let calls: string[][];
 
-async function ask(question: string, sessionId: string | null = null) {
-  const res = await t.app.request('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, sessionId }) });
+async function ask(question: string, sessionId: string | null = null, extra: { page?: string; refs?: unknown[] } = {}) {
+  const res = await t.app.request('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, sessionId, ...extra }) });
   return { status: res.status, events: parseSse(await res.text()) };
 }
 
@@ -61,7 +61,7 @@ describe('POST /api/ask', () => {
     createTransaction(t.db, { kind: 'expense', date: '2026-03-02', amount: 8_00, label: 'B', accountId: t.courant.id });
     const { status, events } = await ask('Combien en restos ?');
     expect(status).toBe(200);
-    expect(events[0]).toEqual({ event: 'step', data: { text: 'Je consulte tes opérations…' } });
+    expect(events[0]).toEqual({ event: 'step', data: { text: 'Je consulte tes opérations…', source: 'opérations' } });
     expect(events.at(-1)).toEqual({
       event: 'answer',
       data: {
@@ -98,10 +98,12 @@ describe('POST /api/ask', () => {
     });
   });
 
-  it('affiche une étape pour le bilan du mois et la recherche web, aucune pour la réponse structurée', async () => {
+  it('affiche une étape pour le bilan du mois, le portefeuille, les idées et la recherche web, aucune pour la réponse structurée', async () => {
     const stream: StreamExec = async (_args, { onLine }) => {
       onLine(line({ type: 'system', subtype: 'init', session_id: SESSION, mcp_servers: [{ name: 'runway', status: 'connected' }] }));
       onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__runway__month_summary', input: { month: '2026-02' } }] } }));
+      onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__runway__portfolio', input: {} }] } }));
+      onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__runway__ideas', input: {} }] } }));
       onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'WebSearch', input: { query: "L'Échoppe Paris" } }] } }));
       onLine(line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'StructuredOutput', input: {} }] } }));
       onLine(line({ type: 'result', subtype: 'success', is_error: false, session_id: SESSION, structured_output: { answer: 'Ok', highlight: null, chart: null, actions: [] } }));
@@ -109,7 +111,13 @@ describe('POST /api/ask', () => {
     };
     t = createTestApp('2026-03-12', { askStream: stream, askSessionId: () => SESSION });
     const { events } = await ask('Q');
-    expect(events.filter((e) => e.event === 'step').map((e) => e.data.text)).toEqual(['Je regarde le bilan du mois…', 'Je cherche sur le web…']);
+    expect(events.filter((e) => e.event === 'step').map((e) => e.data.text)).toEqual([
+      'Je regarde le bilan du mois…',
+      'Je regarde ton portefeuille…',
+      'Je regarde les idées…',
+      'Je cherche sur le web…',
+    ]);
+    expect(events.filter((e) => e.event === 'step').map((e) => e.data.source)).toEqual(['bilan', 'portefeuille', 'idées', 'web']);
   });
 
   it('lance claude isolé, puis reprend la session pour une suite', async () => {
@@ -120,18 +128,37 @@ describe('POST /api/ask', () => {
     expect(first).toEqual(
       expect.arrayContaining([
         '-p', '--setting-sources', '', '--tools', 'WebSearch', '--strict-mcp-config',
-        '--allowedTools', 'mcp__runway__query mcp__runway__month_summary WebSearch',
+        '--allowedTools', 'mcp__runway__query mcp__runway__month_summary mcp__runway__portfolio mcp__runway__ideas WebSearch',
         '--output-format', 'stream-json', '--verbose', '--session-id', SESSION,
       ]),
     );
     const mcp = JSON.parse(first![first!.indexOf('--mcp-config') + 1]!);
     expect(mcp.mcpServers.runway.env.RUNWAY_TODAY).toBe('2026-03-12');
+    expect(mcp.mcpServers.runway.env.RUNWAY_API).toBe('');
     expect(first![first!.indexOf('--settings') + 1]).toBe('{"autoMemoryEnabled":false}');
     expect(first).toContain('--system-prompt');
     expect(first).not.toContain('--resume');
     expect(second).toEqual(expect.arrayContaining(['--resume', SESSION]));
     expect(second).not.toContain('--session-id');
     expect(first!.at(-1)).toBe('Première');
+  });
+
+  it('transmet selfUrl au serveur MCP sous RUNWAY_API', async () => {
+    t = createTestApp('2026-03-12', { askStream: fakeStream({ answer: 'Ok', highlight: null, chart: null, actions: [] }, calls), askSessionId: () => SESSION, selfUrl: 'http://127.0.0.1:3100' });
+    await ask('Q');
+    const mcp = JSON.parse(calls[0]![calls[0]!.indexOf('--mcp-config') + 1]!);
+    expect(mcp.mcpServers.runway.env.RUNWAY_API).toBe('http://127.0.0.1:3100');
+  });
+
+  it('préfixe la question du contexte d’écran et des blocs désignés', async () => {
+    t = createTestApp('2026-03-12', { askStream: fakeStream({ answer: 'Ok', highlight: null, chart: null, actions: [] }, calls), askSessionId: () => SESSION });
+    await ask('c’est faux non ?', null, {
+      page: 'Investir',
+      refs: [{ kind: 'section', id: null, label: 'Idées en cours', snapshot: 'Ensemble, les 5 idées en cours font -4,0 %…' }],
+    });
+    expect(calls[0]!.at(-1)).toBe(
+      ['[Contexte : écran Investir]', '[Bloc désigné : Idées en cours (section)]', 'Ensemble, les 5 idées en cours font -4,0 %…', '[Question]', 'c’est faux non ?'].join('\n'),
+    );
   });
 
   it('omet un graphique invalide et écarte les actions invalides', async () => {

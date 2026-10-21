@@ -29,6 +29,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { plural } from '@/lib/format';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Review.module.css';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -110,12 +111,13 @@ function EnvelopeList({ month, envelopes }: { month: string; envelopes: MonthRev
   if (envelopes.length === 0) return <EmptyState title="Aucune enveloppe à revoir ce mois-là" />;
 
   return (
-    <section aria-labelledby="review-envelopes-title">
+    <section aria-labelledby="review-envelopes-title" {...askTarget('section', null, `Bilan de ${formatMonth(month)}`)}>
       <SectionHeader id="review-envelopes-title" title="Enveloppes" />
       <ul className="ledger">
         {envelopes.map((e) => (
           <ListRow
             key={e.envelopeId}
+            data={askTarget('envelope', e.envelopeId, `${e.name} en ${formatMonth(month)}`)}
             onClick={() => navigate(operationsHref({ envelope: e.envelopeId, from, to }))}
             clickLabel={`Voir les opérations de ${e.name} en ${formatMonth(month)}`}
             lead={<Dot color={e.color} />}

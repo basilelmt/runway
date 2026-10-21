@@ -46,7 +46,7 @@ export type TestApp = TestContext & {
   call: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
 };
 
-export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void }; exec?: Exec; askStream?: StreamExec; askSessionId?: () => string; merchantNamer?: MerchantNamer; claudeTasks?: ClaudeTasks } = {}): TestApp {
+export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?: BankProvider; investDeps?: PricesDeps & { onRunStarted?: (done: Promise<void>) => void }; exec?: Exec; askStream?: StreamExec; askSessionId?: () => string; merchantNamer?: MerchantNamer; claudeTasks?: ClaudeTasks; selfUrl?: string } = {}): TestApp {
   const ctx = createTestDb();
   let today = initialToday;
   const claudeTasks = opts.claudeTasks ?? createClaudeTasks();
@@ -59,6 +59,7 @@ export function createTestApp(initialToday = '2026-03-10', opts: { bankProvider?
     askSessionId: opts.askSessionId,
     merchantNamer,
     claudeTasks,
+    selfUrl: opts.selfUrl,
     bankDeps: {
       provider: opts.bankProvider ? () => opts.bankProvider! : undefined,
       now: () => new Date(`${today}T10:00:00Z`),

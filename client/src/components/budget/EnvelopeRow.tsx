@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { EnvelopeWithBalance } from '@shared/api-types';
 import { formatEuros } from '@shared/money';
 import { Amount, ColumnHeader, Dot, ListRow, ProgressBar, type ListRowClick, RowMenu, type RowMenuItem } from '@/components/ui';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './EnvelopeRow.module.css';
 
 type EnvelopeRowProps = {
@@ -32,6 +33,7 @@ export function EnvelopeRow({ envelope, menu, leading, onOpen, className }: Enve
     <ListRow
       as="div"
       className={className}
+      data={askTarget('envelope', envelope.id, `Enveloppe ${envelope.name}`)}
       {...click}
       lead={
         <>

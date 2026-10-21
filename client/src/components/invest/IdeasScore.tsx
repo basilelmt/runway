@@ -3,6 +3,7 @@ import { formatEuros } from '@shared/money';
 import { SectionHeader, Stat, StatGroup } from '@/components/ui';
 import { plural } from '@/lib/format';
 import { formatPct, gainTone } from '@/lib/invest';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Ideas.module.css';
 
 /** Bilan des idées closes : est-ce que ce type de raisonnement rapporte plus que le marché ? */
@@ -10,7 +11,7 @@ export function IdeasScore({ summary }: { summary: IdeasSummary }) {
   if (summary.closedCount === 0) return null;
   const { invested, ideas, bench } = summary.hundredEach;
   return (
-    <section className={styles.score} aria-labelledby="score-title">
+    <section className={styles.score} aria-labelledby="score-title" {...askTarget('section', null, 'Bilan des idées')}>
       <SectionHeader as="h3" id="score-title" title="Bilan" />
       <p className={styles.scoreLine}>
         <strong className="num">

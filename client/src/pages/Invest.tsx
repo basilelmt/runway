@@ -14,6 +14,7 @@ import { RocketFooter } from '@/components/invest/RocketFooter';
 import { useAutoBinanceSync } from '@/components/invest/useAutoBinanceSync';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button, ErrorState, SectionHeader } from '@/components/ui';
+import { askTarget } from '@/components/ask/ask-target';
 
 export function InvestPage() {
   const [range, setRange] = useState<PortfolioRange>('6m');
@@ -53,7 +54,7 @@ export function InvestPage() {
               <PortfolioChart series={data.series} holdings={data.holdings} range={range} onRange={setRange} loading={portfolio.isPlaceholderData} />
             </>
           ) : null}
-          <section aria-labelledby="holdings-title">
+          <section aria-labelledby="holdings-title" {...askTarget('section', null, 'Positions')}>
             <SectionHeader id="holdings-title" title="Positions" />
             <HoldingList holdings={data.holdings} onOpen={setOpenId} emptyAction={addButton} />
             <BinancePanel state={data.binance} />

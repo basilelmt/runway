@@ -1,0 +1,90 @@
+/* Pendant la visée, toute la page vise ; le panneau et la navigation gardent leur curseur. */
+:global(html[data-ask-aiming]) :global(body *) {
+  cursor: crosshair !important;
+}
+
+:global(html[data-ask-aiming]) :global([data-ask-ui]),
+:global(html[data-ask-aiming]) :global([data-ask-ui] *) {
+  cursor: revert !important;
+}
+
+/* Sous le panneau (z-index 40) : le liseré d'un bloc à moitié caché par le panneau y disparaît proprement. */
+.outline {
+  position: fixed;
+  z-index: 39;
+  pointer-events: none;
+  border: 2px solid var(--marking);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--marking) 8%, transparent);
+  transition:
+    top var(--dur) var(--ease-out),
+    left var(--dur) var(--ease-out),
+    width var(--dur) var(--ease-out),
+    height var(--dur) var(--ease-out);
+}
+
+.tag {
+  position: absolute;
+  bottom: 100%;
+  left: -2px;
+  margin-bottom: var(--s-1);
+  max-width: 240px;
+  padding: var(--s-half) var(--s-2);
+  border-radius: var(--radius-sm);
+  background: var(--marking);
+  color: var(--marking-on);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tagInside {
+  bottom: auto;
+  top: var(--s-1);
+  left: var(--s-1);
+  margin-bottom: 0;
+}
+
+/* Sur mobile, le panneau plein écran s'efface le temps de viser : cette barre dit quoi faire et ramène. */
+.bar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .bar {
+    position: fixed;
+    z-index: 41;
+    left: var(--s-3);
+    right: var(--s-3);
+    bottom: calc(var(--bottomnav-height) + var(--s-3) + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .bar :global(svg) {
+    width: 18px;
+    height: 18px;
+    color: var(--marking);
+    flex: none;
+  }
+}
+
+.barText {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline {
+    transition: none;
+  }
+}

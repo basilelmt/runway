@@ -30,12 +30,14 @@ type ListRowProps = ListRowClick & {
   muted?: boolean;
   as?: 'li' | 'div';
   className?: string;
+  /** Attributs `data-*` posés sur la ligne (bloc visable de Demander). */
+  data?: { [key: `data-${string}`]: string | undefined };
 };
 
 /** La ligne de liste de l'app : à placer dans un `<ul className="ledger">`. */
-export function ListRow({ lead, title, meta, middle, trail, trailSub, actions, compact = false, muted = false, onClick, clickLabel, pressed, as: Tag = 'li', className }: ListRowProps) {
+export function ListRow({ lead, title, meta, middle, trail, trailSub, actions, compact = false, muted = false, onClick, clickLabel, pressed, as: Tag = 'li', className, data }: ListRowProps) {
   return (
-    <Tag className={[styles.row, compact ? styles.compact : '', muted ? styles.muted : '', onClick ? 'hover-row' : '', className ?? ''].join(' ')}>
+    <Tag className={[styles.row, compact ? styles.compact : '', muted ? styles.muted : '', onClick ? 'hover-row' : '', className ?? ''].join(' ')} {...data}>
       {/* Bouton qui couvre toute la ligne ; les actions passent au-dessus. */}
       {onClick ? <button type="button" className={styles.open} onClick={onClick} aria-label={clickLabel} aria-pressed={pressed} /> : null}
       {lead ? <span className={styles.lead}>{lead}</span> : null}

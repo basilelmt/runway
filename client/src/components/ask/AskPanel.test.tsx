@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuickAddProvider } from '@/components/layout/QuickAdd';
 import { ToastProvider } from '@/components/ui';
 import { useAsk } from './ask-context';
 import { AskProvider } from './AskProvider';
+import { AskTarget } from './AskTarget';
 
 const SESSION = '11111111-1111-4111-8111-111111111111';
 const encoder = new TextEncoder();
@@ -42,7 +44,7 @@ function Trigger() {
   );
 }
 
-function renderPanel() {
+function renderPanel(page?: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={qc}>
@@ -51,6 +53,7 @@ function renderPanel() {
           <AskProvider>
             <QuickAddProvider>
               <Trigger />
+              {page}
             </QuickAddProvider>
           </AskProvider>
         </MemoryRouter>
@@ -86,7 +89,7 @@ describe('AskPanel', () => {
     expect(screen.getByLabelText('Ta question')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Arrêter' })).toBeInTheDocument();
 
-    sse.push('step', { text: 'Je consulte tes opérations…' });
+    sse.push('step', { text: 'Je consulte tes opérations…', source: 'opérations' });
     expect(await screen.findByText('Je consulte tes opérations…')).toBeInTheDocument();
     sse.push('answer', answer);
     sse.close();
@@ -107,7 +110,7 @@ describe('AskPanel', () => {
     expect(fetchMock).not.toHaveBeenCalledWith('/api/ask', expect.anything());
     await user.keyboard('{Enter}');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/ask', expect.objectContaining({ method: 'POST' })));
-    expect(JSON.parse(String(fetchMock.mock.calls.find((c) => c[0] === '/api/ask')![1].body))).toEqual({ question: 'Première ligne\nsuite', sessionId: null });
+    expect(JSON.parse(String(fetchMock.mock.calls.find((c) => c[0] === '/api/ask')![1].body))).toEqual({ question: 'Première ligne\nsuite', sessionId: null, page: 'Accueil', refs: [] });
     expect(input).toHaveValue('');
   });
 
@@ -123,5 +126,52 @@ describe('AskPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Nouvelle conversation' }));
     expect(screen.queryByText('Q')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Combien en restos ce mois-ci ?' })).toBeInTheDocument();
+  });
+
+  it('le viseur désigne un bloc sans le déclencher, puis l’envoie avec la question', async () => {
+    const opened = vi.fn();
+    renderPanel(
+      <AskTarget kind="section" label="Idées en cours">
+        <p>En moyenne, les 5 idées en cours font -4,0 %</p>
+        <AskTarget kind="idea" id={7} label="Idée NVDA">
+          <button type="button" onClick={opened}>
+            NVIDIA
+          </button>
+        </AskTarget>
+      </AskTarget>,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Demander' }));
+    const aim = screen.getByRole('button', { name: 'Viser un bloc' });
+    expect(aim).toHaveAttribute('aria-pressed', 'false');
+    await user.click(aim);
+    expect(aim).toHaveAttribute('aria-pressed', 'true');
+
+    // Le bloc le plus profond est désigné, et son bouton ne reçoit pas le clic.
+    await user.click(screen.getByRole('button', { name: 'NVIDIA' }));
+    expect(opened).not.toHaveBeenCalled();
+    await user.click(screen.getByText(/les 5 idées en cours/));
+    await user.click(screen.getByText(/les 5 idées en cours/));
+    const chips = within(screen.getByRole('list', { name: 'Blocs montrés' }));
+    expect(chips.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Idée NVDA', 'Idées en cours']);
+
+    // Échap range le viseur sans fermer le panneau ; la page redevient cliquable.
+    await user.keyboard('{Escape}');
+    expect(aim).toHaveAttribute('aria-pressed', 'false');
+    expect(panel()).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'NVIDIA' }));
+    expect(opened).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole('button', { name: 'Retirer Idée NVDA' }));
+    await user.type(screen.getByLabelText('Ta question'), 'C’est faux ?{Enter}');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/ask', expect.anything()));
+    const body = JSON.parse(String(fetchMock.mock.calls.find((c) => c[0] === '/api/ask')![1].body));
+    expect(body.page).toBe('Accueil');
+    expect(body.refs).toEqual([{ kind: 'section', id: null, label: 'Idées en cours', snapshot: 'En moyenne, les 5 idées en cours font -4,0 %NVIDIA' }]);
+    // Les pastilles partent avec la question : elles quittent le champ et s'affichent sous la bulle.
+    const sent = screen.getAllByRole('list', { name: 'Blocs montrés' });
+    expect(sent).toHaveLength(1);
+    expect(within(sent[0]!).getByText('Idées en cours')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retirer Idées en cours' })).not.toBeInTheDocument();
   });
 });

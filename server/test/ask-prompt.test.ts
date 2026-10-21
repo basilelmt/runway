@@ -41,4 +41,20 @@ describe('buildAskSystemPrompt', () => {
     expect(p).toContain('WebSearch');
     for (const table of ['settings', 'bank_accounts', 'bank_connections']) expect(p).not.toContain(table);
   });
+
+  it('décrit les tables d’Investir et renvoie vers les outils portfolio et ideas plutôt que le SQL', () => {
+    const p = buildAskSystemPrompt({ today: '2026-10-08', overview: { toAllocate: 0, unsortedCount: 0, accounts: [], envelopes: [] } });
+    expect(p).toContain('holdings(id, platform, ticker, name, source');
+    expect(p).toContain('holding_trades(id, holding_id -> holdings, side');
+    expect(p).toContain('prices(ticker, date, close, currency, fetched_at)');
+    expect(p).toContain("appelle l'outil portfolio ou l'outil ideas plutôt que de recalculer en SQL");
+    expect(p).toContain('une idée est un suivi théorique, équipondéré');
+  });
+
+  it('explique le format du contexte d’écran et des blocs désignés', () => {
+    const p = buildAskSystemPrompt({ today: '2026-10-08', overview: { toAllocate: 0, unsortedCount: 0, accounts: [], envelopes: [] } });
+    expect(p).toContain('[Contexte : écran X]');
+    expect(p).toContain('[Bloc désigné : <libellé> (<genre>)]');
+    expect(p).toContain('[Question]');
+  });
 });

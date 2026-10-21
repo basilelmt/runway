@@ -15,6 +15,7 @@ import { EnvelopeFormDialog } from '@/components/envelopes/EnvelopeFormDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Amount, Button, ConfirmDialog, Disclosure, Dot, DragHandle, dragRow, EmptyState, ErrorState, KeyFigure, ListRow, ListRowSkeleton, Notice, SectionHeader, Skeleton, Total, useToast } from '@/components/ui';
 import { budgetOverIncome } from '@/lib/budget';
+import { askTarget } from '@/components/ask/ask-target';
 import styles from './Budget.module.css';
 
 type AllocState = { mode: 'allocate' | 'move'; envelope: EnvelopeWithBalance } | null;
@@ -141,6 +142,7 @@ export function BudgetPage() {
 
       <KeyFigure
         label="Pas encore réparti"
+        data={askTarget('section', null, 'Pas encore réparti')}
         figure={data ? <Amount cents={data.toAllocate} size="xl" tone="neutral" className={data.toAllocate < 0 ? styles.negative : ''} animate /> : <Skeleton width={220} height={68} />}
         caption={
           !data
@@ -177,12 +179,12 @@ export function BudgetPage() {
         />
       ) : (
         <>
-          <section aria-labelledby="spending-title">
+          <section aria-labelledby="spending-title" {...askTarget('section', null, 'Enveloppes de dépenses')}>
             <SectionHeader id="spending-title" title="Dépenses" />
             {spending.length > 0 ? rows(spending, 'Dépensé ce mois') : <p className={styles.hint}>Aucune enveloppe de dépenses.</p>}
           </section>
 
-          <section aria-labelledby="savings-title">
+          <section aria-labelledby="savings-title" {...askTarget('section', null, 'Épargne')}>
             <SectionHeader id="savings-title" title="Épargne" aside={data ? <Total label="Mis de côté ce mois" cents={data.month.saved} /> : undefined} />
             {savings.length > 0 ? (
               rows(savings, 'Versé ce mois')

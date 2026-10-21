@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router';
 import { useOverview } from '@/api/hooks';
 import { budgetNeedsAttention } from '@/lib/budget';
+import { askUi } from '@/components/ask/ask-target';
 import { LiftoffArrow } from './LiftoffArrow';
 import { NAV } from './nav';
 import styles from './BottomNav.module.css';
@@ -11,7 +12,7 @@ export function BottomNav() {
   const budgetDot = overview.data ? budgetNeedsAttention(overview.data) : false;
 
   return (
-    <nav className={styles.nav} aria-label="Navigation mobile">
+    <nav className={styles.nav} aria-label="Navigation mobile" {...askUi}>
       {NAV.map((item) => {
         const dot = (item.badge === 'unsorted' && unsorted > 0) || (item.badge === 'toAllocate' && budgetDot);
         return (

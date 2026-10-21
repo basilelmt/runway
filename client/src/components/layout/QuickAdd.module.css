@@ -31,3 +31,8 @@
     height: 24px;
   }
 }
+
+/* Pendant la visée de Demander, la barre du viseur prend sa place en bas de l'écran. */
+:global(html[data-ask-aiming]) .fab {
+  display: none;
+}

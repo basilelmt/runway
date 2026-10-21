@@ -8,7 +8,7 @@ import { getSettings } from '../repos/settings';
 import type { StreamExec } from '../services/claude';
 import { validate } from '../validate';
 
-export function askRoutes(deps: { stream?: StreamExec; newSessionId?: () => string } = {}) {
+export function askRoutes(deps: { stream?: StreamExec; newSessionId?: () => string; selfUrl?: string } = {}) {
   return new Hono<AppEnv>().post('/', validate('json', askRequestSchema), (c) => {
     const db = c.get('db');
     const input = c.req.valid('json');
@@ -23,7 +23,14 @@ export function askRoutes(deps: { stream?: StreamExec; newSessionId?: () => stri
       await runAsk(
         db,
         { ...input, today },
-        { stream: deps.stream, newSessionId: deps.newSessionId, dbPath: path === ':memory:' ? '' : resolve(path), model: getSettings(db).claudeModel || undefined, signal: controller.signal },
+        {
+          stream: deps.stream,
+          newSessionId: deps.newSessionId,
+          dbPath: path === ':memory:' ? '' : resolve(path),
+          model: getSettings(db).claudeModel || undefined,
+          signal: controller.signal,
+          apiUrl: deps.selfUrl,
+        },
         (e) => {
           writes = writes.then(() => stream.writeSSE({ event: e.event, data: JSON.stringify(e.data) }));
         },

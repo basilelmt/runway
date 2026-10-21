@@ -1,30 +1,38 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { AskRef } from '@shared/schemas';
 import { errorMessage } from '@/api/client';
 import { streamAsk } from '@/api/ask';
 import { AskContext, type AskApi, type AskTurn } from './ask-context';
+import { AskAim } from './AskAim';
 import { AskPanel } from './AskPanel';
+import { MAX_REFS, pageLabel, sameRef } from './ask-target';
 
 /**
  * Fil de la conversation avec Claude et état d'ouverture du panneau.
  * Le fil vit le temps de la session du navigateur ; la session Claude est reprise pour les questions suivantes.
  */
 export function AskProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [turns, setTurns] = useState<AskTurn[]>([]);
+  const [refs, setRefs] = useState<AskRef[]>([]);
+  const [aiming, setAiming] = useState(false);
   const sessionId = useRef<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const nextId = useRef(1);
 
   const update = (id: number, patch: Partial<AskTurn>) => setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  const run = useCallback((id: number, question: string) => {
+  const run = useCallback((id: number, { question, refs, page }: Pick<AskTurn, 'question' | 'refs' | 'page'>) => {
     controller.current?.abort();
     const ctrl = new AbortController();
     controller.current = ctrl;
     streamAsk(
-      { question, sessionId: sessionId.current },
+      { question, sessionId: sessionId.current, page, refs },
       (e) => {
-        if (e.event === 'step') update(id, { step: e.data.text });
+        if (e.event === 'step') {
+          const { text, source } = e.data;
+          setTurns((all) => all.map((t) => (t.id === id ? { ...t, step: text, sources: t.sources.includes(source) ? t.sources : [...t.sources, source] } : t)));
+        }
         if (e.event === 'answer') {
           sessionId.current = e.data.sessionId;
           update(id, { status: 'done', answer: e.data, step: null });
@@ -50,10 +58,14 @@ export function AskProvider({ children }: { children: ReactNode }) {
       const question = raw.trim();
       if (!question) return;
       const id = nextId.current++;
-      setTurns((all) => [...all, { id, question, status: 'pending', step: null, answer: null, error: null }]);
-      run(id, question);
+      // L'écran est lu à l'envoi : le fournisseur vit au-dessus du routeur dans les tests.
+      const turn = { question, refs, page: pageLabel(window.location.pathname) };
+      setTurns((all) => [...all, { id, ...turn, status: 'pending', step: null, sources: [], answer: null, error: null }]);
+      setRefs([]);
+      setAiming(false);
+      run(id, turn);
     },
-    [run],
+    [run, refs],
   );
 
   const stop = useCallback(() => {
@@ -66,8 +78,8 @@ export function AskProvider({ children }: { children: ReactNode }) {
     (id: number) => {
       const turn = turns.find((t) => t.id === id);
       if (!turn) return;
-      update(id, { status: 'pending', error: null, step: null });
-      run(id, turn.question);
+      update(id, { status: 'pending', error: null, step: null, sources: [] });
+      run(id, turn);
     },
     [turns, run],
   );
@@ -77,19 +89,32 @@ export function AskProvider({ children }: { children: ReactNode }) {
     controller.current = null;
     sessionId.current = null;
     setTurns([]);
+    setRefs([]);
   }, []);
 
-  const toggle = useCallback(() => setOpen((o) => !o), []);
+  // Le viseur ne vit que panneau ouvert : le fermer range aussi le viseur.
+  const setOpen = useCallback((next: boolean) => {
+    setOpenState(next);
+    if (!next) setAiming(false);
+  }, []);
+  const toggle = useCallback(() => setOpen(!open), [open, setOpen]);
+
+  const addRef = useCallback((ref: AskRef) => setRefs((all) => (all.some((r) => sameRef(r, ref)) || all.length >= MAX_REFS ? all : [...all, ref])), []);
+  const removeRef = useCallback((ref: AskRef) => setRefs((all) => all.filter((r) => !sameRef(r, ref))), []);
+
+  // Plein, le viseur se range ; il revient dès qu'une pastille est retirée.
+  const aimingOn = aiming && refs.length < MAX_REFS;
 
   const api = useMemo<AskApi>(
-    () => ({ open, setOpen, toggle, turns, pending: turns.some((t) => t.status === 'pending'), send, stop, retry, reset }),
-    [open, toggle, turns, send, stop, retry, reset],
+    () => ({ open, setOpen, toggle, turns, pending: turns.some((t) => t.status === 'pending'), send, stop, retry, reset, refs, addRef, removeRef, aiming: aimingOn, setAiming }),
+    [open, setOpen, toggle, turns, send, stop, retry, reset, refs, addRef, removeRef, aimingOn],
   );
 
   return (
     <AskContext.Provider value={api}>
       {children}
       <AskPanel />
+      {aimingOn ? <AskAim /> : null}
     </AskContext.Provider>
   );
 }

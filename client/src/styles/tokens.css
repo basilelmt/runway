@@ -5,6 +5,8 @@
   --paper: #eef2ef;
   --paper-raised: #f7f9f7;
   --paper-sunken: #e3e9e5;
+  /* Surface de saisie posée sur le papier relevé (champ de Demander) */
+  --paper-bright: #ffffff;
   --ink: #14201c;
   --ink-soft: #3f4c47;
   --ink-mute: #76827d;
@@ -118,6 +120,7 @@
     --paper: #121715;
     --paper-raised: #1a211e;
     --paper-sunken: #0d110f;
+    --paper-bright: #222b27;
     --ink: #e9efeb;
     --ink-soft: #b7c2bc;
     --ink-mute: #7f8c86;

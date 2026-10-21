@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { domainOf, failedAnglesText, formatMarketContext, formatPct, formatQty, gainTone, ideasTotal, runOutcome } from './invest';
+import { domainOf, failedAnglesText, formatMarketContext, formatPct, formatQty, gainTone, runOutcome } from './invest';
+import { ideasTotal } from '@shared/invest';
 import { openIdea } from '@/components/invest/idea-fixture';
 
 describe('format invest', () => {
