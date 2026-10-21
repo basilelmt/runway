@@ -10,6 +10,7 @@ import type { Db } from '../db/client';
 import { ClaudeError, claudeErrorFromResult, claudeNotInstalled, spawnClaudeStream, type StreamExec } from '../services/claude';
 import { buildOverview } from '../services/overview';
 import { validateActions } from './actions';
+import { buildAskContext } from './context';
 import { answerJsonSchema, buildAskSystemPrompt, toolStepText } from './prompt';
 import { openReadOnly, runReadOnlyQuery } from './query';
 
@@ -62,7 +63,7 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
   try {
     mkdirSync(cwd, { recursive: true });
     const args = askArgs({
-      question: input.question,
+      question: buildAskContext(input.page, input.refs, input.question),
       sessionId: input.sessionId,
       newSessionId,
       systemPrompt: buildAskSystemPrompt({ today: input.today, overview: buildOverview(db, input.today) }),

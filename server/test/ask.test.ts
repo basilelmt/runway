@@ -34,8 +34,8 @@ function parseSse(text: string) {
 let t: TestApp;
 let calls: string[][];
 
-async function ask(question: string, sessionId: string | null = null) {
-  const res = await t.app.request('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, sessionId }) });
+async function ask(question: string, sessionId: string | null = null, extra: { page?: string; refs?: unknown[] } = {}) {
+  const res = await t.app.request('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, sessionId, ...extra }) });
   return { status: res.status, events: parseSse(await res.text()) };
 }
 
@@ -132,6 +132,17 @@ describe('POST /api/ask', () => {
     expect(second).toEqual(expect.arrayContaining(['--resume', SESSION]));
     expect(second).not.toContain('--session-id');
     expect(first!.at(-1)).toBe('Première');
+  });
+
+  it('préfixe la question du contexte d’écran et des blocs désignés', async () => {
+    t = createTestApp('2026-03-12', { askStream: fakeStream({ answer: 'Ok', highlight: null, chart: null, actions: [] }, calls), askSessionId: () => SESSION });
+    await ask('c’est faux non ?', null, {
+      page: 'Investir',
+      refs: [{ kind: 'section', id: null, label: 'Idées en cours', snapshot: 'Ensemble, les 5 idées en cours font -4,0 %…' }],
+    });
+    expect(calls[0]!.at(-1)).toBe(
+      ['[Contexte : écran Investir]', '[Bloc désigné : Idées en cours (section)]', 'Ensemble, les 5 idées en cours font -4,0 %…', '[Question]', 'c’est faux non ?'].join('\n'),
+    );
   });
 
   it('omet un graphique invalide et écarte les actions invalides', async () => {
