@@ -64,7 +64,7 @@ startBackgroundSync({
   onError: (err) => console.error('[bank-scheduler]', err),
 });
 
-const app = createApp({ db: holder, merchantNamer, backupService });
+const app = createApp({ db: holder, merchantNamer, backupService, selfUrl: `http://127.0.0.1:${port}` });
 
 if (existsSync(clientDist)) {
   app.use('/*', serveStatic({ root: relative(process.cwd(), clientDist) }));

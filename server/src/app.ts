@@ -50,9 +50,12 @@ export type AppOptions = {
   merchantNamer?: MerchantNamer;
   /** Sauvegardes et restauration ; par défaut, un service dont le dossier dérive du chemin de la base. */
   backupService?: BackupService;
+  /** URL du serveur lui-même (`http://127.0.0.1:<port>`), pour que les outils portfolio et ideas de Demander
+   * interrogent l'API en direct depuis le serveur MCP (processus à part, base en lecture seule). */
+  selfUrl?: string;
 };
 
-export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer, backupService }: AppOptions) {
+export function createApp({ db, now = today, exec, askStream, askSessionId, importDeps, bankDeps, investDeps = {}, merchantNamer, backupService, selfUrl }: AppOptions) {
   const app = new Hono<AppEnv>();
   const holder = toDbHolder(db);
   const prices = createPrices(holder, investDeps);
@@ -104,7 +107,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
   app.route('/api/recurring-rules', recurringRuleRoutes);
   app.route('/api/sorting-rules', sortingRuleRoutes);
   app.route('/api/sorting', sortingRoutes(exec ? { exec } : {}));
-  app.route('/api/ask', askRoutes({ stream: askStream, newSessionId: askSessionId }));
+  app.route('/api/ask', askRoutes({ stream: askStream, newSessionId: askSessionId, selfUrl }));
   app.route('/api/settings', settingsRoutes);
   app.route('/api/overview', overviewRoutes);
   app.route('/api/reviews', reviewRoutes);

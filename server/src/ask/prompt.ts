@@ -39,6 +39,11 @@ Schéma utile :
 - recurring_rules(id, name, kind, amount, label, account_id, envelope_id, frequency 'daily'|'weekly'|'monthly'|'yearly', interval, day_of_month, start_date, end_date, active) : charges fixes et revenus récurrents.
 - sorting_rules(id, pattern, envelope_id) : un libellé qui contient pattern va dans l'enveloppe.
 - merchants(key, name, source) : marchand d'une dépense ou d'un revenu, joint par transactions.merchant_key = merchants.key (merchant_key est NULL pour les virements et les répartitions). name est le nom lisible (« Monoprix »), NULL tant qu'il n'est pas nommé ; plusieurs clés peuvent porter le même nom. Quand l'utilisateur parle d'un commerçant ou demande où part son argent par enseigne, fais une jointure gauche sur merchants et regroupe par COALESCE(merchants.name, transactions.label) ; cherche un commerçant par merchants.name LIKE plutôt que dans label.
+- holdings(id, platform, ticker, name, source 'manual'|'binance', external_asset, synced_quantity, created_at) : une position d'Investir, de l'argent réellement investi.
+- holding_trades(id, holding_id -> holdings, side 'buy'|'sell', date, quantity, amount en centimes (hors frais), fees en centimes, source, external_id) : les mouvements d'une position.
+- prices(ticker, date, close, currency, fetched_at) : historique des cours, un par ticker et par jour.
+
+Pour une valeur, un gain, une performance ou une comparaison d'Investir, appelle l'outil portfolio ou l'outil ideas plutôt que de recalculer en SQL (ce sont les chiffres que l'app affiche, et portfolio seul sait le cours du jour). Distingue bien les deux : une position (holdings) est de l'argent réellement investi ; une idée est un suivi théorique, équipondéré (100 € sur chacune), sans argent engagé. Une position et une idée sur le même titre ne se mélangent jamais dans un total.
 
 Le mois en cours, chiffres de l'app (ceux que l'utilisateur voit) :
 À répartir : ${formatEuros(overview.toAllocate)}
@@ -111,6 +116,8 @@ export function stepText(sql: string): string {
 export function toolStepText(name: string, input: { sql?: unknown } | undefined): string | null {
   if (name === 'mcp__runway__query') return stepText(String(input?.sql ?? ''));
   if (name === 'mcp__runway__month_summary') return 'Je regarde le bilan du mois…';
+  if (name === 'mcp__runway__portfolio') return 'Je regarde ton portefeuille…';
+  if (name === 'mcp__runway__ideas') return 'Je regarde les idées…';
   if (name === 'WebSearch') return 'Je cherche sur le web…';
   return null;
 }

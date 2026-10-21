@@ -25,6 +25,8 @@ export type AskDeps = {
   model?: string;
   newSessionId?: () => string;
   signal: AbortSignal;
+  /** URL du serveur Runway lui-même, pour que les outils portfolio et ideas interrogent l'API en direct. */
+  apiUrl?: string;
 };
 
 type ResultEvent = { is_error?: boolean; result?: string; structured_output?: unknown; session_id?: string };
@@ -33,8 +35,8 @@ type ResultEvent = { is_error?: boolean; result?: string; structured_output?: un
  * Arguments de `claude -p` : contexte isolé (ni CLAUDE.md, ni skills, ni mémoire, prompt système de Runway),
  * la recherche web pour seul outil intégré, et les outils MCP de Runway en lecture seule.
  */
-export function askArgs(input: { question: string; sessionId: string | null; newSessionId: string; systemPrompt: string; dbPath: string; today: ISODate; model?: string }): string[] {
-  const mcp = { mcpServers: { runway: { command: tsxBin, args: [mcpScript], env: { RUNWAY_DB: input.dbPath, RUNWAY_TODAY: input.today } } } };
+export function askArgs(input: { question: string; sessionId: string | null; newSessionId: string; systemPrompt: string; dbPath: string; today: ISODate; model?: string; apiUrl?: string }): string[] {
+  const mcp = { mcpServers: { runway: { command: tsxBin, args: [mcpScript], env: { RUNWAY_DB: input.dbPath, RUNWAY_TODAY: input.today, RUNWAY_API: input.apiUrl ?? '' } } } };
   const args = [
     '-p',
     '--setting-sources', '',
@@ -43,7 +45,7 @@ export function askArgs(input: { question: string; sessionId: string | null; new
     '--tools', 'WebSearch',
     '--mcp-config', JSON.stringify(mcp),
     '--strict-mcp-config',
-    '--allowedTools', 'mcp__runway__query mcp__runway__month_summary WebSearch',
+    '--allowedTools', 'mcp__runway__query mcp__runway__month_summary mcp__runway__portfolio mcp__runway__ideas WebSearch',
     '--output-format', 'stream-json',
     '--verbose',
     '--json-schema', JSON.stringify(answerJsonSchema),
@@ -70,6 +72,7 @@ export async function runAsk(db: Db, input: AskRequest & { today: ISODate }, dep
       dbPath: deps.dbPath,
       today: input.today,
       model: deps.model,
+      apiUrl: deps.apiUrl,
     });
 
     let final: ResultEvent | null = null;
