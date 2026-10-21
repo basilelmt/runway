@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { z } from 'zod';
 import { monthReview } from '@core/review';
 import type { IdeasView, PortfolioView } from '@shared/api-types';
+import { ideasTotal } from '@shared/invest';
 import { monthKey, type ISODate } from '@shared/dates';
 import { schema } from '../db/client';
 import { listReviews } from '../repos/reviews';
@@ -98,7 +99,7 @@ export function createRunwayMcpServer(conn: Database.Database, today: ISODate, {
     'ideas',
     {
       description:
-        "Idées d'investissement d'Investir : des pistes suivies en théorique, pas des positions (aucun argent n'est réellement investi). return et benchReturn sont des fractions (0,05 = +5 %) depuis la date de l'idée, null sans cours ; priceDate donne la date du cours utilisé. open liste les idées en cours, closed les idées closes ; chacune donne id, createdOn, title, ticker, assetName, whereToBuy, horizon, status, return, benchReturn, priceDate, risk. summary ne porte que sur les idées closes (historique) : closedCount, beatCount (ont battu le S&P 500), avgExcess (écart moyen idée - référence), hundredEach (100 € sur chacune des idées closes) et filter (retenues contre écartées par le critique). La phrase affichée dans l'app « En moyenne, les N idées en cours font X %, contre Y % pour le S&P 500 » n'est pas un champ renvoyé ici : calcule-la toi-même comme la moyenne simple de return (et séparément de benchReturn) des idées de open ayant un cours (return et benchReturn non null), comme si 100 € avaient été mis sur chacune, sans tenir compte d'un montant réellement investi (voir ideasTotal côté client). Pour une performance ou une comparaison des idées, appelle cet outil plutôt que de recalculer en SQL.",
+        "Idées d'investissement d'Investir : des pistes suivies en théorique, pas des positions (aucun argent n'est réellement investi). return et benchReturn sont des fractions (0,05 = +5 %) depuis la date de l'idée, null sans cours ; priceDate donne la date du cours utilisé. open liste les idées en cours, closed les idées closes ; chacune donne id, createdOn, title, ticker, assetName, whereToBuy, horizon, status, return, benchReturn, priceDate, risk. summary ne porte que sur les idées closes (historique) : closedCount, beatCount (ont battu le S&P 500), avgExcess (écart moyen idée - référence), hundredEach (100 € sur chacune des idées closes) et filter (retenues contre écartées par le critique). openAverage est la phrase affichée dans l'app « En moyenne, les N idées en cours font X %, contre Y % pour le S&P 500 » : count idées ouvertes cotées, ideas et bench la moyenne simple de leurs return et benchReturn, comme si 100 € avaient été mis sur chacune, sans aucun montant réellement investi ; null sans idée cotée. Pour une performance ou une comparaison des idées, appelle cet outil plutôt que de recalculer en SQL.",
       inputSchema: {},
     },
     async () => {
@@ -119,7 +120,7 @@ export function createRunwayMcpServer(conn: Database.Database, today: ISODate, {
           priceDate: i.priceDate,
           risk: i.risk,
         });
-        return { content: [{ type: 'text', text: JSON.stringify({ open: data.open.map(pick), closed: data.closed.map(pick), summary: data.summary }) }] };
+        return { content: [{ type: 'text', text: JSON.stringify({ open: data.open.map(pick), openAverage: ideasTotal(data.open), closed: data.closed.map(pick), summary: data.summary }) }] };
       } catch (err) {
         return error(`Idées indisponibles : ${(err as Error).message}`);
       }

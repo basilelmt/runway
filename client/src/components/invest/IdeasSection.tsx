@@ -1,12 +1,12 @@
 import { Lightbulb, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { IdeaRunView, IdeaView } from '@shared/api-types';
-import { IDEA_ANGLES } from '@shared/invest';
+import { IDEA_ANGLES, ideasTotal } from '@shared/invest';
 import { errorMessage } from '@/api/client';
 import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
 import { Button, Disclosure, EmptyState, ErrorState, Notice, PulseDot, SectionHeader, Skeleton } from '@/components/ui';
 import { keepTogether } from '@/lib/format';
-import { failedAnglesText, formatPct, gainTone, ideasTotal, runOutcome } from '@/lib/invest';
+import { failedAnglesText, formatPct, gainTone, runOutcome } from '@/lib/invest';
 import { askTarget } from '@/components/ask/ask-target';
 import { IdeaCard } from './IdeaCard';
 import { IdeaDialog } from './IdeaDialog';

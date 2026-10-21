@@ -172,6 +172,8 @@ describe('serveur MCP runway', () => {
         { id: 1, createdOn: '2026-01-10', title: 'Une idée', ticker: 'ABC', assetName: 'Société ABC', whereToBuy: 'trade-republic', horizon: '2026-04-10', status: 'open', return: -0.05, benchReturn: -0.01, priceDate: '2026-03-12', risk: 'Risque X' },
         { id: 2, createdOn: '2026-02-01', title: 'Une autre idée', ticker: 'XYZ', assetName: 'Société XYZ', whereToBuy: 'binance', horizon: '2026-05-01', status: 'open', return: null, benchReturn: null, priceDate: null, risk: null },
       ],
+      // La phrase de l'écran : seules les idées cotées comptent, à poids égal.
+      openAverage: { count: 1, ideas: -0.05, bench: -0.01 },
       closed: [
         { id: 3, createdOn: '2025-10-01', title: 'Idée close', ticker: 'DEF', assetName: 'Société DEF', whereToBuy: 'trade-republic', horizon: '2026-01-01', status: 'closed', return: 0.1, benchReturn: 0.02, priceDate: '2026-01-01', risk: 'Risque Y' },
       ],

@@ -1,4 +1,3 @@
-import type { IdeaView } from '@shared/api-types';
 import { PLATFORM_LABELS, type Platform } from '@shared/invest';
 import { plural } from './format';
 
@@ -51,12 +50,4 @@ export function runOutcome(run: { acceptedCount: number; candidateCount: number 
 export function failedAnglesText(angles: { label: string }[]): string {
   const names = new Intl.ListFormat('fr', { type: 'conjunction' }).format(angles.map((a) => a.label));
   return angles.length > 1 ? `Les chercheurs ${names} n’ont pas répondu.` : `Le chercheur ${names} n’a pas répondu.`;
-}
-
-/** Gain moyen des idées (100 € sur chacune) et celui du S&P 500 sur les mêmes périodes ; null sans idée cotée. */
-export function ideasTotal(ideas: IdeaView[]): { count: number; ideas: number; bench: number } | null {
-  const priced = ideas.filter((i): i is IdeaView & { return: number; benchReturn: number } => i.return !== null && i.benchReturn !== null);
-  if (priced.length === 0) return null;
-  const avg = (pick: (i: (typeof priced)[number]) => number) => priced.reduce((s, i) => s + pick(i), 0) / priced.length;
-  return { count: priced.length, ideas: avg((i) => i.return), bench: avg((i) => i.benchReturn) };
 }
