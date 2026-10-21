@@ -97,17 +97,18 @@ Premier lot :
 | Analyse | Où part l'argent, Évolution, À venir, Bilan | chaque enveloppe du Bilan |
 | Investir | Portefeuille, Graphique, Binance, Idées en cours, Score des idées | chaque position, chaque idée |
 
-Les fiches ouvertes en dialogue (opération, enveloppe, position, idée) sont aussi visables, avec le même `kind` et `id` que leur ligne.
+Les fiches ouvertes en dialogue ne sont pas visables : un dialogue modal rend le reste de l'écran inerte, panneau compris.
+Pour une ligne ou une carte, les attributs sont posés sur l'élément même (`askTarget()`, prop `data` de `ListRow` et `KeyFigure`) plutôt que dans une enveloppe en plus.
 
 ### Mode viseur
 
 - Un bouton viseur (icône `Crosshair`, libellé « Montrer un bloc ») dans le pied du panneau, à gauche du champ.
-  Raccourci : `v` quand le focus n'est pas dans un champ.
 - Actif :
   - le bouton est enfoncé (`aria-pressed`), le curseur de la page devient une croix ;
   - au survol, le bloc visable le plus profond sous le pointeur reçoit un liseré `--marking` de 2 px et une étiquette avec son `label`, dessinés par une couche fixe au-dessus de la page (aucun style posé sur le bloc lui-même) ;
   - un clic ajoute la pastille, la capture se fait dans la phase de capture (`addEventListener('click', …, true)`) avec `preventDefault` et `stopPropagation` : aucun autre clic de l'app ne part, ni ouverture de fiche, ni lien ;
-  - la touche Entrée sur un bloc visable focalisé fait de même ;
+  - Entrée sur un bouton d'un bloc visable fait de même (le clic clavier passe par la même capture) ;
+  - la navigation (barre latérale, barre du haut et du bas) reste cliquable, pour montrer des blocs de plusieurs écrans ;
   - on reste dans le mode pour viser d'autres blocs ; Échap, un clic sur le bouton ou l'envoi de la question en sortent ;
   - un clic hors de tout bloc visable ne fait rien ;
   - un bloc déjà désigné n'est pas ajouté deux fois (même `kind`, `id`, `label`).
