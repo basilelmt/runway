@@ -1,11 +1,11 @@
 import { Settings, Sparkles } from 'lucide-react';
 import { NavLink, Outlet, useMatch, useMatches } from 'react-router';
-import { useMerchantNamingSync } from '@/api/hooks';
 import { useAsk } from '@/components/ask/ask-context';
 import { AskProvider } from '@/components/ask/AskProvider';
 import { useAutoBankSync } from '@/components/import/useAutoBankSync';
 import { BrandMark, Button, ButtonLink } from '@/components/ui';
 import { BottomNav } from './BottomNav';
+import { ClaudeTasksTray } from './ClaudeTasksTray';
 import { QuickAddProvider } from './QuickAdd';
 import { panelTrigger } from './quick-add-context';
 import { SideNav } from './SideNav';
@@ -13,8 +13,6 @@ import styles from './Shell.module.css';
 
 export function Shell() {
   useAutoBankSync();
-  // Le suivi du nommage des marchands par Claude vit ici pour continuer même hors des Réglages.
-  useMerchantNamingSync();
   return (
     <AskProvider>
       <QuickAddProvider>
@@ -64,6 +62,7 @@ function Layout() {
         </div>
       </main>
       <BottomNav />
+      <ClaudeTasksTray />
     </div>
   );
 }

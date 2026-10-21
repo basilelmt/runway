@@ -1,9 +1,23 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { notifyManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ClaudeTaskView } from '@shared/api-types';
 import type { Transaction } from '@shared/schemas';
+import { useClaudeTaskSync } from '@/api/hooks';
 import { TransactionSheet } from './TransactionSheet';
+
+/** Monté une fois dans `Shell` en vrai : ici, pour que la fiche retrouve le détail du marchand une fois la recherche web finie. */
+function ClaudeTaskSync() {
+  useClaudeTaskSync();
+  return null;
+}
+
+beforeAll(() => {
+  // Les lots de notifications de React Query passent par un `setTimeout` : les rendre synchrones
+  // évite de deviner combien de temps il faut laisser aux minuteries truquées pour les voir.
+  notifyManager.setScheduler((cb) => cb());
+});
 
 const accounts = [
   { id: 1, name: 'Courant', initialBalance: 0, onBudget: true, bankAccountNumber: null, archived: false, createdAt: '' },
@@ -48,15 +62,38 @@ const sncf = tx({ id: 20, kind: 'expense', date: '2026-10-03', amount: 2200, lab
 /** Réponse de la liste du jour pour un test, à la place de `[expense, sncf]`. */
 let sameDayExtra: Transaction[] | null;
 let detail: { description: string | null; descriptionSource: 'claude' | 'web' | 'user' | null; describedAt: string | null };
+/** Tâche de recherche web en cours ou finie, telle que renvoyée par `/api/claude/tasks` ; `null` hors recherche. */
+let webTask: ClaudeTaskView | null;
+/** Nombre de scrutations de `/api/claude/tasks` avant que la recherche en cours ne se termine. */
+let pollsBeforeDone = 2;
 
 beforeEach(() => {
   sameDayExtra = null;
+  webTask = null;
+  pollsBeforeDone = 2;
   detail = { description: 'Supérette de quartier', descriptionSource: 'claude', describedAt: '2026-10-20T10:00:00Z' };
   const fetchMock = vi.fn(async (url: string) => {
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
     if (url.startsWith('/api/merchants/CARREFOUR%20EXPR/describe')) {
-      detail = { description: 'Supérette de quartier, Paris', descriptionSource: 'web', describedAt: '2026-10-21T10:00:00Z' };
-      return json({ key: 'CARREFOUR EXPR', name: 'Carrefour Express', source: 'user', transactionCount: 14, total12Months: -18240, firstDate: '2025-03-01', ...detail });
+      webTask = {
+        id: 'merchant_web-1',
+        kind: 'merchant_web',
+        label: 'Claude cherche Carrefour Express sur le web',
+        subject: 'CARREFOUR EXPR',
+        status: 'running',
+        startedAt: '2026-10-21T10:00:00Z',
+        finishedAt: null,
+        result: null,
+        error: null,
+      };
+      return new Response(JSON.stringify(webTask), { status: 202 });
+    }
+    if (url.startsWith('/api/claude/tasks')) {
+      if (webTask?.status === 'running' && --pollsBeforeDone <= 0) {
+        detail = { description: 'Supérette de quartier, Paris', descriptionSource: 'web', describedAt: '2026-10-21T10:00:00Z' };
+        webTask = { ...webTask, status: 'done', finishedAt: '2026-10-21T10:01:40Z', result: detail.description };
+      }
+      return json(webTask ? [webTask] : []);
     }
     if (url.startsWith('/api/merchants/CARREFOUR%20EXPR')) {
       return json({ key: 'CARREFOUR EXPR', name: 'Carrefour Express', source: 'user', transactionCount: 14, total12Months: -18240, firstDate: '2025-03-01', ...detail });
@@ -74,6 +111,7 @@ function renderSheet(t: Transaction, opts: { onOpen?: (t: Transaction) => void; 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={qc}>
+      <ClaudeTaskSync />
       <TransactionSheet transaction={t} onEdit={opts.onEdit ?? vi.fn()} onOpen={opts.onOpen ?? vi.fn()} />
     </QueryClientProvider>,
   );
@@ -99,9 +137,39 @@ describe('TransactionSheet', () => {
     detail.describedAt = '2026-10-20T10:00:00Z';
     renderSheet(expense);
     expect(await screen.findByText('Claude n’a pas reconnu ce marchand.')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Chercher sur le web' }));
-    expect(await screen.findByText('Supérette de quartier, Paris')).toBeInTheDocument();
-    expect(screen.getByText('d’après le web')).toBeInTheDocument();
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await userEvent.setup({ delay: null }).click(screen.getByRole('button', { name: 'Chercher sur le web' }));
+      expect(screen.getByText('Claude cherche sur le web…')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Chercher sur le web' })).toBeDisabled();
+
+      await act(async () => vi.advanceTimersByTimeAsync(2000)); // la tâche passe à « terminée », le détail du marchand est invalidé
+      expect(screen.getByText('Supérette de quartier, Paris')).toBeInTheDocument();
+      expect(screen.getByText('d’après le web')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('une recherche web déjà en cours à l’ouverture de la fiche montre l’attente et désactive le bouton', async () => {
+    detail.description = null;
+    detail.descriptionSource = 'claude';
+    detail.describedAt = '2026-10-20T10:00:00Z';
+    webTask = {
+      id: 'merchant_web-1',
+      kind: 'merchant_web',
+      label: 'Claude cherche Carrefour Express sur le web',
+      subject: 'CARREFOUR EXPR',
+      status: 'running',
+      startedAt: '2026-10-21T10:00:00Z',
+      finishedAt: null,
+      result: null,
+      error: null,
+    };
+    renderSheet(expense);
+    expect(await screen.findByText('Claude cherche sur le web…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chercher sur le web' })).toBeDisabled();
   });
 
   it('une carte débitée plus tard : date d’achat en tête, et le même jour est celui de l’achat', async () => {

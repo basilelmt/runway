@@ -13,6 +13,7 @@ import type {
   BankSyncState,
   BinanceState,
   BinanceSyncResult,
+  ClaudeTaskView,
   ForecastResponse,
   IdeaRunStart,
   IdeaRunView,
@@ -96,6 +97,7 @@ export const keys = {
   signals: ['signals'] as const,
   backups: ['backups'] as const,
   review: (month: string) => ['reviews', month] as const,
+  claudeTasks: ['claude-tasks'] as const,
 };
 
 const DERIVED = [['overview'], ['forecast'], ['reports'], ['transactions'], ['transaction'], ['advances']];
@@ -422,45 +424,47 @@ export function useRenameMerchant(opts?: MutOpts<MerchantDetail, { key: string; 
   });
 }
 
-/** Demande à Claude de chercher le marchand sur le web (jusqu'à deux minutes). */
-export function useDescribeMerchantOnWeb(opts?: MutOpts<MerchantDetail, string>) {
+/** Demande à Claude de chercher le marchand sur le web (jusqu'à deux minutes) : renvoie la tâche lancée, suivie par le panneau. */
+export function useDescribeMerchantOnWeb(opts?: MutOpts<ClaudeTaskView, string>) {
   const qc = useQueryClient();
   return useMutation({
     ...opts,
-    mutationFn: (key) => api.post<MerchantDetail>(`/api/merchants/${encodeURIComponent(key)}/describe`),
+    mutationFn: (key) => api.post<ClaudeTaskView>(`/api/merchants/${encodeURIComponent(key)}/describe`),
     onSuccess: (...a) => {
-      qc.setQueryData(keys.merchant(a[0].key), a[0]);
+      void qc.invalidateQueries({ queryKey: keys.claudeTasks });
       opts?.onSuccess?.(...a);
     },
   });
 }
 
 /**
- * État du nommage, lu tel quel (sans suivi ni invalidation : voir `useMerchantNamingSync`,
- * monté une fois dans la coquille de l'appli, qui s'en charge pour toute la session).
+ * État du nommage, lu tel quel (sans suivi ni invalidation : les tâches de nommage sont suivies par
+ * `useClaudeTaskSync`, monté une fois dans la coquille de l'appli, qui s'en charge pour toute la session).
  */
 export const useMerchantStatus = () => useQuery({ queryKey: keys.merchantStatus, queryFn: () => api.get<MerchantStatus>('/api/merchants/status') });
 
-/**
- * Suit le nommage par Claude en tâche de fond pour toute la session, même hors des Réglages :
- * interroge toutes les 3 secondes pendant une exécution, puis rafraîchit les opérations et marchands affichés.
- * Partage son cache avec `useMerchantStatus` : une fois montée ici, la page Réglages reçoit les mêmes mises à jour.
- */
-export function useMerchantNamingSync(): void {
-  const qc = useQueryClient();
-  const query = useQuery({
-    queryKey: keys.merchantStatus,
-    queryFn: () => api.get<MerchantStatus>('/api/merchants/status'),
-    refetchInterval: (q) => (q.state.data?.running ? 3000 : false),
+/** Travaux longs de Claude (recherche web, fournée d'idées, description des marchands), pour le panneau en bas de l'écran. */
+export const useClaudeTasks = () =>
+  useQuery({
+    queryKey: keys.claudeTasks,
+    queryFn: () => api.get<ClaudeTaskView[]>('/api/claude/tasks'),
+    refetchInterval: (q) => (q.state.data?.some((t) => t.status === 'running') ? 2000 : 30_000),
   });
-  const running = query.data?.running ?? false;
-  const wasRunning = useRef(running);
+
+/** À la fin d'un travail, rafraîchit ce qu'il a changé. Remplace l'ancien suivi du seul nommage. */
+export function useClaudeTaskSync(): void {
+  const qc = useQueryClient();
+  const { data } = useClaudeTasks();
+  const running = useRef(new Set<string>());
   useEffect(() => {
-    if (wasRunning.current && !running) {
-      for (const key of [['transactions'], ['transaction'], ['merchants', 'detail']]) void qc.invalidateQueries({ queryKey: key });
+    for (const t of data ?? []) {
+      if (t.status === 'running') running.current.add(t.id);
+      else if (running.current.delete(t.id)) {
+        const stale = t.kind === 'ideas' ? [keys.ideas, keys.invest] : t.kind === 'merchant_web' ? [['merchants']] : [['transactions'], ['transaction'], ['merchants']];
+        for (const queryKey of stale) void qc.invalidateQueries({ queryKey });
+      }
     }
-    wasRunning.current = running;
-  }, [running, qc]);
+  }, [data, qc]);
 }
 
 export function useNameMerchants(opts?: MutOpts<MerchantStatus, void>) {
