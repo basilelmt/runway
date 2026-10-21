@@ -1,6 +1,6 @@
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatDateLong, formatDateShort } from '@shared/dates';
-import { axisEuros, ChartTooltip } from './ChartTooltip';
+import { axisEuros, CHART_MARGIN, ChartTooltip } from './ChartTooltip';
 import styles from './chart.module.css';
 
 type BalanceAreaChartProps = {
@@ -35,7 +35,7 @@ export function BalanceAreaChart({ data, name, today, height = 260 }: BalanceAre
   return (
     <div className={styles.wrap} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <AreaChart data={data} margin={CHART_MARGIN}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset={0} stopColor="var(--positive)" stopOpacity={0.35} />

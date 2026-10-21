@@ -33,3 +33,6 @@ export function axisEuros(cents: number): string {
   if (Math.abs(euros) >= 1000) return `${(euros / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} k€`;
   return `${euros.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`;
 }
+
+/** Marges d'un graphique à axe de dates : la dernière date est centrée sur le bord du tracé, la marge droite lui laisse la place. */
+export const CHART_MARGIN = { top: 8, right: 28, bottom: 0, left: 0 };

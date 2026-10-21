@@ -1,6 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AskChart as AskChartData } from '@shared/api-types';
-import { axisEuros, ChartTooltip } from '@/components/charts/ChartTooltip';
+import { axisEuros, CHART_MARGIN, ChartTooltip } from '@/components/charts/ChartTooltip';
 import chart from '@/components/charts/chart.module.css';
 import styles from './AskPanel.module.css';
 
@@ -69,7 +69,7 @@ export function AskChart({ data }: { data: AskChartData }) {
               <Bar dataKey="value" fill="var(--ink)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           ) : (
-            <LineChart data={data.rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <LineChart data={data.rows} margin={CHART_MARGIN}>
               {axes}
               {tooltip}
               <Line dataKey="value" stroke="var(--ink)" strokeWidth={2} dot={false} isAnimationActive={false} />

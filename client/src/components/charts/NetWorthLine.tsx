@@ -1,7 +1,7 @@
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { NetWorthReport } from '@shared/api-types';
 import { formatDateLong, formatDateShort } from '@shared/dates';
-import { axisEuros, ChartTooltip } from './ChartTooltip';
+import { axisEuros, CHART_MARGIN, ChartTooltip } from './ChartTooltip';
 import styles from './chart.module.css';
 
 type Point = { date: string; history: number | null; projection: number | null };
@@ -29,7 +29,7 @@ export function NetWorthLine({ report, today, height = 240 }: { report: NetWorth
     <div>
       <div className={styles.wrap} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <LineChart data={data} margin={CHART_MARGIN}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="date" tickFormatter={(d: string) => formatDateShort(d)} tickLine={false} axisLine={false} minTickGap={32} />
             <YAxis tickFormatter={axisEuros} width={64} tickLine={false} axisLine={false} />

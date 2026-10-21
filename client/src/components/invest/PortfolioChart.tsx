@@ -3,7 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { isZeroQty } from '@core/invest';
 import type { HoldingView, PortfolioRange, SeriesPoint } from '@shared/api-types';
 import { formatDateLong, formatDateShort } from '@shared/dates';
-import { axisEuros, ChartTooltip } from '@/components/charts/ChartTooltip';
+import { axisEuros, CHART_MARGIN, ChartTooltip } from '@/components/charts/ChartTooltip';
 import chart from '@/components/charts/chart.module.css';
 import { FilterPill, SectionHeader, Segmented } from '@/components/ui';
 import { askTarget } from '@/components/ask/ask-target';
@@ -57,7 +57,7 @@ export function PortfolioChart({ series, holdings, range, onRange, loading = fal
       />
       <div className={[chart.wrap, styles.chart, loading ? styles.loading : ''].join(' ')}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={shown} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <LineChart data={shown} margin={CHART_MARGIN}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="date" tickFormatter={(d: string) => formatDateShort(d)} tickLine={false} axisLine={false} minTickGap={40} />
             <YAxis tickFormatter={axisEuros} width={72} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
