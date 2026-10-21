@@ -62,6 +62,30 @@ export function Slam({ text, size = 230, color: ink = color.tarmacInk, delay = 0
   );
 }
 
+/** Phrase dont les mots claquent l'un après l'autre ; `\n` force un retour à la ligne. */
+export function WordsSlam({ text, size, color: ink, delay = 0, stagger = 3 }: { text: string; size: number; color: string; delay?: number; stagger?: number }) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  let index = 0;
+  return (
+    <div style={{ font: `700 ${size}px/1.02 ${font.display}`, letterSpacing: '-0.035em', color: ink }}>
+      {text.split('\n').map((line, l) => (
+        <div key={l} style={{ whiteSpace: 'nowrap' }}>
+          {line.split(' ').map((word) => {
+            const i = index++;
+            const s = spring({ frame: frame - delay - i * stagger, fps, config: { damping: 12, stiffness: 260, mass: 0.5 } });
+            return (
+              <span key={i}>
+                <span style={{ display: 'inline-block', opacity: Math.min(1, s * 2), transform: `translateY(${(1 - s) * 40}px) scale(${1.25 - 0.25 * s})`, filter: `blur(${Math.max(0, 1 - s) * 10}px)` }}>{word}</span>{' '}
+              </span>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Bandes de marquage qui filent derrière un carton, pour donner de la vitesse. */
 export function SpeedStripes({ tint, opacity = 1, speed = 60 }: { tint: string; opacity?: number; speed?: number }) {
   const frame = useCurrentFrame();

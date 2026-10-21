@@ -1,6 +1,6 @@
 <p align="center">
   <a href="docs/media/runway-presentation.mp4">
-    <img src="docs/media/runway-presentation.gif" alt="Runway : le logo se pose sur la piste, puis Budget, Demander et la prévision" width="100%">
+    <img src="docs/media/runway-presentation.gif" alt="Runway : le logo se pose sur la piste, le salaire se répartit dans les enveloppes, puis Claude range les dépenses du relevé" width="100%">
   </a>
 </p>
 

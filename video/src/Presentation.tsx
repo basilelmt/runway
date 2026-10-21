@@ -1,15 +1,13 @@
 import { Sequence, Series } from 'remotion';
 import { Flash, Shot } from './components/Motion';
-import { ask } from './scenes/Ask';
 import { envelopes } from './scenes/Envelopes';
-import { forecast } from './scenes/Forecast';
-import { importShots } from './scenes/Import';
+import { askShots, forecastShots, investShots } from './scenes/Features';
 import { intro } from './scenes/Intro';
-import { invest } from './scenes/Invest';
 import { outro } from './scenes/Outro';
+import { sorting } from './scenes/Sorting';
 import type { ShotDef } from './scenes/types';
 
-const SHOTS: ShotDef[] = [...intro, ...envelopes, ...ask, ...forecast, ...invest, ...importShots, ...outro];
+const SHOTS: ShotDef[] = [...intro, ...envelopes, ...sorting, ...askShots, ...forecastShots, ...investShots, ...outro];
 
 export const PRESENTATION_FRAMES = SHOTS.reduce((sum, s) => sum + s.frames, 0);
 
@@ -31,13 +29,17 @@ export function Montage({ shots }: { shots: ShotDef[] }) {
   );
 }
 
-/** La vidéo de présentation : une trentaine de plans courts, coupés sec. */
+/** La vidéo de présentation : des plans courts, coupés sec, sur des imitations animées de l'interface. */
 export function Presentation() {
   return <Montage shots={SHOTS} />;
 }
 
-/** Boucle courte du GIF du README : le logo, puis Budget, Demander et la prévision. */
-const TEASER: ShotDef[] = [intro[3]!, envelopes[1]!, ask[3]!, forecast[1]!].map((s) => ({ ...s, frames: Math.min(s.frames, 48) }));
+/** Boucle courte du GIF du README : le logo, le salaire réparti, puis le tri par Claude. */
+const TEASER: ShotDef[] = [
+  { ...intro[3]!, frames: 50 },
+  { ...envelopes[1]!, frames: 84 },
+  { ...sorting[2]!, frames: 120 },
+];
 export const TEASER_FRAMES = TEASER.reduce((sum, s) => sum + s.frames, 0);
 
 export function Teaser() {

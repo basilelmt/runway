@@ -25,7 +25,7 @@ Commande : `npm run render` dans `video/` produit tous les fichiers de `docs/med
 
 Dans `docs/media/`, versionnés :
 
-- `runway-presentation.mp4` : 1920×1080, 30 i/s, H.264, muette, environ 32 s ;
+- `runway-presentation.mp4` : 1920×1080, 30 i/s, H.264, muette, environ 36 s ;
 - `runway-presentation.gif` : boucle de 6 à 8 s tirée de la vidéo, 960 px de large, moins de 8 Mo ;
 - `poster.png` : affiche 1920×1080, image d'ouverture ;
 - `screens/*.png` : captures de l'app utilisées par la vidéo et la grille du README.
@@ -41,15 +41,19 @@ Dans `docs/media/`, versionnés :
 
 ## Récit
 
-Environ 32 s, une trentaine de plans de 1 à 2 s, coupés sec (première version de 70 s jugée trop longue).
+Environ 36 s, des plans de 1 à 4 s coupés sec, sur des imitations animées de l'interface (couleurs, polices et composants de Runway redessinés en grand).
+Les vraies captures ne servent qu'au mur de la fin.
+Deux versions précédentes (70 s puis 32 s sur captures) ont été jugées trop longues, puis trop peu centrées sur les enveloppes et le tri.
 
-1. **Ouverture** : « Ton argent, / jusqu'à la / prochaine paie. » claque mot à mot sur une piste vue du cockpit, puis le logo se pose et un avion passe.
-2. **Cinq parties** (Enveloppes, Demander, Prévision, Investir, Import) : chacune ouverte par un carton plein écran (numéro et nom), puis deux à quatre plans de captures.
-3. **Mur** : toutes les captures, inclinées, qui reculent.
-4. **Fin** : « En local. / Sans compte. / Sans cloud. », puis le logo et `npm install && npm run dev`, et l'avion qui décolle.
+1. **Ouverture** : « Ton argent, / jusqu'à la / prochaine paie. » sur une piste vue du cockpit, puis le logo et un avion.
+2. **Enveloppes** : le salaire de 2 680 € se répartit d'un geste dans huit enveloppes jusqu'à zéro ; puis les sorties s'empilent, Sorties dépasse son budget (225,30 € pour 200 €), la jauge passe au rouge et l'alerte tombe.
+3. **Claude range** : un relevé CSV est déposé ; Claude passe sur chaque libellé bancaire brut, reconnaît le marchand, le moyen de paiement (carte via PayPal, prélèvement, Paylib…) et ce que c'est, et pose la bonne enveloppe ; des règles sont créées pour la prochaine fois.
+4. **Demander** : « Pourquoi Sorties est dans le rouge ? », la réponse arrive mot à mot et propose de prendre 25,30 € sur Vacances, appliqué d'un clic.
+5. **Prévision** : l'avion roule sur la piste qui rougit au découvert de Transports, la courbe plonge avec l'assurance auto.
+6. **Investir** : la carte de nuit, la valeur qui défile, la courbe.
+7. **Fin** : le mur des vraies captures, « En local. / Sans compte. / Sans cloud. », le logo et `npm install && npm run dev`.
 
-Effets : captures inclinées en 3D qui se redressent, zooms qui claquent (« punch »), glissés flous (« whip »), éclairs jaunes sur les coupes, contour jaune du viseur, pointeur qui clique, encarts d'explication, montants qui défilent.
-Le GIF reprend le logo puis trois plans (Budget, Demander, Prévision), environ 6 s.
+Le GIF reprend le logo, la répartition du salaire et le tri par Claude, environ 8 s.
 
 ## README
 
