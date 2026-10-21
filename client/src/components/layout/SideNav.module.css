@@ -27,26 +27,61 @@
   letter-spacing: -0.02em;
 }
 
+/* Champ « registre » comme les champs de saisie de l'app : pas de cadre, un trait de base.
+   Même gabarit que le bouton en dessous (38px, padding s-4) pour aligner icônes et raccourcis. */
+.askField {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  height: 38px;
+  /* 16px avant le bouton (8px de marge + 8px du gap de .nav) : le trait ne doit pas se lire comme un séparateur. */
+  margin-bottom: var(--s-2);
+  padding: 0 var(--s-4);
+  border: none;
+  border-bottom: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-mute);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: text;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
+}
+
+.askField:hover,
+.askFieldOpen {
+  border-bottom-color: var(--ink-mute);
+  color: var(--ink-soft);
+}
+
+.askIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.askPlaceholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .navAction {
   width: 100%;
   justify-content: flex-start;
-  /* Rythme d'origine : 16px entre les deux boutons (8px de marge + 8px du gap de .nav), 24px avant la liste. */
-  margin-bottom: var(--s-2);
+  /* 24px avant la liste (16px de marge + 8px du gap de .nav). */
+  margin-bottom: var(--s-4);
   /* Libellé en petite taille pour laisser la place au raccourci clavier (padding du bouton >= s-2 jusqu'au bord). */
   font-size: var(--text-sm);
 }
 
-.navAction:last-of-type {
-  margin-bottom: var(--s-4);
-}
-
 .navAction > :last-child {
   margin-left: auto;
-}
-
-.navActionOpen {
-  color: var(--ink);
-  background: var(--paper-sunken);
 }
 
 .list {

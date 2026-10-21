@@ -183,6 +183,8 @@ export const transactionFilterSchema = z.object({
   kind: z.enum(transactionKinds).optional(),
   unsorted: z.coerce.boolean().optional(),
   merchant: z.string().min(1).max(200).optional(),
+  /** Seulement ce qui touche un compte : sans les répartitions entre enveloppes. */
+  excludeAllocations: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().max(1000).default(500),
 });
 export type TransactionFilter = z.infer<typeof transactionFilterSchema>;

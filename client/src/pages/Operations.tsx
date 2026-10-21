@@ -63,7 +63,8 @@ function AllTransactions() {
 
   const accounts = useAccounts(true);
   const envelopes = useEnvelopes(true);
-  const transactions = useTransactions(toApiFilter(filters));
+  // Seulement ce qui s'est passé sur les comptes : les répartitions entre enveloppes sont dans Réglages › Journal.
+  const transactions = useTransactions({ ...toApiFilter(filters), excludeAllocations: true });
   const openAdvances = useAdvances('open');
   const toast = useToast();
   const confirm = useConfirmTransaction({ onSuccess: () => toast.success('Opération confirmée'), onError: (e) => toast.error(errorMessage(e)) });
@@ -73,8 +74,7 @@ function AllTransactions() {
   const envelopeMap = useMemo(() => new Map((envelopes.data ?? []).map((e) => [e.id, e])), [envelopes.data]);
   const advanceExpenseIds = useMemo(() => new Set((openAdvances.data ?? []).map((a) => a.expense.id)), [openAdvances.data]);
 
-  // Les répartitions ne touchent aucun compte : elles n'apparaissent que quand on regarde une enveloppe.
-  const visible = useMemo(() => (transactions.data ?? []).filter((t) => t.kind !== 'allocation' || filters.envelope !== undefined), [transactions.data, filters.envelope]);
+  const visible = useMemo(() => transactions.data ?? [], [transactions.data]);
 
   const groups = useMemo(() => {
     const byDay = new Map<string, Transaction[]>();
@@ -90,7 +90,7 @@ function AllTransactions() {
     let income = 0;
     let expense = 0;
     for (const t of visible) {
-      if (t.kind === 'allocation' || t.status !== 'confirmed') continue;
+      if (t.status !== 'confirmed') continue;
       const s = signedAmount(t, filters.account);
       if (s > 0) income += s;
       else expense -= s;

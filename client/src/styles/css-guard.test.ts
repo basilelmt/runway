@@ -24,6 +24,8 @@ const ALLOWED: Record<string, string[]> = {
   'styles/tokens.css': ['couleur hex', 'couleur rgb/hsl', 'taille de police en dur', 'ombre en dur'],
   // La devise suit la taille du montant qu'elle accompagne (0.55em) : une proportion, pas une taille de l'échelle.
   'components/ui/AmountHero.module.css': ['taille de police en dur'],
+  // La fusée ascii est un dessin fait de caractères : 5px règle l'échelle du dessin, pas la lecture d'un texte.
+  'components/invest/RocketFooter.module.css': ['taille de police en dur'],
 };
 
 function cssFiles(dir: string): string[] {

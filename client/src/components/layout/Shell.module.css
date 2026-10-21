@@ -12,6 +12,15 @@
 .content {
   max-width: var(--content-max);
   margin: 0 auto;
+  animation: screen-in var(--dur-screen) var(--ease-out);
+}
+
+/* Le nouvel écran apparaît en fondu au lieu de remplacer l'ancien d'un coup. */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 .topBar {

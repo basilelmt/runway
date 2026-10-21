@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createRule } from '../src/repos/recurring-rules';
-import { listTransactions } from '../src/repos/transactions';
+import { createTransaction, getTransaction, listTransactions } from '../src/repos/transactions';
 import { materializeDue } from '../src/services/materialize';
 import { createTestDb, type TestContext } from './helpers';
 
@@ -43,5 +43,19 @@ describe('materializeDue', () => {
     materializeDue(ctx.db, '2026-01-10');
     ctx.db.run(`update recurring_rules set last_generated_date = null where id = ${r.id}`);
     expect(materializeDue(ctx.db, '2026-01-10')).toBe(0);
+  });
+});
+
+describe('materializeDue, prélèvement arrivé en avance', () => {
+  it('rattache l’opération réelle à la règle au lieu de créer une prévue', () => {
+    const r = loyer(ctx);
+    ctx.db.run(`update recurring_rules set last_generated_date = '2026-02-28' where id = ${r.id}`);
+    const paye = createTransaction(ctx.db, {
+      kind: 'expense', date: '2026-02-27', amount: 800_00, label: 'PRLV Loyer', accountId: ctx.courant.id, envelopeId: ctx.courses.id, status: 'confirmed',
+    });
+    expect(materializeDue(ctx.db, '2026-03-10')).toBe(0);
+    expect(listTransactions(ctx.db, { status: 'planned' })).toEqual([]);
+    expect(getTransaction(ctx.db, paye.id).recurringRuleId).toBe(r.id);
+    expect(materializeDue(ctx.db, '2026-04-05')).toBe(1);
   });
 });

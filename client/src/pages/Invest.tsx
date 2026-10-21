@@ -10,6 +10,7 @@ import { HoldingList } from '@/components/invest/HoldingList';
 import { IdeasSection } from '@/components/invest/IdeasSection';
 import { PortfolioChart } from '@/components/invest/PortfolioChart';
 import { PortfolioSummary, PortfolioSummarySkeleton } from '@/components/invest/PortfolioSummary';
+import { RocketFooter } from '@/components/invest/RocketFooter';
 import { useAutoBinanceSync } from '@/components/invest/useAutoBinanceSync';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button, ErrorState, SectionHeader } from '@/components/ui';
@@ -61,6 +62,8 @@ export function InvestPage() {
       )}
 
       <IdeasSection />
+
+      <RocketFooter />
 
       <AddHoldingDialog key={addKey} open={adding} onClose={() => setAdding(false)} />
       <HoldingDialog holding={open} onClose={() => setOpenId(null)} />

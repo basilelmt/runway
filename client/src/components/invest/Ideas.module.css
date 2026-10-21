@@ -67,6 +67,11 @@
   color: var(--ink-mute);
 }
 
+.whereLogo {
+  align-self: center;
+  margin-left: auto;
+}
+
 .perf {
   display: flex;
   align-items: flex-end;

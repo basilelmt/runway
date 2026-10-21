@@ -107,6 +107,10 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 160ms;
   --dur-slow: 480ms;
+  /* Couleur de marque de Binance, pour son logo dans Investir */
+  --brand-binance: #f0b90b;
+  /* Apparition d'un écran quand on change de page */
+  --dur-screen: 200ms;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -141,5 +145,6 @@
   :root {
     --dur: 0ms;
     --dur-slow: 0ms;
+    --dur-screen: 0ms;
   }
 }

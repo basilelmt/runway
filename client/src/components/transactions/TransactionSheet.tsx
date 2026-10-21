@@ -28,7 +28,7 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
   const day = effectiveDate(t);
   // Les deux dates ne valent d'être montrées que si elles diffèrent.
   const paidOn = day !== t.date ? day : null;
-  const sameDay = useTransactions({ from: day, to: addDays(day, CARD_DEBIT_MAX_DELAY_DAYS), status: 'confirmed' });
+  const sameDay = useTransactions({ from: day, to: addDays(day, CARD_DEBIT_MAX_DELAY_DAYS), status: 'confirmed', excludeAllocations: true });
 
   const others = (list: Transaction[] | undefined) => (list ?? []).filter((x) => x.id !== t.id);
   // Le même jour, la date se répéterait sur chaque ligne : seul l'historique du marchand la montre.
@@ -53,7 +53,7 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
     t.kind === 'expense' || (t.kind === 'income' && envelope) ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null;
 
   const merchantHistory = others(history.data);
-  const sameDayList = others(sameDay.data).filter((x) => x.kind !== 'allocation' && effectiveDate(x) === day);
+  const sameDayList = others(sameDay.data).filter((x) => effectiveDate(x) === day);
 
   return (
     <div className={styles.sheet}>

@@ -20,8 +20,8 @@ describe('IdeasScore', () => {
   it('affiche les trois chiffres du comparatif sur 100 € investis', () => {
     render(<IdeasScore summary={summary} />);
     expect(screen.getByText('100 € investis sur chaque idée').closest('div')).toHaveTextContent('300,00 €');
-    expect(screen.getByText('Auraient donné').closest('div')).toHaveTextContent('315,00 €');
-    expect(screen.getByText('Sur le S&P 500').closest('div')).toHaveTextContent('303,00 €');
+    expect(screen.getByText('Auraient donné').closest('div')).toHaveTextContent('315,00 € (+5,0 %)');
+    expect(screen.getByText('Sur le S&P 500').closest('div')).toHaveTextContent('303,00 € (+1,0 %)');
   });
 
   it('compare retenues et écartées', () => {

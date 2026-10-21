@@ -1,4 +1,7 @@
 import { spawn } from 'node:child_process';
+import { accessSync, constants } from 'node:fs';
+import { homedir } from 'node:os';
+import { delimiter, join } from 'node:path';
 import { suggestionResultSchema, type Envelope, type SortingRule, type SuggestionResult, type Transaction } from '@shared/schemas';
 import { AppError } from '../errors';
 
@@ -54,11 +57,29 @@ const outputJsonSchema = {
   required: ['suggestions', 'rules'],
 };
 
+/**
+ * Chemin du binaire `claude` : cherché dans le PATH, puis dans `~/.local/bin` où l'installe l'installeur officiel.
+ * Ce dossier manque souvent au PATH des processus qui ne passent pas par un shell de connexion (lanceurs, services).
+ */
+export function resolveClaudeBin(path = process.env.PATH ?? '', home = homedir()): string {
+  const dirs = [...path.split(delimiter).filter(Boolean), join(home, '.local', 'bin')];
+  for (const dir of dirs) {
+    const candidate = join(dir, 'claude');
+    try {
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // absent ou non exécutable : dossier suivant
+    }
+  }
+  return 'claude';
+}
+
 /** Exécute le binaire `claude` en mode headless, sans aucun outil ni entrée standard. */
 export const execClaude: Exec = (args, timeoutMs) =>
   new Promise((resolve) => {
     // CLAUDECODE vide : évite le refus de démarrer quand le serveur tourne lui-même sous Claude Code.
-    const child = spawn('claude', args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CLAUDECODE: '' } });
+    const child = spawn(resolveClaudeBin(), args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CLAUDECODE: '' } });
     let stdout = '';
     let stderr = '';
     let timedOut = false;
@@ -154,7 +175,7 @@ export type StreamExec = (
 /** Lance `claude` et transmet sa sortie ligne à ligne (`--output-format stream-json`). 124 = délai dépassé, 130 = interrompu. */
 export const spawnClaudeStream: StreamExec = (args, { cwd, timeoutMs, signal, onLine }) =>
   new Promise((resolve) => {
-    const child = spawn('claude', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CLAUDECODE: '' } });
+    const child = spawn(resolveClaudeBin(), args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CLAUDECODE: '' } });
     let buffer = '';
     let stderr = '';
     let reason: 'timeout' | 'abort' | null = null;

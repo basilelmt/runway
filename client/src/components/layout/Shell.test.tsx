@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '@/components/ui';
 import { Shell } from './Shell';
@@ -19,23 +19,45 @@ afterEach(() => vi.unstubAllGlobals());
 
 function renderShell(path: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/',
+        Component: Shell,
+        children: [
+          { index: true, element: null },
+          { path: 'budget', element: <p>Budget</p> },
+          { path: 'reglages', element: null, children: [{ path: '*', element: null }] },
+        ],
+      },
+    ],
+    { initialEntries: [path] },
+  );
   render(
     <QueryClientProvider client={qc}>
       <ToastProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <Routes>
-            <Route path="/*" element={<Shell />}>
-              <Route index element={null} />
-              <Route path="reglages/*" element={null} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider router={router} />
       </ToastProvider>
     </QueryClientProvider>,
   );
+  return router;
 }
 
 describe('Shell', () => {
+  it('rejoue le fondu en changeant d’écran, pas en changeant seulement de filtres ou d’onglet des Réglages', async () => {
+    const router = renderShell('/');
+    const content = () => document.getElementById('main')!.firstElementChild;
+    const home = content();
+    await act(() => router.navigate('/?vue=semaine'));
+    expect(content()).toBe(home);
+    await act(() => router.navigate('/budget'));
+    expect(content()).not.toBe(home);
+    await act(() => router.navigate('/reglages/comptes'));
+    const settings = content();
+    await act(() => router.navigate('/reglages/banque'));
+    expect(content()).toBe(settings);
+  });
+
   it('met en évidence le bouton Réglages de l’en-tête mobile sur /reglages et ses sous-pages', () => {
     renderShell('/reglages/comptes');
     const header = screen.getByRole('banner');

@@ -3,13 +3,13 @@ import { BENCHMARK_NAME } from '@shared/invest';
 import { Badge, Card } from '@/components/ui';
 import { formatDateCompact, keepTogether } from '@/lib/format';
 import { formatPct, gainTone, platformLabel } from '@/lib/invest';
+import { PlatformLogo } from './PlatformLogo';
 import styles from './Ideas.module.css';
 
 /** Résumé d'une idée en carte : titre, horizon, actif et performances face au S&P 500. Le raisonnement complet est dans le dialogue. */
 export function IdeaCard({ idea, onOpen }: { idea: IdeaView; onOpen: () => void }) {
   const closed = idea.status === 'closed';
   const beat = idea.return !== null && idea.benchReturn !== null ? idea.return > idea.benchReturn : null;
-  const where = idea.whereToBuy === 'other' ? 'Ailleurs' : `Sur ${platformLabel(idea.whereToBuy)}`;
 
   return (
     <Card tone="flat" padding="md" className={styles.card}>
@@ -22,7 +22,11 @@ export function IdeaCard({ idea, onOpen }: { idea: IdeaView; onOpen: () => void 
       <div className={styles.asset}>
         <span className={styles.assetName}>{idea.assetName}</span>
         <span className="mono">{idea.ticker}</span>
-        <span className={styles.where}>{where}</span>
+        {idea.whereToBuy === 'other' ? (
+          <span className={styles.where}>Ailleurs</span>
+        ) : (
+          <PlatformLogo platform={idea.whereToBuy} label={`Sur ${platformLabel(idea.whereToBuy)}`} className={styles.whereLogo} />
+        )}
       </div>
 
       <footer className={styles.perf}>

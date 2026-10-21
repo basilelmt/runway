@@ -1,0 +1,11 @@
+.footer {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--s-8) var(--s-4);
+}
+
+/* L'ascii est du texte dans un <pre> : sa taille suit la police (15px par défaut), ici réduite à 5px. */
+.art {
+  margin: 0;
+  font-size: 5px;
+}

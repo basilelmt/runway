@@ -6,7 +6,7 @@ import { errorMessage } from '@/api/client';
 import { useIdeaRun, useIdeas, useStartIdeaRun } from '@/api/hooks';
 import { Button, Disclosure, EmptyState, ErrorState, Notice, PulseDot, SectionHeader, Skeleton } from '@/components/ui';
 import { keepTogether } from '@/lib/format';
-import { failedAnglesText, runOutcome } from '@/lib/invest';
+import { failedAnglesText, formatPct, gainTone, ideasTotal, runOutcome } from '@/lib/invest';
 import { IdeaCard } from './IdeaCard';
 import { IdeaDialog } from './IdeaDialog';
 import { IdeasScore } from './IdeasScore';
@@ -78,11 +78,14 @@ export function IdeasSection() {
               description={`${IDEA_ANGLES.length} chercheurs fouillent l’actualité, un critique ne garde que ce que le marché n’a pas encore vu.`}
             />
           ) : (
-            <div className={[styles.grid, 'stagger'].join(' ')}>
-              {data.open.map((i) => (
-                <IdeaCard key={i.id} idea={i} onOpen={() => setOpen(i)} />
-              ))}
-            </div>
+            <>
+              <OpenTotal ideas={data.open} />
+              <div className={[styles.grid, 'stagger'].join(' ')}>
+                {data.open.map((i) => (
+                  <IdeaCard key={i.id} idea={i} onOpen={() => setOpen(i)} />
+                ))}
+              </div>
+            </>
           )}
 
           <IdeasScore summary={data.summary} />
@@ -101,6 +104,19 @@ export function IdeasSection() {
 
       <IdeaDialog idea={open} onClose={() => setOpen(null)} />
     </section>
+  );
+}
+
+/** Gain moyen des idées en cours, comme si 100 € avaient été mis sur chacune, face au S&P 500 sur les mêmes périodes. */
+function OpenTotal({ ideas }: { ideas: IdeaView[] }) {
+  const total = ideasTotal(ideas);
+  if (!total) return null;
+  return (
+    <p className={styles.scoreLine}>
+      {total.count > 1 ? `Ensemble, les ${total.count} idées en cours font` : 'L’idée en cours fait'}{' '}
+      <strong className={['num', styles[gainTone(total.ideas)]].join(' ')}>{formatPct(total.ideas, { signed: true })}</strong>, contre{' '}
+      <span className="num">{formatPct(total.bench, { signed: true })}</span> pour le S&P 500 sur les mêmes périodes.
+    </p>
   );
 }
 
