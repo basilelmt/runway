@@ -128,7 +128,7 @@ describe('AskPanel', () => {
     expect(screen.getByRole('button', { name: 'Combien en restos ce mois-ci ?' })).toBeInTheDocument();
   });
 
-  it('le viseur désigne un bloc sans le déclencher, puis l’envoie avec la question', async () => {
+  it('le viseur, armé à l’ouverture, désigne un bloc sans le déclencher, puis l’envoie avec la question', async () => {
     const opened = vi.fn();
     renderPanel(
       <AskTarget kind="section" label="Idées en cours">
@@ -143,7 +143,6 @@ describe('AskPanel', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Demander' }));
     const aim = screen.getByRole('button', { name: 'Montrer un bloc' });
-    await user.click(aim);
     expect(aim).toHaveAttribute('aria-pressed', 'true');
 
     // Le bloc le plus profond est désigné, et son bouton ne reçoit pas le clic.
@@ -154,8 +153,8 @@ describe('AskPanel', () => {
     const chips = within(screen.getByRole('list', { name: 'Blocs montrés' }));
     expect(chips.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Idée NVDA', 'Idées en cours']);
 
-    // Échap range le viseur sans fermer le panneau ; la page redevient cliquable.
-    await user.keyboard('{Escape}');
+    // Le bouton range le viseur sans fermer le panneau ; la page redevient cliquable.
+    await user.click(aim);
     expect(aim).toHaveAttribute('aria-pressed', 'false');
     expect(panel()).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'NVIDIA' }));

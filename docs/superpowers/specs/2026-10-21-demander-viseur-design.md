@@ -109,7 +109,8 @@ Pour une ligne ou une carte, les attributs sont posés sur l'élément même (`a
   - un clic ajoute la pastille, la capture se fait dans la phase de capture (`addEventListener('click', …, true)`) avec `preventDefault` et `stopPropagation` : aucun autre clic de l'app ne part, ni ouverture de fiche, ni lien ;
   - Entrée sur un bouton d'un bloc visable fait de même (le clic clavier passe par la même capture) ;
   - la navigation (barre latérale, barre du haut et du bas) reste cliquable, pour montrer des blocs de plusieurs écrans ;
-  - on reste dans le mode pour viser d'autres blocs ; Échap, un clic sur le bouton ou l'envoi de la question en sortent ;
+  - le viseur est armé dès l'ouverture du panneau, sauf sur mobile, et le reste après l'envoi d'une question ;
+  - un clic sur le bouton le range, la page redevient cliquable ; Échap ferme le panneau, viseur compris ;
   - un clic hors de tout bloc visable ne fait rien ;
   - un bloc déjà désigné n'est pas ajouté deux fois (même `kind`, `id`, `label`).
 - Le panneau lui-même n'est pas visable, et le mode ne s'active que panneau ouvert.
@@ -133,7 +134,7 @@ Pour une ligne ou une carte, les attributs sont posés sur l'élément même (`a
 - `server/test/ask-mcp.test.ts` : `portfolio` et `ideas` avec un `api` simulé (champs gardés, champs retirés, erreur sans API).
 - `server/test/ask.test.ts` : la question envoyée à `claude` contient le contexte ; `--allowedTools` et `RUNWAY_API` dans les arguments.
 - Schéma : `refs` au-delà de 8 refusé, valeurs par défaut.
-- Client (`AskPanel.test.tsx` / `AskTarget.test.tsx`) : activer le viseur, cliquer un bloc ajoute une pastille sans déclencher son `onClick`, Échap sort, retrait d'une pastille, envoi avec `refs` et `page`.
+- Client (`AskPanel.test.tsx` / `AskTarget.test.tsx`) : activer le viseur, cliquer un bloc ajoute une pastille sans déclencher son `onClick`, armé à l'ouverture, Échap ferme, retrait d'une pastille, envoi avec `refs` et `page`.
 - Recette dans le navigateur sur une copie de la base : viser « Idées en cours » et une position, poser la question d'origine, vérifier que la réponse distingue idées et portefeuille avec les vrais chiffres ; vérifier les états visuels (survol, étiquette, pastilles, mobile).
 
 ## Hors périmètre

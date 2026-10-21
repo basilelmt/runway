@@ -119,7 +119,7 @@ export function AskPanel() {
       >
         {refs.length > 0 || aiming ? (
           <div className={styles.context}>
-            {aiming ? <p className={styles.aimHint}>Clique un bloc de la page pour le montrer à Claude. Échap pour finir.</p> : null}
+            {aiming ? <p className={styles.aimHint}>Clique un bloc de la page pour le montrer à Claude.</p> : null}
             {refs.length > 0 ? (
               <ul className={styles.refs} aria-label="Blocs montrés">
                 {refs.map((ref) => (

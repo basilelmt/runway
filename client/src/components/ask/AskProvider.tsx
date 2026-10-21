@@ -8,6 +8,13 @@ import { AskPanel } from './AskPanel';
 import { MAX_REFS, pageLabel, sameRef } from './ask-target';
 
 /**
+ * Le viseur est armé dès l'ouverture, sauf sur mobile : le panneau plein écran s'effacerait aussitôt.
+ */
+function aimsByDefault(): boolean {
+  return typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 767px)').matches;
+}
+
+/**
  * Fil de la conversation avec Claude et état d'ouverture du panneau.
  * Le fil vit le temps de la session du navigateur ; la session Claude est reprise pour les questions suivantes.
  */
@@ -59,7 +66,6 @@ export function AskProvider({ children }: { children: ReactNode }) {
       const turn = { question, refs, page: pageLabel(window.location.pathname) };
       setTurns((all) => [...all, { id, ...turn, status: 'pending', step: null, answer: null, error: null }]);
       setRefs([]);
-      setAiming(false);
       run(id, turn);
     },
     [run, refs],
@@ -89,15 +95,12 @@ export function AskProvider({ children }: { children: ReactNode }) {
     setRefs([]);
   }, []);
 
-  // Le viseur ne vit que panneau ouvert : le fermer range aussi le viseur.
+  // Le viseur s'arme à l'ouverture du panneau et se range à sa fermeture.
   const setOpen = useCallback((next: boolean) => {
     setOpenState(next);
-    if (!next) setAiming(false);
+    setAiming(next && aimsByDefault());
   }, []);
-  const toggle = useCallback(() => {
-    setOpenState((o) => !o);
-    setAiming(false);
-  }, []);
+  const toggle = useCallback(() => setOpen(!open), [open, setOpen]);
 
   // Le viseur se range dès qu'on atteint le nombre maximal de blocs.
   const addRef = useCallback(
