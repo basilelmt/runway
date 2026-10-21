@@ -144,4 +144,23 @@ describe('Analyse', () => {
     expect(envelope).toHaveAttribute('aria-pressed', 'true');
     expect(account).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('fait de chaque découvert un bloc que le viseur de Demander peut désigner', async () => {
+    const forecast: ForecastResponse = {
+      today: '2026-10-09',
+      horizonDays: 90,
+      days: [{ date: '2026-10-09', accounts: {}, envelopes: { 5: -10_00 } }],
+      events: [],
+      alerts: [{ kind: 'envelope', id: 5, name: 'Sorties', firstNegativeDate: '2026-10-09', daysUntil: 0, minBalance: -10_00, minBalanceDate: '2026-10-09' }],
+      accounts: [],
+      envelopes: [{ id: 5, name: 'Sorties', color: '#9a4f9a' }],
+    };
+    fetchMock.mockImplementation(async (url: string) => (url.startsWith('/api/forecast') ? json(forecast) : json({ forecastHorizonDays: 90 })));
+    renderPage('/analyse?vue=a-venir');
+
+    const row = (await screen.findByRole('button', { name: 'Tracer le solde projeté de Sorties' })).closest('li');
+    expect(row).toHaveAttribute('data-ask-kind', 'envelope');
+    expect(row).toHaveAttribute('data-ask-id', '5');
+    expect(row).toHaveAttribute('data-ask-label', 'Découvert de Sorties');
+  });
 });

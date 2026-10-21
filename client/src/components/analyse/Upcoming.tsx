@@ -80,6 +80,7 @@ export function Upcoming() {
                       clickLabel={`Tracer le solde projeté de ${a.name}`}
                       pressed={series === key}
                       className={series === key ? styles.selected : undefined}
+                      data={askTarget(a.kind, a.id, `Découvert de ${a.name}`)}
                       lead={<span className={listRowDate}>{formatDateCompact(a.firstNegativeDate)}</span>}
                       title={
                         <span className={styles.what}>
