@@ -408,6 +408,9 @@ export const merchantNamesResultSchema = z.object({
   names: z.array(z.object({ key: z.string(), name: z.string(), description: z.string().default('') })),
 });
 
+/** Sortie brute de la recherche web d'un marchand à la demande. */
+export const merchantWebResultSchema = z.object({ description: z.string() });
+
 /** Quantité décimale exacte, transportée en texte (« 0.04512 »). */
 export const decimalSchema = z
   .string()

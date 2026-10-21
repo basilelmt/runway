@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { merchantRenameSchema } from '@shared/schemas';
 import type { AppEnv } from '../app';
 import { getMerchant, renameMerchant } from '../repos/merchants';
+import type { Exec } from '../services/claude';
+import { describeMerchantOnWeb } from '../services/merchant-web';
 import type { MerchantNamer } from '../services/merchants';
 import { validate } from '../validate';
 
 const keyParam = z.object({ key: z.string().min(1).max(200) });
 
-export const merchantRoutes = (namer: MerchantNamer) =>
+export const merchantRoutes = (namer: MerchantNamer, exec?: Exec) =>
   new Hono<AppEnv>()
     .get('/status', (c) => c.json(namer.status()))
     .post('/name', (c) => {
@@ -22,4 +24,7 @@ export const merchantRoutes = (namer: MerchantNamer) =>
       // Rendu à Claude : il le renomme ou le décrit sans attendre le prochain import.
       if (input.name === '' || input.description === '') namer.request();
       return c.json(merchant);
-    });
+    })
+    .post('/:key/describe', validate('param', keyParam), async (c) =>
+      c.json(await describeMerchantOnWeb(c.get('db'), c.req.valid('param').key, c.get('today'), { exec })),
+    );

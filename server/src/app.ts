@@ -110,7 +110,7 @@ export function createApp({ db, now = today, exec, askStream, askSessionId, impo
   app.route('/api/reviews', reviewRoutes);
   app.route('/api/forecast', forecastRoutes);
   app.route('/api/reports', reportRoutes);
-  app.route('/api/merchants', merchantRoutes(namer));
+  app.route('/api/merchants', merchantRoutes(namer, exec));
   app.route('/api/signals', signalRoutes);
   app.route('/api/imports', importRoutes(importDeps, { onCommitted: () => namer.request() }));
   app.route('/api/bank-sync', bankSyncRoutes({ ...bankDeps, onNewTransactions: () => namer.request() }));
