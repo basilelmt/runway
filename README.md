@@ -1,15 +1,85 @@
-# Runway
+<p align="center">
+  <a href="docs/media/runway-presentation.mp4">
+    <img src="docs/media/runway-presentation.gif" alt="Runway : le logo se pose sur la piste, puis Budget, Demander et la prévision" width="100%">
+  </a>
+</p>
 
-Suivi de dépenses personnel par enveloppes, en local, avec import des relevés La Banque Postale, règles récurrentes, prévision de découvert et tri des opérations assisté par Claude.
+<h1 align="center">Runway</h1>
+
+<p align="center">
+  <b>Ton argent, jusqu'à la prochaine paie.</b><br>
+  Budget par enveloppes, prévision de découvert et tri des opérations par Claude, sur ta machine.
+</p>
+
+<p align="center">
+  <img alt="En local" src="https://img.shields.io/badge/donn%C3%A9es-en%20local-14201c?style=flat-square">
+  <img alt="Node 24" src="https://img.shields.io/badge/node-%E2%89%A5%2024-2f7d5b?style=flat-square">
+  <img alt="SQLite" src="https://img.shields.io/badge/base-SQLite-5b7c99?style=flat-square">
+  <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-e8b931?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="docs/media/runway-presentation.mp4"><b>▶ Regarder la présentation (30 s)</b></a>
+</p>
 
 Runway tourne sur ta machine : un serveur Node sert l'interface et l'API, et toutes les données vivent dans un fichier SQLite.
 Pas de compte, pas de cloud, pas d'abonnement.
+Les relevés La Banque Postale s'importent tels quels, les charges fixes deviennent des règles récurrentes, et Claude range ce qui reste.
+
+## Ce que fait Runway
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/screens/budget.png" alt="L'écran Budget : le reste à répartir et les enveloppes du mois">
+      <h3>Chaque euro a sa place</h3>
+      Ton argent est découpé en enveloppes.
+      Les charges fixes donnent leur budget (le loyer fait celui de Logement), et le reste se répartit d'un geste.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/screens/demander-reponse.png" alt="Demander : Claude explique le découvert de Logement et propose une action">
+      <h3>Demande à Claude</h3>
+      Vise un bloc de l'écran et pose ta question.
+      Claude lit tes données sans rien modifier, et propose des actions que tu appliques d'un clic.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/screens/prevision.png" alt="La prévision : la piste rougit avant le découvert de Transports">
+      <h3>Vois venir le découvert</h3>
+      Charges fixes, budget et opérations prévues projettent les soldes de chaque compte et de chaque enveloppe.
+      La piste rougit bien avant le problème.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/screens/investir.png" alt="Investir : la valeur du portefeuille et son évolution">
+      <h3>Investir, en clair</h3>
+      Trade Republic et Binance au même endroit, avec les cours de Yahoo Finance.
+      Chaque semaine, Claude tire des idées de l'actualité et les juge face au S&amp;P 500.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/screens/import-apercu.png" alt="L'aperçu d'un import : nouvelles, rapprochées et doublons">
+      <h3>Un relevé, tout rangé</h3>
+      Les doublons sont ignorés et les prélèvements prévus rapprochés.
+      Les opérations reconnues par une règle de tri arrivent déjà dans leur enveloppe.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/screens/tri-claude.png" alt="Le tri avec Claude : une enveloppe proposée pour chaque opération">
+      <h3>Claude trie le reste</h3>
+      Une enveloppe proposée et expliquée pour chaque opération à ranger, et des règles pour les prochaines fois.
+      Le tout passe par ton abonnement Claude, sans clé API.
+    </td>
+  </tr>
+</table>
+
+<sub>Captures et vidéo faites sur une base de démonstration aux données inventées.</sub>
 
 ## Prérequis
 
 - Node 24 ou plus récent.
-- Pour le bouton "Trier avec Claude" : [Claude Code](https://docs.anthropic.com/claude-code) installé et connecté (`claude`, puis `/login`).
-  Le tri utilise `claude -p` sur ton abonnement, aucune clé API n'est nécessaire.
+- Pour le tri, Demander et les idées d'Investir : [Claude Code](https://docs.anthropic.com/claude-code) installé et connecté (`claude`, puis `/login`).
+  Runway utilise `claude -p` sur ton abonnement, aucune clé API n'est nécessaire.
 
 ## Démarrer en développement
 
@@ -34,7 +104,7 @@ La variable `PORT` change le port, et `RUNWAY_DB` le chemin de la base.
 ## Où sont les données
 
 Dans `data/runway.db` (gitignoré).
-L'écran Paramètres propose aussi un export JSON complet et un export CSV des opérations.
+Les Réglages proposent aussi un export JSON complet et un export CSV des opérations.
 
 ## Sauvegardes et restauration
 
@@ -58,10 +128,10 @@ Lit `RUNWAY_DB` comme le serveur.
 
 ## Importer un relevé La Banque Postale
 
-1. Dans l'espace client, télécharge l'export CSV du compte (menu "Télécharger les opérations").
-2. Dans Runway, page Import, dépose le fichier.
+1. Dans l'espace client, télécharge l'export CSV du compte (menu "Télécharger les opérations"), ou le relevé mensuel PDF.
+2. Dans Runway, Opérations puis "Importer un relevé", dépose le fichier.
 3. L'aperçu classe les lignes en nouvelles, rapprochées (une opération prévue par une règle récurrente qui correspond) et doublons (déjà importées).
-4. Confirme : les dépenses sans règle de tri arrivent dans "À trier".
+4. Confirme : les dépenses sans règle de tri arrivent dans "À ranger".
 
 Au premier import, le numéro de compte lu dans le fichier est mémorisé sur le compte Runway, et les imports suivants le retrouvent seuls.
 
@@ -89,6 +159,22 @@ L'écran Investir suit ton portefeuille et propose des idées d'investissement t
 | `npm run db:generate` | génère une migration après modification de `server/src/db/schema.ts` |
 | `npm run db:backup` | sauvegarde manuelle immédiate, serveur allumé ou non |
 
+## Refaire la vidéo et les captures
+
+La vidéo est un projet [Remotion](https://www.remotion.dev) dans `video/`, avec ses propres dépendances.
+Elle se compose des captures de `docs/media/screens/`, partagées avec ce README.
+
+```sh
+cd video
+npm install
+npm run render     # vidéo, affiche et GIF dans docs/media/
+npm run studio     # aperçu image par image dans le navigateur
+```
+
+Pour refaire les captures, `npm run recette` (dans `video/`) monte une base de démonstration neuve dans `tmp/video/`, remplie de données inventées, et sert l'app sur http://localhost:5180.
+La vraie base de `data/` n'est jamais touchée.
+Les étapes à jouer dans l'app avant chaque capture sont décrites en tête de `video/scripts/recette.sh`.
+
 ## Structure
 
 ```
@@ -96,7 +182,8 @@ shared/   schémas zod, types et utilitaires partagés (montants, dates)
 core/     moteur pur : soldes, récurrence, prévision, rapprochement, tri
 server/   Hono + Drizzle + SQLite, parsers CSV, service Claude
 client/   React + Vite
-docs/     spec de design et plan d'implémentation
+video/    vidéo de présentation (Remotion) et données de démonstration
+docs/     spec de design, plan d'implémentation, vidéo et captures du README
 ```
 
 Le spec complet est dans `docs/superpowers/specs/2026-10-02-runway-design.md`.

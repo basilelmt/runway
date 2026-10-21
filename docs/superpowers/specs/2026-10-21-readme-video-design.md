@@ -25,7 +25,7 @@ Commande : `npm run render` dans `video/` produit tous les fichiers de `docs/med
 
 Dans `docs/media/`, versionnés :
 
-- `runway-presentation.mp4` : 1920×1080, 30 i/s, H.264, muette, environ 70 s ;
+- `runway-presentation.mp4` : 1920×1080, 30 i/s, H.264, muette, environ 32 s ;
 - `runway-presentation.gif` : boucle de 6 à 8 s tirée de la vidéo, 960 px de large, moins de 8 Mo ;
 - `poster.png` : affiche 1920×1080, image d'ouverture ;
 - `screens/*.png` : captures de l'app utilisées par la vidéo et la grille du README.
@@ -41,22 +41,15 @@ Dans `docs/media/`, versionnés :
 
 ## Récit
 
-Environ 70 s, une scène par fonctionnalité.
+Environ 32 s, une trentaine de plans de 1 à 2 s, coupés sec (première version de 70 s jugée trop longue).
 
-1. **Ouverture (0-5 s)** : une ligne de piste jaune se trace sur le tarmac, « Runway » apparaît, puis l'accroche « Ton argent, jusqu'à la prochaine paie ».
-2. **Enveloppes (5-17 s)** : les enveloppes du mois se remplissent en jauges ; le loyer, charge fixe, donne le budget de Logement ; le reste à dépenser défile.
-3. **Demander (17-29 s)** : une question se tape dans le champ, la réponse arrive, le viseur pointe la ligne concernée, le panneau des travaux de Claude tourne en fond.
-4. **Investir (29-41 s)** : bascule vers le fond nuit, le portefeuille, une idée comparée au S&P 500.
-5. **Piste et prévision (41-53 s)** : la courbe du solde se dessine jusqu'à la paie, l'alerte de découvert s'allume, les règles récurrentes se posent.
-6. **Import et tri (53-63 s)** : le relevé tombe dans la zone de dépôt, les lignes se rangent en nouvelles, rapprochées et doublons, puis Claude les trie dans les enveloppes.
-7. **Fin (63-70 s)** : « En local. Sans compte. Sans cloud. » puis `npm install && npm run dev`.
+1. **Ouverture** : « Ton argent, / jusqu'à la / prochaine paie. » claque mot à mot sur une piste vue du cockpit, puis le logo se pose et un avion passe.
+2. **Cinq parties** (Enveloppes, Demander, Prévision, Investir, Import) : chacune ouverte par un carton plein écran (numéro et nom), puis deux à quatre plans de captures.
+3. **Mur** : toutes les captures, inclinées, qui reculent.
+4. **Fin** : « En local. / Sans compte. / Sans cloud. », puis le logo et `npm install && npm run dev`, et l'avion qui décolle.
 
-Chaque scène a un titre court en Bricolage Grotesque.
-Les captures sont posées dans un cadre et animées : glissements, zooms sur le détail, surlignage au marqueur jaune, compteurs de montants.
-Les transitions passent par la ligne de piste jaune, fil conducteur de la vidéo.
-Les mouvements utilisent des ressorts et des courbes douces, sans effet gratuit.
-
-Le GIF reprend l'ouverture et un extrait d'Enveloppes, en boucle propre.
+Effets : captures inclinées en 3D qui se redressent, zooms qui claquent (« punch »), glissés flous (« whip »), éclairs jaunes sur les coupes, contour jaune du viseur, pointeur qui clique, encarts d'explication, montants qui défilent.
+Le GIF reprend le logo puis trois plans (Budget, Demander, Prévision), environ 6 s.
 
 ## README
 
