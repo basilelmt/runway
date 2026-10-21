@@ -185,16 +185,16 @@ function Invest() {
 }
 
 export const askShots: ShotDef[] = [
-  { frames: 14, flash: true, node: <TitleCard index="03" word="Demander" /> },
+  { frames: 28, flash: true, node: <TitleCard index="03" word="Demander" /> },
   { frames: 190, node: <Ask /> },
 ];
 
 export const forecastShots: ShotDef[] = [
-  { frames: 14, flash: true, node: <TitleCard index="04" word="Prévision" tone="tarmac" /> },
+  { frames: 28, flash: true, node: <TitleCard index="04" word="Prévision" tone="tarmac" /> },
   { frames: 128, entrance: 'punch', node: <Forecast /> },
 ];
 
 export const investShots: ShotDef[] = [
-  { frames: 14, flash: true, node: <TitleCard index="05" word="Investir" tone="night" /> },
+  { frames: 28, flash: true, node: <TitleCard index="05" word="Investir" tone="night" /> },
   { frames: 96, entrance: 'punch', node: <Invest /> },
 ];

@@ -95,8 +95,8 @@ function End() {
 
 export const outro: ShotDef[] = [
   { frames: 56, entrance: 'punch', node: <Wall /> },
-  { frames: 12, flash: true, node: <Word text="En local." background={color.marking} ink={color.markingOn} /> },
-  { frames: 12, node: <Word text="Sans compte." background={color.tarmac} ink={color.tarmacInk} /> },
-  { frames: 16, node: <Word text="Sans cloud." background={color.tarmac} ink={color.marking} /> },
+  { frames: 22, flash: true, node: <Word text="En local." background={color.marking} ink={color.markingOn} /> },
+  { frames: 22, node: <Word text="Sans compte." background={color.tarmac} ink={color.tarmacInk} /> },
+  { frames: 28, node: <Word text="Sans cloud." background={color.tarmac} ink={color.marking} /> },
   { frames: 80, entrance: 'punch', node: <End /> },
 ];

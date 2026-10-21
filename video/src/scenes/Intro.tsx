@@ -43,8 +43,8 @@ function Logo() {
 }
 
 export const intro: ShotDef[] = [
-  { frames: 14, node: <Words text="Ton argent," background={color.tarmac} ink={color.tarmacInk} speed={30} /> },
-  { frames: 12, node: <Words text="jusqu’à la" background={color.tarmac} ink={color.tarmacInk} speed={44} /> },
-  { frames: 18, flash: true, node: <Words text="prochaine paie." background={color.marking} ink={color.markingOn} speed={0} /> },
+  { frames: 24, node: <Words text="Ton argent," background={color.tarmac} ink={color.tarmacInk} speed={30} /> },
+  { frames: 20, node: <Words text="jusqu’à la" background={color.tarmac} ink={color.tarmacInk} speed={44} /> },
+  { frames: 30, flash: true, node: <Words text="prochaine paie." background={color.marking} ink={color.markingOn} speed={0} /> },
   { frames: 66, entrance: 'punch', node: <Logo /> },
 ];

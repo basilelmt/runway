@@ -178,7 +178,7 @@ function popAt(frame: number, delay: number): number {
 }
 
 export const sorting: ShotDef[] = [
-  { frames: 14, flash: true, node: <TitleCard index="02" word="Claude range" tone="tarmac" /> },
+  { frames: 28, flash: true, node: <TitleCard index="02" word="Claude range" tone="tarmac" /> },
   { frames: 66, node: <Drop /> },
   { frames: 215, entrance: 'whip', node: <Sort /> },
 ];

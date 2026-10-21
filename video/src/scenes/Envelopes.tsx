@@ -166,7 +166,7 @@ function Overspend() {
 }
 
 export const envelopes: ShotDef[] = [
-  { frames: 14, flash: true, node: <TitleCard index="01" word="Enveloppes" /> },
+  { frames: 28, flash: true, node: <TitleCard index="01" word="Enveloppes" /> },
   { frames: 150, node: <Distribute /> },
   { frames: 140, entrance: 'whip', node: <Overspend /> },
 ];

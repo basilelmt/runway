@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/media/runway-presentation.mp4"><b>▶ Regarder la présentation (45 s)</b></a>
+  <a href="docs/media/runway-presentation.mp4"><b>▶ Regarder la présentation (50 s)</b></a>
 </p>
 
 Runway tourne sur ta machine : un serveur Node sert l'interface et l'API, et toutes les données vivent dans un fichier SQLite.
