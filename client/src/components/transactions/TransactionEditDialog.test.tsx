@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Transaction } from '@shared/schemas';
 import { ToastProvider } from '@/components/ui';
@@ -146,6 +147,35 @@ describe('TransactionEditDialog', () => {
     expect(screen.getByLabelText('Montant')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Annuler' }));
     expect(await screen.findByRole('region', { name: 'Chez ce marchand' })).toBeInTheDocument();
+  });
+
+  it('rouvrir la même opération après fermeture repart de sa fiche', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // Comme une page : fermer remet l'opération ouverte à null, un clic rouvre le même objet.
+    function Page() {
+      const [shown, setShown] = useState<Transaction | null>(expense);
+      return (
+        <>
+          <button type="button" onClick={() => setShown(expense)}>
+            Rouvrir
+          </button>
+          <TransactionEditDialog transaction={shown} onClose={() => setShown(null)} />
+        </>
+      );
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ToastProvider>
+          <Page />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Modifier' }));
+    expect(screen.getByLabelText('Montant')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Fermer', hidden: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'Rouvrir', hidden: true }));
+    expect(await screen.findByRole('region', { name: 'Chez ce marchand' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Montant')).toBeNull();
   });
 
   it('une opération prévue ouvre directement le formulaire', async () => {

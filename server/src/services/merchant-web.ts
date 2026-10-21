@@ -9,6 +9,7 @@ import { getSettings } from '../repos/settings';
 import { ClaudeError, execClaude, runClaude, type Exec } from './claude';
 
 export const MERCHANT_WEB_TIMEOUT_MS = 120_000;
+const WEB_TOOLS = 'WebSearch,WebFetch';
 
 const outputJsonSchema = { type: 'object', properties: { description: { type: 'string' } }, required: ['description'] };
 
@@ -37,7 +38,7 @@ export function describeMerchantOnWeb(db: Db, key: string, today: ISODate, deps:
     const before = getMerchant(db, key, today);
     if (before.descriptionSource === 'user') throw new ConflictError('Ce marchand a déjà une description donnée à la main');
     const model = getSettings(db).claudeModel || undefined;
-    const args = ['-p', '--tools', 'WebSearch,WebFetch', '--allowedTools', 'WebSearch WebFetch', '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];
+    const args = ['-p', '--tools', WEB_TOOLS, '--allowedTools', WEB_TOOLS, '--output-format', 'json', '--json-schema', JSON.stringify(outputJsonSchema)];
     if (model) args.push('--model', model);
     args.push(buildMerchantWebPrompt(key, sampleLabels(db, key, 3)));
     const parsed = merchantWebResultSchema.safeParse(await runClaude(args, MERCHANT_WEB_TIMEOUT_MS, deps.exec ?? execClaude));

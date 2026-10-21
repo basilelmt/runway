@@ -1,10 +1,9 @@
 import { Pencil } from 'lucide-react';
-import { useMemo } from 'react';
-import { effectiveDate } from '@core/payment-date';
+import { CARD_DEBIT_MAX_DELAY_DAYS, effectiveDate } from '@core/payment-date';
 import { addDays, formatDateShort, formatDateWithWeekday, formatMonth, monthKey } from '@shared/dates';
 import { formatEuros } from '@shared/money';
 import type { Transaction } from '@shared/schemas';
-import { useAccounts, useEnvelopes, useMerchant, useTransactions } from '@/api/hooks';
+import { useAccountMap, useEnvelopeMap, useMerchant, useTransactions } from '@/api/hooks';
 import { Amount, Badge, Button, EnvelopeTag, GroupLabel, listRowDate } from '@/components/ui';
 import { formatDateCompact, plural } from '@/lib/format';
 import { repeatsLabel } from '@/lib/merchants';
@@ -21,17 +20,15 @@ type TransactionSheetProps = {
 
 /** Fiche de consultation d'une opération : de quoi se souvenir de ce qu'on a fait de son argent. */
 export function TransactionSheet({ transaction: t, onEdit, onOpen }: TransactionSheetProps) {
-  const accountList = useAccounts();
-  const envelopeList = useEnvelopes();
-  const accounts = useMemo(() => new Map((accountList.data ?? []).map((a) => [a.id, a])), [accountList.data]);
-  const envelopes = useMemo(() => new Map((envelopeList.data ?? []).map((e) => [e.id, e])), [envelopeList.data]);
+  const accounts = useAccountMap();
+  const envelopes = useEnvelopeMap();
   const merchant = useMerchant(t.merchantKey);
   const history = useTransactions({ merchant: t.merchantKey ?? undefined, limit: 6 }, { enabled: t.merchantKey !== null });
   // Une carte est débitée quelques jours après l'achat : « le même jour » est celui de l'achat.
   const day = effectiveDate(t);
   // Les deux dates ne valent d'être montrées que si elles diffèrent.
   const paidOn = day !== t.date ? day : null;
-  const sameDay = useTransactions({ from: day, to: addDays(day, 7), status: 'confirmed' });
+  const sameDay = useTransactions({ from: day, to: addDays(day, CARD_DEBIT_MAX_DELAY_DAYS), status: 'confirmed' });
 
   const others = (list: Transaction[] | undefined) => (list ?? []).filter((x) => x.id !== t.id);
   // Le même jour, la date se répéterait sur chaque ligne : seul l'historique du marchand la montre.
@@ -51,7 +48,9 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
   const toAccount = t.toAccountId != null ? accounts.get(t.toAccountId) : undefined;
   const where = t.kind === 'transfer' ? `${account?.name ?? '?'} → ${toAccount?.name ?? '?'}` : account?.name ?? '';
   const envelope = t.envelopeId != null ? envelopes.get(t.envelopeId) : undefined;
-  const isReimbursement = t.kind === 'income' && envelope != null;
+  // Une dépense, ou un revenu rangé (remboursement), montre son enveloppe comme dans les listes.
+  const envelopeBadge =
+    t.kind === 'expense' || (t.kind === 'income' && envelope) ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null;
 
   const merchantHistory = others(history.data);
   const sameDayList = others(sameDay.data).filter((x) => x.kind !== 'allocation' && effectiveDate(x) === day);
@@ -70,7 +69,7 @@ export function TransactionSheet({ transaction: t, onEdit, onOpen }: Transaction
               <span>{formatDateWithWeekday(t.date)}</span>
             )}
             {where ? <span>{where}</span> : null}
-            {t.kind === 'expense' || isReimbursement ? envelope ? <EnvelopeTag name={envelope.name} color={envelope.color} /> : <Badge tone="marking">À ranger</Badge> : null}
+            {envelopeBadge}
           </div>
         </div>
         <Button variant="secondary" icon={<Pencil />} onClick={onEdit} className={styles.editButton}>

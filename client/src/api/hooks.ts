@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import type {
   AdvanceSuggestionView,
@@ -154,6 +154,12 @@ export function useAccounts(archived = false) {
   });
 }
 
+/** Les comptes par id, pour afficher des opérations. */
+export function useAccountMap(archived = false): Map<number, Account> {
+  const { data } = useAccounts(archived);
+  return useMemo(() => new Map((data ?? []).map((a) => [a.id, a])), [data]);
+}
+
 export function useCreateAccount(opts?: MutOpts<Account, AccountInput>) {
   const invalidate = useInvalidate();
   return useMutation({ ...opts, mutationFn: (input) => api.post<Account>('/api/accounts', input), onSuccess: (...a) => { invalidate(['accounts']); opts?.onSuccess?.(...a); } });
@@ -174,6 +180,12 @@ export function useEnvelopes(archived = false) {
     queryFn: () => api.get<Envelope[]>(`/api/envelopes${archived ? '?archived=true' : ''}`),
     placeholderData: archived ? undefined : () => qc.getQueryData<Envelope[]>(keys.envelopes(true))?.filter((e) => !e.archived),
   });
+}
+
+/** Les enveloppes par id, pour afficher des opérations. */
+export function useEnvelopeMap(archived = false): Map<number, Envelope> {
+  const { data } = useEnvelopes(archived);
+  return useMemo(() => new Map((data ?? []).map((e) => [e.id, e])), [data]);
 }
 
 export function useCreateEnvelope(opts?: MutOpts<Envelope, EnvelopeInput>) {

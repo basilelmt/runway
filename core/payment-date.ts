@@ -1,7 +1,7 @@
 import { addDays, compareISODate, fromParts, isValidISODate, type ISODate } from '@shared/dates';
 
 /** Au-delà, une date du libellé n'est plus crédible comme date d'achat (paiement différé, carte étrangère comprise). */
-const MAX_DELAY_DAYS = 31;
+export const CARD_DEBIT_MAX_DELAY_DAYS = 31;
 
 /**
  * Date d'achat d'un paiement par carte, lue dans le libellé (« ACHAT CB SNCF 13.10.26 CARTE NUMERO 089 ») ;
@@ -14,7 +14,7 @@ export function cardPaymentDate(label: string, bookingDate: ISODate): ISODate | 
   if (!m) return null;
   const date = fromParts(2000 + Number(m[3]), Number(m[2]), Number(m[1]));
   if (!isValidISODate(date)) return null;
-  if (compareISODate(date, bookingDate) > 0 || compareISODate(date, addDays(bookingDate, -MAX_DELAY_DAYS)) < 0) return null;
+  if (compareISODate(date, bookingDate) > 0 || compareISODate(date, addDays(bookingDate, -CARD_DEBIT_MAX_DELAY_DAYS)) < 0) return null;
   return date;
 }
 
