@@ -41,17 +41,17 @@ Dans `docs/media/`, versionnés :
 
 ## Récit
 
-Environ 50 s, coupés sec : 0,7 à 1 s pour un ou deux mots en gros, plus longs (5 à 7 s) quand il se passe beaucoup de choses à l'écran, sur des imitations animées de l'interface (couleurs, polices et composants de Runway redessinés en grand).
+Environ 38 s, coupés sec : 0,7 à 1 s pour un ou deux mots en gros, plus longs (5 à 7 s) quand il se passe beaucoup de choses à l'écran, sur des imitations animées de l'interface (couleurs, polices et composants de Runway redessinés en grand).
 Les vraies captures ne servent qu'au mur de la fin.
-Les versions précédentes (70 s puis 32 s sur captures, puis 36 s en imitations) ont été jugées trop longues, trop peu centrées sur les enveloppes et le tri, puis trop rapides à lire, puis trop lents sur les écrans à un ou deux mots.
+Les versions précédentes (70 s puis 32 s sur captures, puis 36 s en imitations) ont été jugées trop longues, trop peu centrées sur les enveloppes et le tri, puis trop rapides à lire, puis trop lents sur les écrans à un ou deux mots, puis trop chargés en texte : seuls les grands titres restent, sans phrases d'appoint.
 
 1. **Ouverture** : « Ton argent, / jusqu'à la / prochaine paie. » sur une piste vue du cockpit, puis le logo et un avion.
-2. **Enveloppes** : le salaire de 2 680 € se répartit d'un geste dans huit enveloppes jusqu'à zéro ; puis les sorties s'empilent, Sorties dépasse son budget (225,30 € pour 200 €), la jauge passe au rouge et l'alerte tombe.
-3. **Claude range** : un relevé CSV est déposé ; Claude passe sur chaque libellé bancaire brut, reconnaît le marchand, le moyen de paiement (carte via PayPal, prélèvement, Paylib…) et ce que c'est, et pose la bonne enveloppe ; des règles sont créées pour la prochaine fois.
+2. **Enveloppes** : en plein écran, le salaire de 2 680 € est une grande barre sombre, coupée net en enveloppes qui s'écartent et prennent leur couleur (Logement 1 000 €, Courses 450 €, Sorties 300 €, Vacances 530 €, Épargne 400 €) ; l'épargne se soulève, les autres pâlissent, et « Et 400 € de côté. » tombe : tout réparti, on voit ce qu'on peut mettre de côté.
+3. **Claude range** : un relevé CSV est déposé ; Claude passe sur chaque libellé bancaire brut, reconnaît le marchand et ce que c'est, et pose la bonne enveloppe.
+   Puis « Ce qui cloche saute aux yeux. » : les enveloppes du mois en tuiles ; les dépenses que Claude vient de ranger y tombent, un verre au Syndicat fait passer Sorties de 295,40 € à 325,30 € pour 300 €, et l'enveloppe vire au rouge ; un clic l'ouvre, le concert à la Cigale est surligné comme cause du dépassement et une ligne porte l'avance « Léa te doit 32 € ».
 4. **Demander** : « Pourquoi Sorties est dans le rouge ? », la réponse arrive mot à mot et propose de prendre 25,30 € sur Vacances, appliqué d'un clic.
-5. **Prévision** : l'avion roule sur la piste qui rougit au découvert de Transports, la courbe plonge avec l'assurance auto.
-6. **Investir** : la carte de nuit, la valeur qui défile, la courbe.
-7. **Fin** : le mur des vraies captures, « En local. / Sans compte. / Sans cloud. », le logo et `npm install && npm run dev`.
+5. **Investir** : la carte de nuit, la valeur qui défile, la courbe.
+6. **Fin** : le mur des vraies captures, « En local. / Sans compte. / Sans cloud. », le logo et `npm install && npm run dev`.
 
 Le GIF reprend le logo, la répartition du salaire et le tri par Claude, environ 12 s.
 

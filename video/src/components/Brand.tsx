@@ -17,7 +17,7 @@ export function BrandMark({ size, outline = false }: { size: number; outline?: b
   );
 }
 
-/** L'avion de la piste de prévision (icône Plane de lucide, licence ISC), tourné pour rouler vers la droite. */
+/** L'avion qui survole la piste (icône Plane de lucide, licence ISC), tourné pour rouler vers la droite. */
 export function Plane({ size, stroke = color.tarmacInk, fill = color.tarmac }: { size: number; stroke?: string; fill?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', transform: 'rotate(45deg)' }}>

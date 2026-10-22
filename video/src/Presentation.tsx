@@ -1,13 +1,13 @@
 import { Sequence, Series } from 'remotion';
 import { Flash, Shot } from './components/Motion';
-import { envelopes } from './scenes/Envelopes';
-import { askShots, forecastShots, investShots } from './scenes/Features';
+import { anomalies, envelopes } from './scenes/Envelopes';
+import { askShots, investShots } from './scenes/Features';
 import { intro } from './scenes/Intro';
 import { outro } from './scenes/Outro';
 import { sorting } from './scenes/Sorting';
 import type { ShotDef } from './scenes/types';
 
-const SHOTS: ShotDef[] = [...intro, ...envelopes, ...sorting, ...askShots, ...forecastShots, ...investShots, ...outro];
+const SHOTS: ShotDef[] = [...intro, ...envelopes, ...sorting, ...anomalies, ...askShots, ...investShots, ...outro];
 
 export const PRESENTATION_FRAMES = SHOTS.reduce((sum, s) => sum + s.frames, 0);
 
@@ -37,8 +37,8 @@ export function Presentation() {
 /** Boucle courte du GIF du README : le logo, le salaire réparti, puis le tri par Claude. */
 const TEASER: ShotDef[] = [
   { ...intro[3]!, frames: 54 },
-  { ...envelopes[1]!, frames: 130 },
-  { ...sorting[2]!, frames: 190 },
+  { ...envelopes[1]!, frames: 150 },
+  { ...sorting[2]!, frames: 180 },
 ];
 export const TEASER_FRAMES = TEASER.reduce((sum, s) => sum + s.frames, 0);
 

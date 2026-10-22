@@ -19,11 +19,12 @@ export const ENV = {
   logement: { name: 'Logement', color: '#5b7c99' },
   courses: { name: 'Courses', color: '#4f8a5b' },
   transports: { name: 'Transports', color: '#b8731a' },
-  sorties: { name: 'Sorties', color: '#c8412b' },
+  sorties: { name: 'Sorties', color: '#7b5ea7' },
   abonnements: { name: 'Abonnements', color: '#a8556f' },
   sante: { name: 'Santé', color: '#2f7d7a' },
   shopping: { name: 'Shopping', color: '#8a6d3b' },
   vacances: { name: 'Vacances', color: '#3f8fb0' },
+  epargne: { name: 'Épargne', color: color.marking },
 } as const;
 export type EnvKey = keyof typeof ENV;
 
@@ -85,7 +86,7 @@ export function Sparkle({ size = 28, tint = color.markingOn }: { size?: number; 
   );
 }
 
-/** Pointeur de souris, avec une onde jaune au clic. */
+/** Pointeur de souris, toujours au premier plan, avec une onde jaune au clic. */
 export function Pointer({ x, y, clickAt, opacity = 1 }: { x: number; y: number; clickAt?: number; opacity?: number }) {
   const frame = useCurrentFrame();
   const t = clickAt === undefined ? -1 : (frame - clickAt) / 16;
@@ -93,9 +94,9 @@ export function Pointer({ x, y, clickAt, opacity = 1 }: { x: number; y: number; 
   return (
     <>
       {t >= 0 && t < 1 ? (
-        <div style={{ position: 'absolute', left: x - (16 + t * 44), top: y - (16 + t * 44), width: (16 + t * 44) * 2, height: (16 + t * 44) * 2, borderRadius: '50%', border: `4px solid ${color.marking}`, opacity: (1 - t) * opacity }} />
+        <div style={{ position: 'absolute', zIndex: 10, left: x - (16 + t * 44), top: y - (16 + t * 44), width: (16 + t * 44) * 2, height: (16 + t * 44) * 2, borderRadius: '50%', border: `4px solid ${color.marking}`, opacity: (1 - t) * opacity }} />
       ) : null}
-      <svg width="40" height="47" viewBox="0 0 17 20" style={{ position: 'absolute', left: x - 3, top: y - 2, opacity, transform: `scale(${press})`, transformOrigin: '3px 2px', filter: 'drop-shadow(0 4px 8px rgb(20 32 28 / 0.35))' }}>
+      <svg width="40" height="47" viewBox="0 0 17 20" style={{ position: 'absolute', zIndex: 10, left: x - 3, top: y - 2, opacity, transform: `scale(${press})`, transformOrigin: '3px 2px', filter: 'drop-shadow(0 4px 8px rgb(20 32 28 / 0.35))' }}>
         <path d="M1.5 1.5v15.2l4.1-3.9 2.7 6.1 2.6-1.1-2.7-6h5.6z" fill={color.ink} stroke={color.paper} strokeWidth="1.2" strokeLinejoin="round" />
       </svg>
     </>

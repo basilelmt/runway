@@ -33,7 +33,7 @@ function Logo() {
         </div>
       </div>
       <div style={{ position: 'absolute', top: 596, opacity: tag, transform: `translateY(${(1 - tag) * 20}px)`, font: `500 30px ${font.mono}`, letterSpacing: '0.14em', color: color.marking }}>
-        ENVELOPPES · PRÉVISION · CLAUDE · EN LOCAL
+        ENVELOPPES · CLAUDE · INVESTIR · EN LOCAL
       </div>
       <div style={{ position: 'absolute', left: fly, top: 900 - (fly / 2200) * 200, transform: `rotate(${-(fly / 2200) * 10}deg)`, filter: 'blur(1px)' }}>
         <Plane size={110} />
