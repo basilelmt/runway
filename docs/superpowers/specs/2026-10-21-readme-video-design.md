@@ -53,7 +53,8 @@ Les versions précédentes (70 s puis 32 s sur captures, puis 36 s en imitations
 5. **Investir** : la carte de nuit, la valeur qui défile, la courbe.
 6. **Fin** : le mur des vraies captures, « En local. / Sans compte. / Sans cloud. », le logo et `npm install && npm run dev`.
 
-Le GIF reprend le logo, la répartition du salaire et le tri par Claude, environ 12 s.
+Le GIF reprend le logo, la répartition du salaire, le tri par Claude et l'enveloppe qui déborde, environ 20 s.
+Le lien vers le MP4 passe par `?raw=true` : GitHub n'affiche pas une vidéo de cette taille dans sa vue de fichier, le navigateur la lit directement.
 
 ## README
 

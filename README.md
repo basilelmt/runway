@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="docs/media/runway-presentation.mp4">
-    <img src="docs/media/runway-presentation.gif" alt="Runway : le logo se pose sur la piste, le salaire se répartit dans les enveloppes, puis Claude range les dépenses du relevé" width="100%">
+  <a href="docs/media/runway-presentation.mp4?raw=true">
+    <img src="docs/media/runway-presentation.gif" alt="Runway : le salaire se découpe en enveloppes avec de l'épargne, Claude range les dépenses du relevé, et l'enveloppe qui déborde saute aux yeux" width="100%">
   </a>
 </p>
 
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/media/runway-presentation.mp4"><b>▶ Regarder la présentation (45 s)</b></a>
+  <a href="docs/media/runway-presentation.mp4?raw=true"><b>▶ Regarder la présentation (45 s)</b></a>
 </p>
 
 Runway tourne sur ta machine : un serveur Node sert l'interface et l'API, et toutes les données vivent dans un fichier SQLite.

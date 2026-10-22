@@ -34,12 +34,8 @@ export function Presentation() {
   return <Montage shots={SHOTS} />;
 }
 
-/** Boucle courte du GIF du README : le logo, le salaire réparti, puis le tri par Claude. */
-const TEASER: ShotDef[] = [
-  { ...intro[3]!, frames: 54 },
-  { ...envelopes[1]!, frames: 150 },
-  { ...sorting[2]!, frames: 180 },
-];
+/** Boucle du GIF du README : le logo, le salaire réparti, le tri par Claude, puis l'enveloppe qui déborde. */
+const TEASER: ShotDef[] = [{ ...intro[3]!, frames: 54 }, envelopes[1]!, sorting[2]!, anomalies[0]!];
 export const TEASER_FRAMES = TEASER.reduce((sum, s) => sum + s.frames, 0);
 
 export function Teaser() {
