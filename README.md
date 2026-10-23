@@ -28,50 +28,47 @@ Les relevés La Banque Postale s'importent tels quels, les charges fixes devienn
 
 ## Ce que fait Runway
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/media/screens/budget.png" alt="L'écran Budget : le reste à répartir et les enveloppes du mois">
-      <h3>Chaque euro a sa place</h3>
-      Ton argent est découpé en enveloppes.
-      Les charges fixes donnent leur budget (le loyer fait celui de Logement), et le reste se répartit d'un geste.
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/media/screens/demander-reponse.png" alt="Demander : Claude explique le découvert de Logement et propose une action">
-      <h3>Demande à Claude</h3>
-      Vise un bloc de l'écran et pose ta question.
-      Claude lit tes données sans rien modifier, et propose des actions que tu appliques d'un clic.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/media/screens/prevision.png" alt="La prévision : la piste rougit avant le découvert de Transports">
-      <h3>Vois venir le découvert</h3>
-      Charges fixes, budget et opérations prévues projettent les soldes de chaque compte et de chaque enveloppe.
-      La piste rougit bien avant le problème.
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/media/screens/investir.png" alt="Investir : la valeur du portefeuille et son évolution">
-      <h3>Investir, en clair</h3>
-      Trade Republic et Binance au même endroit, avec les cours de Yahoo Finance.
-      Chaque semaine, Claude tire des idées de l'actualité et les juge face au S&amp;P 500.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/media/screens/import-apercu.png" alt="L'aperçu d'un import : nouvelles, rapprochées et doublons">
-      <h3>Un relevé, tout rangé</h3>
-      Les doublons sont ignorés et les prélèvements prévus rapprochés.
-      Les opérations reconnues par une règle de tri arrivent déjà dans leur enveloppe.
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/media/screens/tri-claude.png" alt="Le tri avec Claude : une enveloppe proposée pour chaque opération">
-      <h3>Claude trie le reste</h3>
-      Une enveloppe proposée et expliquée pour chaque opération à ranger, et des règles pour les prochaines fois.
-      Le tout passe par ton abonnement Claude, sans clé API.
-    </td>
-  </tr>
-</table>
+### Chaque euro a sa place
+
+Ton argent est découpé en enveloppes.
+Les charges fixes donnent leur budget (le loyer fait celui de Logement), et le reste se répartit d'un geste.
+
+<img src="docs/media/screens/budget.png" alt="L'écran Budget : le reste à répartir et les enveloppes du mois" width="100%">
+
+### Demande à Claude
+
+Vise un bloc de l'écran et pose ta question.
+Claude lit tes données sans rien modifier, et propose des actions que tu appliques d'un clic.
+
+<img src="docs/media/screens/demander-reponse.png" alt="Demander : Claude explique le découvert de Logement et propose une action" width="100%">
+
+### Vois venir le découvert
+
+Charges fixes, budget et opérations prévues projettent les soldes de chaque compte et de chaque enveloppe.
+La piste rougit bien avant le problème.
+
+<img src="docs/media/screens/prevision.png" alt="La prévision : la piste rougit avant le découvert de Transports" width="100%">
+
+### Investir, en clair
+
+Trade Republic et Binance au même endroit, avec les cours de Yahoo Finance.
+Chaque semaine, Claude tire des idées de l'actualité et les juge face au S&P 500.
+
+<img src="docs/media/screens/investir.png" alt="Investir : la valeur du portefeuille et son évolution" width="100%">
+
+### Un relevé, tout rangé
+
+Les doublons sont ignorés et les prélèvements prévus rapprochés.
+Les opérations reconnues par une règle de tri arrivent déjà dans leur enveloppe.
+
+<img src="docs/media/screens/import-apercu.png" alt="L'aperçu d'un import : nouvelles, rapprochées et doublons" width="100%">
+
+### Claude trie le reste
+
+Une enveloppe proposée et expliquée pour chaque opération à ranger, et des règles pour les prochaines fois.
+Le tout passe par ton abonnement Claude, sans clé API.
+
+<img src="docs/media/screens/tri-claude.png" alt="Le tri avec Claude : une enveloppe proposée pour chaque opération" width="100%">
 
 <sub>Captures et vidéo faites sur une base de démonstration aux données inventées.</sub>
 
