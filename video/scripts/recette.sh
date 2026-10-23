@@ -3,6 +3,7 @@
 # Serveur sur 3100, client sur 5180. Ne touche jamais à data/runway.db.
 #
 # Captures (docs/media/screens), dans Chrome en 1440×900, facteur 2, mode clair, panneaux de travaux fermés :
+#   0. Avant l'import, Accueil (fermer le toast « Tes marchands ») : accueil.png.
 #   1. Opérations > Importer un relevé : import-depot.png, puis déposer tmp/video/releve-demo.csv : import-apercu.png.
 #   2. Importer, puis À ranger > Trier avec Claude : tri-claude.png, puis Tout accepter
 #      (Claude range Leroy Merlin dans Logement, qui passe à découvert : c'est la question de Demander).

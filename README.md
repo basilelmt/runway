@@ -28,6 +28,14 @@ Les relevés La Banque Postale s'importent tels quels, les charges fixes devienn
 
 ## Ce que fait Runway
 
+### Sur la route, ou à côté ?
+
+L'accueil te dit en un coup d'œil où tu en es dans le mois.
+La courbe de tes dépenses courantes avance face au rythme prévu : en dessous de la ligne pointillée, tu as de la marge, au-dessus, tu vas trop vite.
+Juste dessous, ce qui demande ton attention : les opérations à ranger, l'enveloppe vide, le découvert qui arrive.
+
+<img src="docs/media/screens/accueil.png" alt="L'accueil : les dépenses du mois sous le rythme prévu, et la liste de ce qu'il reste à faire" width="100%">
+
 ### Chaque euro a sa place
 
 Ton argent est découpé en enveloppes.
